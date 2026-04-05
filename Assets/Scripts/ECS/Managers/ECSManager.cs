@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 /// ECS框架的核心管理器，负责实体生命周期、系统调度和游戏状态管理
@@ -151,5 +152,35 @@ public class ECSManager : MonoBehaviour
     private void RegisterSystem(SystemBase sys) => _systems.Add(sys);
     
     /// <summary>加载游戏配置文件</summary>
-    private void LoadConfig() { Config = new GameConfig(); }
+    private void LoadConfig()
+    {
+        Config = new GameConfig(); // 先创建默认配置，防止文件缺失导致报错
+
+        // 尝试从 Assets/Resources/game_config.json 加载
+        // 注意：Resources.Load 不需要写后缀名 .json
+        TextAsset jsonFile = Resources.Load<TextAsset>("game_config");
+
+        if (jsonFile != null)
+        {
+            // 将 JSON 字符串内容覆盖到 Config 对象中
+            JsonUtility.FromJsonOverwrite(jsonFile.text, Config);
+            Debug.Log("游戏配置加载成功！");
+        }
+        else
+        {
+            Debug.LogWarning("未找到 game_config.json，将使用默认数值。请确保文件位于 Assets/Resources 目录下。");
+        }
+    }
+    
+    /// <summary>
+    /// 重新开始游戏
+    /// </summary>
+    public void RestartGame()
+    {
+        // 1. 恢复时间缩放（防止在死亡/暂停界面点击时，游戏还是静止的）
+        Time.timeScale = 1;
+
+        // 2. 重新加载当前活动的场景
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
 }

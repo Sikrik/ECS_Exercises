@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 /// <summary>
 /// ECS架构中所有系统的抽象基类
 /// 系统负责处理拥有特定组件的实体的业务逻辑，实现数据与逻辑的分离

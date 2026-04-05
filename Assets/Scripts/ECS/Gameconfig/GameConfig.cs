@@ -1,8 +1,10 @@
-﻿// GameConfig.cs 优化版本
+﻿using System;
+using UnityEngine;
+[Serializable]
+
+// GameConfig.cs 优化版本
 // 优化内容：
 // 1. 调大子弹击退默认参数，让弹开效果更明显
-using UnityEngine;
-[System.Serializable]
 public class GameConfig
 {
     // ===================== 玩家配置 =====================
