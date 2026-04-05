@@ -1,60 +1,50 @@
 ﻿using UnityEngine;
 
-// --- 基础战斗能力 ---
+// --- 基础战斗能力组件 ---
 
-public class DamageComponent : Component {
-    public float Value;
-    public DamageComponent(float v) => Value = v;
+/// <summary>单体伤害组件</summary>
+public class DamageComponent : Component { 
+    public float Value; 
+    public DamageComponent(float v) => Value = v; 
 }
 
-public class AOEComponent : Component {
-    public float Radius;
-    public float Damage;
-    public AOEComponent(float r, float d) { Radius = r; Damage = d; }
+/// <summary>爆炸伤害组件 (AOE)</summary>
+public class AOEComponent : Component { 
+    public float Radius; 
+    public float Damage; 
+    public AOEComponent(float r, float d) { Radius = r; Damage = d; } 
 }
 
-public class ChainComponent : Component {
-    public int MaxTargets;
-    public float Range;
-    public float Damage;
-    public ChainComponent(int count, float r, float d) { MaxTargets = count; Range = r; Damage = d; }
+/// <summary>闪电链弹射组件</summary>
+public class ChainComponent : Component { 
+    public int MaxTargets; 
+    public float Range; 
+    public float Damage; 
+    public ChainComponent(int m, float r, float d) { MaxTargets = m; Range = r; Damage = d; } 
 }
 
-// --- 状态效果 (Buff/Debuff) ---
+// --- 状态效果组件 ---
 
-/// <summary>
-/// 减速状态组件：当实体被减速时挂载
-/// </summary>
-public class SlowEffectComponent : Component 
-{
-    public float SlowRatio;         // 减速比例
+/// <summary>减速状态组件</summary>
+public class SlowEffectComponent : Component { 
+    public float SlowRatio;         // 减速比例 (0-1)
     public float RemainingDuration; // 持续时间
-    
-    public SlowEffectComponent(float slowRatio, float duration)
-    {
-        SlowRatio = slowRatio;
-        RemainingDuration = duration;
-    }
+    public SlowEffectComponent(float r, float d) { SlowRatio = r; RemainingDuration = d; } 
 }
-public class LightningVFXComponent : Component 
-{
-    public Vector3 StartPos;
-    public Vector3 EndPos;
-    public float Duration;
-    public float Timer;
 
-    public LightningVFXComponent(Vector3 s, Vector3 e, float d = 0.15f) 
-    { 
-        StartPos = s; EndPos = e; Duration = d; Timer = 0;
+// --- 视觉特效组件 ---
+
+/// <summary>闪电链渲染数据</summary>
+public class LightningVFXComponent : Component {
+    public Vector3 StartPos, EndPos;
+    public float Duration, Timer;
+    public LightningVFXComponent(Vector3 s, Vector3 e, float d = 0.15f) { 
+        StartPos = s; EndPos = e; Duration = d; Timer = 0; 
     }
 }
 
-/// <summary>
-/// 附加视觉特效标记：用于绑定除主视图外的额外特效（如减速时的冰冻特效）
-/// </summary>
-public class AttachedVFXComponent : Component
-{
-    public GameObject EffectObject;
-    public AttachedVFXComponent(GameObject go) => EffectObject = go;
+/// <summary>附加视觉对象标记 (用于绑定跟随实体的特效)</summary>
+public class AttachedVFXComponent : Component { 
+    public GameObject EffectObject; 
+    public AttachedVFXComponent(GameObject go) => EffectObject = go; 
 }
-

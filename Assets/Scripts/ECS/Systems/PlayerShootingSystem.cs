@@ -25,7 +25,7 @@ public class PlayerShootingSystem : SystemBase
     void Shoot(GameConfig config)
     {
         var ecs = ECSManager.Instance;
-        var player = ecs.PlayerEntity; // 假设 ecs.PlayerEntity 已经重构为带 PlayerTag
+        var player = ecs.PlayerEntity;
         if (player == null || !player.IsAlive) return;
         
         var pPos = player.GetComponent<PositionComponent>();
@@ -35,33 +35,35 @@ public class PlayerShootingSystem : SystemBase
         var tPos = target.GetComponent<PositionComponent>();
         Vector2 dir = new Vector2(tPos.X - pPos.X, tPos.Y - pPos.Y).normalized;
         
-        // 生成视觉对象
         GameObject prefab = PoolManager.Instance.GetBulletPrefab(CurrentBulletType);
         GameObject bulletGo = PoolManager.Instance.Spawn(prefab, new Vector3(pPos.X, pPos.Y, 0), Quaternion.identity);
         
-        // --- 核心重构：组合原子组件 ---
         Entity bullet = ecs.CreateEntity();
-        bullet.AddComponent(new BulletTag()); // 身份标记
+        bullet.AddComponent(new BulletTag());
         bullet.AddComponent(new PositionComponent(pPos.X, pPos.Y, 0));
         bullet.AddComponent(new VelocityComponent(dir.x * config.BulletSpeed, dir.y * config.BulletSpeed, 0));
         bullet.AddComponent(new ViewComponent(bulletGo));
-        
-        // 战斗属性
-        bullet.AddComponent(new BulletStatsComponent { 
-            Type = CurrentBulletType, 
-            Damage = config.BulletDamage 
-        });
-
-        // 生命周期（通用组件代替旧的 BulletComponent.LifeTime）
-        bullet.AddComponent(new LifetimeComponent { 
-            RemainingTime = config.BulletLifeTime 
-        });
-
-        // 轨迹追踪（用于防穿透，由 MovementSystem 使用）
-        bullet.AddComponent(new TraceComponent(pPos.X, pPos.Y));
-        
-        // 碰撞数据
+        bullet.AddComponent(new LifetimeComponent { RemainingTime = config.BulletLifeTime });
         bullet.AddComponent(new CollisionComponent(config.BulletCollisionRadius));
+        bullet.AddComponent(new TraceComponent(pPos.X, pPos.Y));
+
+        // 根据类型挂载效果组件，现在 config 中的字段已补全
+        switch (CurrentBulletType)
+        {
+            case BulletType.Normal:
+                bullet.AddComponent(new DamageComponent(config.BulletDamage));
+                break;
+            case BulletType.Slow:
+                bullet.AddComponent(new DamageComponent(config.BulletDamage * 0.5f));
+                bullet.AddComponent(new SlowEffectComponent(config.SlowRatio, config.SlowDuration));
+                break;
+            case BulletType.ChainLightning:
+                bullet.AddComponent(new ChainComponent(config.ChainTargets, config.ChainRange, config.ChainDamage));
+                break;
+            case BulletType.AOE:
+                bullet.AddComponent(new AOEComponent(config.AOERadius, config.AOEDamage));
+                break;
+        }
     }
 
     private float GetInterval(GameConfig config) => CurrentBulletType switch {
