@@ -56,4 +56,13 @@ public class UIManager : MonoBehaviour
         // 显示最终得分
         FinalScoreText.text = $"最终得分: {ECSManager.Instance.Score}";
     }
+    
+    public void OnRestartButtonClick()
+    {
+        // 1. 隐藏掉 Game Over 面板
+        if (GameOverPanel != null) GameOverPanel.SetActive(false);
+
+        // 2. 调用 ECSManager 的重启逻辑
+        ECSManager.Instance.RestartGame();
+    }
 }

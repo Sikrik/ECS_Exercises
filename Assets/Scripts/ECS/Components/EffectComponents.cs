@@ -27,8 +27,9 @@ public class ChainComponent : Component {
 
 /// <summary>减速状态组件</summary>
 public class SlowEffectComponent : Component { 
-    public float SlowRatio;         // 减速比例 (0-1)
-    public float RemainingDuration; // 持续时间
+    public float SlowRatio;         
+    public float RemainingDuration; 
+    public Color OriginalColor = Color.clear; // 新增：保存初始颜色
     public SlowEffectComponent(float r, float d) { SlowRatio = r; RemainingDuration = d; } 
 }
 

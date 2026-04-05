@@ -7,7 +7,6 @@ public class BulletEffectSystem : SystemBase
 
     public override void Update(float deltaTime)
     {
-        // 筛选产生了命中事件的子弹
         var hitBullets = GetEntitiesWith<BulletHitEventComponent, PositionComponent>();
         var ecs = ECSManager.Instance;
 
@@ -19,12 +18,11 @@ public class BulletEffectSystem : SystemBase
 
             if (target == null || !target.IsAlive) continue;
 
-            // 1. 处理单体伤害
+            // 1. 处理单体伤害 (Normal, Slow)
             if (bullet.HasComponent<DamageComponent>())
             {
                 var dmg = bullet.GetComponent<DamageComponent>().Value;
-                var health = target.GetComponent<HealthComponent>();
-                if (health != null) health.CurrentHealth -= dmg;
+                ApplyDamage(target, dmg);
             }
 
             // 2. 处理爆炸效果 (AOE)
@@ -41,34 +39,44 @@ public class BulletEffectSystem : SystemBase
                 ProcessChain(target, pos, chain);
             }
 
-            // 4. 处理减速效果 (新增逻辑)
+            // 4. 处理减速状态挂载
             if (bullet.HasComponent<SlowEffectComponent>())
             {
-                var bulletSlow = bullet.GetComponent<SlowEffectComponent>();
-                
+                var bSlow = bullet.GetComponent<SlowEffectComponent>();
                 if (target.HasComponent<SlowEffectComponent>())
                 {
-                    // 如果已有减速，刷新持续时间
-                    target.GetComponent<SlowEffectComponent>().RemainingDuration = bulletSlow.RemainingDuration;
+                    target.GetComponent<SlowEffectComponent>().RemainingDuration = bSlow.RemainingDuration;
                 }
                 else
                 {
-                    // 挂载减速组件
-                    target.AddComponent(new SlowEffectComponent(bulletSlow.SlowRatio, bulletSlow.RemainingDuration));
-                    
-                    // 视觉反馈：挂载冰冻特效 (假设 PoolManager 有 SlowVFXPrefab)
-                    GameObject iceVFX = PoolManager.Instance.Spawn(PoolManager.Instance.SlowVFXPrefab, Vector3.zero, Quaternion.identity);
-                    target.AddComponent(new AttachedVFXComponent(iceVFX));
+                    target.AddComponent(new SlowEffectComponent(bSlow.SlowRatio, bSlow.RemainingDuration));
+                    // 挂载冰冻特效视觉组件
+                    if (PoolManager.Instance.SlowVFXPrefab != null)
+                    {
+                        GameObject vfx = PoolManager.Instance.Spawn(PoolManager.Instance.SlowVFXPrefab, Vector3.zero, Quaternion.identity);
+                        target.AddComponent(new AttachedVFXComponent(vfx));
+                    }
                 }
             }
 
-            // 效果分发完毕，销毁子弹
             ecs.DestroyEntity(bullet);
         }
     }
 
+    private void ApplyDamage(Entity target, float damage)
+    {
+        var health = target.GetComponent<HealthComponent>();
+        if (health != null) health.CurrentHealth -= damage;
+    }
+
     private void ProcessAOE(float x, float y, AOEComponent aoe)
     {
+        // 视觉：生成爆炸特效
+        if (PoolManager.Instance.ExplosionVFXPrefab != null)
+        {
+            PoolManager.Instance.Spawn(PoolManager.Instance.ExplosionVFXPrefab, new Vector3(x, y, 0), Quaternion.identity);
+        }
+
         var enemies = ECSManager.Instance.Grid.GetNearbyEnemies(x, y);
         float rSq = aoe.Radius * aoe.Radius;
         foreach (var e in enemies)
@@ -76,17 +84,17 @@ public class BulletEffectSystem : SystemBase
             if (!e.IsAlive || !e.HasComponent<EnemyTag>()) continue;
             var p = e.GetComponent<PositionComponent>();
             float d2 = (p.X - x) * (p.X - x) + (p.Y - y) * (p.Y - y);
-            if (d2 <= rSq) 
-            {
-                var h = e.GetComponent<HealthComponent>();
-                if (h != null) h.CurrentHealth -= aoe.Damage;
-            }
+            if (d2 <= rSq) ApplyDamage(e, aoe.Damage);
         }
     }
 
     private void ProcessChain(Entity startTarget, PositionComponent hitPos, ChainComponent config)
     {
         var ecs = ECSManager.Instance;
+        
+        // --- 核心修复：第一个目标也需要受到伤害 ---
+        ApplyDamage(startTarget, config.Damage);
+        
         List<Entity> hitHistory = new List<Entity> { startTarget };
         Entity current = startTarget;
         Vector3 lastVfxPos = new Vector3(hitPos.X, hitPos.Y, 0);
@@ -109,13 +117,17 @@ public class BulletEffectSystem : SystemBase
             if (next != null)
             {
                 hitHistory.Add(next);
-                next.GetComponent<HealthComponent>().CurrentHealth -= config.Damage;
+                ApplyDamage(next, config.Damage);
                 var nPos = next.GetComponent<PositionComponent>();
                 Vector3 nextPosV3 = new Vector3(nPos.X, nPos.Y, 0);
 
+                // 生成闪电链视觉实体
                 Entity vfx = ecs.CreateEntity();
                 vfx.AddComponent(new LightningVFXComponent(lastVfxPos, nextPosV3));
-                vfx.AddComponent(new ViewComponent(PoolManager.Instance.Spawn(PoolManager.Instance.LightningChainVFX, Vector3.zero, Quaternion.identity)));
+                if (PoolManager.Instance.LightningChainVFX != null)
+                {
+                    vfx.AddComponent(new ViewComponent(PoolManager.Instance.Spawn(PoolManager.Instance.LightningChainVFX, Vector3.zero, Quaternion.identity)));
+                }
 
                 current = next;
                 lastVfxPos = nextPosV3;

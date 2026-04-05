@@ -1,18 +1,12 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// 无敌视觉与状态系统：
-/// 1. 负责处理无敌期间的闪烁反馈。
-/// 2. 负责无敌时间的计时，并在结束时移除无敌状态。
-/// </summary>
 public class InvincibleVisualSystem : SystemBase
 {
     public InvincibleVisualSystem(List<Entity> entities) : base(entities) { }
 
     public override void Update(float deltaTime)
     {
-        // 1. 获取所有正处于无敌状态的实体
         var invincibleEntities = GetEntitiesWith<InvincibleComponent, ViewComponent>();
 
         foreach (var entity in invincibleEntities)
@@ -20,28 +14,34 @@ public class InvincibleVisualSystem : SystemBase
             var invincible = entity.GetComponent<InvincibleComponent>();
             var view = entity.GetComponent<ViewComponent>();
 
-            // --- 核心修复：更新计时器 ---
-            invincible.RemainingTime -= deltaTime;
+            SpriteRenderer sr = null;
+            if (view.GameObject != null) view.GameObject.TryGetComponent(out sr);
 
-            // --- 状态移除：如果时间到期，移除无敌组件 ---
-            if (invincible.RemainingTime <= 0)
+            if (sr != null)
             {
-                entity.RemoveComponent<InvincibleComponent>();
-                
-                // 视觉恢复：确保移除时颜色恢复正常
-                if (view.GameObject != null && view.GameObject.TryGetComponent<SpriteRenderer>(out var sr))
+                // --- 核心修复：记录原始颜色 ---
+                if (invincible.OriginalColor.a == 0)
                 {
-                    sr.color = Color.white;
+                    invincible.OriginalColor = sr.color;
                 }
-                continue; // 跳过后续视觉处理
             }
 
-            // --- 视觉反馈：无敌期间持续闪烁 ---
-            if (view.GameObject != null && view.GameObject.TryGetComponent<SpriteRenderer>(out var sr_blink))
+            invincible.RemainingTime -= deltaTime;
+
+            if (invincible.RemainingTime <= 0)
             {
-                // 使用 PingPong 实现高频闪烁效果
+                // --- 核心修复：恢复原始颜色 ---
+                if (sr != null) sr.color = invincible.OriginalColor;
+                
+                entity.RemoveComponent<InvincibleComponent>();
+                continue;
+            }
+
+            if (sr != null)
+            {
                 float alpha = Mathf.PingPong(Time.time * 12, 1.0f);
-                sr_blink.color = new Color(1, 1, 1, alpha);
+                // 闪烁时保持原始颜色的 RGB，只改变 Alpha
+                sr.color = new Color(invincible.OriginalColor.r, invincible.OriginalColor.g, invincible.OriginalColor.b, alpha);
             }
         }
     }

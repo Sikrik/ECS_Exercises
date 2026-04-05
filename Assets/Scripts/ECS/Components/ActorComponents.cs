@@ -13,9 +13,9 @@ public class PlayerTag : Component { }
 /// </summary>
 public class InvincibleComponent : Component 
 {
-    public float RemainingTime; // 剩余无敌时间
+    public float RemainingTime; 
+    public Color OriginalColor = Color.clear; // 新增：保存初始颜色，默认设为透明以标记未初始化
 }
-
 
 // ===================== 子弹相关 (Bullet) =====================
 
