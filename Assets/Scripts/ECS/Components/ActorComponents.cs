@@ -3,7 +3,12 @@
 /// 是一个空的标记组件，没有额外数据
 /// 这是区分玩家和其他实体的关键标识，玩家输入系统、相机跟随系统等核心功能都依赖此组件
 /// </summary>
-public class PlayerComponent : Component { }
+public class PlayerComponent : Component
+{
+    // 新增：玩家被撞后的无敌时间管理
+    public float InvincibleTimer; 
+    public float InvincibleDuration = 1.0f; // 默认无敌1秒
+}
 // 先放枚举，在类的外面
 public enum BulletType
 {
