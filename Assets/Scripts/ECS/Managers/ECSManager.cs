@@ -22,7 +22,6 @@ public class ECSManager : MonoBehaviour
     private Queue<List<Entity>> _listPool = new Queue<List<Entity>>();
 
     // --- 对象池引用（修复 PlayerShootingSystem 报错） ---
-    
     public ObjectPool NormalBulletPool { get; private set; }
     public ObjectPool SlowBulletPool { get; private set; }
     public ObjectPool ChainLightningBulletPool { get; private set; }
@@ -125,12 +124,44 @@ public class ECSManager : MonoBehaviour
 
         if (entity.HasComponent<ViewComponent>())
         {
-            var go = entity.GetComponent<ViewComponent>().GameObject;
-            // 根据类型回收或直接销毁
-            Destroy(go); 
+            var view = entity.GetComponent<ViewComponent>();
+            if (view != null && view.GameObject != null)
+            {
+                // 优化：根据实体携带的组件判断归还到哪个池
+                if (entity.HasComponent<BulletComponent>())
+                {
+                    var type = entity.GetComponent<BulletComponent>().Type;
+                    GetBulletPool(type).Release(view.GameObject);
+                }
+                else if (entity.HasComponent<EnemyComponent>())
+                {
+                    var type = entity.GetComponent<EnemyComponent>().Type;
+                    GetEnemyPool(type).Release(view.GameObject);
+                }
+                else
+                {
+                    Destroy(view.GameObject);
+                }
+            }
         }
         _entities.Remove(entity);
     }
+
+    // --- 辅助方法：匹配对象池 ---
+    
+    private ObjectPool GetBulletPool(BulletType type) => type switch {
+        BulletType.Slow => SlowBulletPool,
+        BulletType.ChainLightning => ChainLightningBulletPool,
+        BulletType.AOE => AOEBulletPool,
+        _ => NormalBulletPool
+    };
+
+    // 修复：补全缺失的 GetEnemyPool 方法
+    private ObjectPool GetEnemyPool(EnemyType type) => type switch {
+        EnemyType.Fast => FastEnemyPool,
+        EnemyType.Tank => TankEnemyPool,
+        _ => NormalEnemyPool
+    };
 
     // --- 框架基础设施方法 ---
     public List<Entity> GetListFromPool() => _listPool.Count > 0 ? _listPool.Dequeue() : new List<Entity>();
