@@ -19,8 +19,34 @@ public class ECSManager : MonoBehaviour
     public Dictionary<System.Type, List<Entity>> QueryCache = new Dictionary<System.Type, List<Entity>>();
     private Stack<List<Entity>> _listPool = new Stack<List<Entity>>();
 
-    void Awake() => Instance = this;
-    void Start() { CreatePlayer(); InitSystems(); }
+    void Awake()
+    {
+        Instance = this;
+        LoadConfig(); // 步骤 A：先加载配置
+    }
+
+    void Start()
+    {
+        CreatePlayer(); 
+        InitSystems();
+    }
+    private void LoadConfig()
+    {
+        // 从 Resources 文件夹加载 json 文件
+        TextAsset configText = Resources.Load<TextAsset>("game_config");
+        if (configText != null)
+        {
+            // 将 JSON 字符串转换为 GameConfig 对象
+            Config = JsonUtility.FromJson<GameConfig>(configText.text);
+            Debug.Log("游戏配置加载成功！");
+        }
+        else
+        {
+            Debug.LogError("未找到 game_config.json 文件，请检查 Assets/Resources 目录！");
+            // 可以在这里初始化一套默认值，防止空指针
+            Config = new GameConfig(); 
+        }
+    }
 
     private void InitSystems() {
         _systems.Clear();

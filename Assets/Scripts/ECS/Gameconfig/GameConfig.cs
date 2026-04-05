@@ -5,64 +5,57 @@ using UnityEngine;
 public class GameConfig
 {
     [Header("Player Settings")]
-    public float PlayerMaxHealth = 100f;
-    public float PlayerMoveSpeed = 5f;
-    public float PlayerCollisionRadius = 0.5f;
-    public float PlayerInvincibleDuration = 1.0f;
+    public float PlayerMaxHealth;
+    public float PlayerMoveSpeed;
+    public float PlayerCollisionRadius;
+    public float PlayerInvincibleDuration;
 
-    [Header("Bullet Base Settings")]
-    public float BulletSpeed = 10f;
-    public float BulletDamage = 10f;
-    public float BulletLifeTime = 2.0f;
-    public float BulletCollisionRadius = 0.2f;
-    public float ShootInterval = 0.2f;
+    [Header("Bullet Settings")]
+    public float BulletSpeed;
+    public float BulletDamage;
+    public float BulletLifeTime;
+    public float BulletCollisionRadius;
+    public float ShootInterval;
 
-    [Header("Slow Bullet Settings")]
-    public float SlowBulletShootInterval = 0.4f;
-    public float SlowRatio = 0.5f;        // 减速比例 (0-1)
-    public float SlowDuration = 2.0f;     // 减速持续时间
-
-    [Header("Chain Lightning Settings")]
-    public float ChainLightningShootInterval = 0.6f;
-    public int ChainTargets = 3;          // 闪电链最大跳跃目标数
-    public float ChainRange = 5.0f;       // 闪电链跳跃范围
-    public float ChainDamage = 8.0f;      // 闪电链每跳伤害
-
-    [Header("AOE Bullet Settings")]
-    public float AOEBulletShootInterval = 0.8f;
-    public float AOERadius = 3.0f;        // 爆炸半径
-    public float AOEDamage = 15.0f;       // 爆炸伤害
+    [Header("Special Bullet Settings")]
+    public float SlowBulletShootInterval;
+    public float SlowRatio;
+    public float SlowDuration;
+    public float ChainLightningShootInterval;
+    public int ChainTargets;
+    public float ChainRange;
+    public float ChainDamage;
+    public float AOEBulletShootInterval;
+    public float AOERadius;
+    public float AOEDamage;
 
     [Header("Enemy Base Settings")]
-    public float EnemyMaxHealth = 30f;
-    public float EnemyMoveSpeed = 2f;
-    public int EnemyDamage = 10;
-    public float EnemyAttackCooldown = 1.0f;
-    public float EnemyCollisionRadius = 0.4f;
-    public float EnemyKnockbackSpeed = 5f;
-    public float EnemyKnockbackDuration = 0.2f;
-    public float EnemyHitRecoveryDuration = 0.4f; // 受击硬直时长
+    public float EnemyMaxHealth;
+    public float EnemyMoveSpeed;
+    public int EnemyDamage;
+    public float EnemyAttackCooldown;
+    public float EnemyCollisionRadius;
+    public float EnemyHitRecoveryDuration;
+    public float NormalEnemyKnockbackSpeed;
+    public float NormalEnemyKnockbackDuration;
 
-    [Header("Game Loop Settings")]
-    public float InitialSpawnInterval = 2.0f;
-    public float MinSpawnInterval = 0.5f;
-    public float SpawnIntervalDecrease = 0.01f;
-    public int EnemyKillScore = 10;
+    [Header("Fast Enemy Settings")]
+    public float FastEnemyMaxHealth;
+    public float FastEnemySpeed;
+    public float FastEnemyCollisionRadius;
+    public float FastEnemyKnockbackSpeed;
+    public float FastEnemyKnockbackDuration;
 
-    [Header("Special Enemy: Fast")]
-    public float FastEnemyMaxHealth = 15f;
-    public float FastEnemySpeed = 4f;
-    public float FastEnemyCollisionRadius = 0.3f;
-    public float FastEnemyKnockbackSpeed = 7f;
-    public float FastEnemyKnockbackDuration = 0.15f;
+    [Header("Tank Enemy Settings")]
+    public float TankEnemyMaxHealth;
+    public float TankEnemySpeed;
+    public float TankEnemyCollisionRadius;
+    public float TankEnemyKnockbackSpeed;
+    public float TankEnemyKnockbackDuration;
 
-    [Header("Special Enemy: Tank")]
-    public float TankEnemyMaxHealth = 100f;
-    public float TankEnemySpeed = 1f;
-    public float TankEnemyCollisionRadius = 0.6f;
-    public float TankEnemyKnockbackSpeed = 2f;
-    public float TankEnemyKnockbackDuration = 0.1f;
-    // --- 核心修复：添加/重命名以下两个字段 ---
-    public float NormalEnemyKnockbackSpeed = 5f;    
-    public float NormalEnemyKnockbackDuration = 0.2f;  
+    [Header("Spawn Settings")]
+    public float InitialSpawnInterval;
+    public float MinSpawnInterval;
+    public float SpawnIntervalDecrease;
+    public int EnemyKillScore;
 }

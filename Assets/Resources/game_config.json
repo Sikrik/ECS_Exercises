@@ -10,14 +10,16 @@
   "BulletCollisionRadius": 0.2,
   "ShootInterval": 0.25,
 
-  "NormalEnemyKnockbackSpeed": 6.0,
-  "NormalEnemyKnockbackDuration": 0.2,
-
-  "FastEnemyKnockbackSpeed": 8.0,
-  "FastEnemyKnockbackDuration": 0.15,
-
-  "TankEnemyKnockbackSpeed": 3.0,
-  "TankEnemyKnockbackDuration": 0.1,
+  "SlowBulletShootInterval": 0.4,
+  "SlowRatio": 0.5,
+  "SlowDuration": 3.0,
+  "ChainLightningShootInterval": 0.6,
+  "ChainTargets": 4,
+  "ChainRange": 5.0,
+  "ChainDamage": 10.0,
+  "AOEBulletShootInterval": 0.8,
+  "AOERadius": 3.0,
+  "AOEDamage": 25.0,
 
   "EnemyMaxHealth": 40.0,
   "EnemyMoveSpeed": 2.5,
@@ -25,9 +27,23 @@
   "EnemyAttackCooldown": 1.2,
   "EnemyCollisionRadius": 0.4,
   "EnemyHitRecoveryDuration": 0.4,
+  "NormalEnemyKnockbackSpeed": 6.0,
+  "NormalEnemyKnockbackDuration": 0.2,
 
-  "InitialSpawnInterval": 1.8,
-  "MinSpawnInterval": 0.4,
-  "SpawnIntervalDecrease": 0.015,
-  "EnemyKillScore": 20
+  "FastEnemyMaxHealth": 20.0,
+  "FastEnemySpeed": 4.5,
+  "FastEnemyCollisionRadius": 0.3,
+  "FastEnemyKnockbackSpeed": 8.0,
+  "FastEnemyKnockbackDuration": 0.15,
+
+  "TankEnemyMaxHealth": 150.0,
+  "TankEnemySpeed": 1.2,
+  "TankEnemyCollisionRadius": 0.7,
+  "TankEnemyKnockbackSpeed": 2.5,
+  "TankEnemyKnockbackDuration": 0.1,
+
+  "InitialSpawnInterval": 2.0,
+  "MinSpawnInterval": 0.5,
+  "SpawnIntervalDecrease": 0.02,
+  "EnemyKillScore": 10
 }

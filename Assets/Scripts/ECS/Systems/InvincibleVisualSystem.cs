@@ -1,6 +1,9 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// 无敌视觉系统：处理受击后的闪烁反馈并恢复本色
+/// </summary>
 public class InvincibleVisualSystem : SystemBase
 {
     public InvincibleVisualSystem(List<Entity> entities) : base(entities) { }
@@ -8,28 +11,42 @@ public class InvincibleVisualSystem : SystemBase
     public override void Update(float deltaTime)
     {
         var invincibleEntities = GetEntitiesWith<InvincibleComponent, ViewComponent>();
+
         foreach (var entity in invincibleEntities)
         {
-            var inv = entity.GetComponent<InvincibleComponent>();
+            var invincible = entity.GetComponent<InvincibleComponent>();
             var view = entity.GetComponent<ViewComponent>();
 
-            if (view.GameObject == null || !view.GameObject.TryGetComponent<SpriteRenderer>(out var sr)) continue;
+            // 安全获取 SpriteRenderer
+            SpriteRenderer sr = null;
+            if (view.GameObject != null)
+            {
+                view.GameObject.TryGetComponent(out sr);
+            }
 
-            // 同样的懒加载逻辑
-            if (!entity.HasComponent<BaseColorComponent>()) {
+            if (sr == null) continue;
+
+            // --- 核心修复：记录基础颜色 (懒加载) ---
+            if (!entity.HasComponent<BaseColorComponent>())
+            {
                 entity.AddComponent(new BaseColorComponent(sr.color));
             }
             var baseColor = entity.GetComponent<BaseColorComponent>().Value;
 
-            inv.RemainingTime -= deltaTime;
+            invincible.RemainingTime -= deltaTime;
 
-            if (inv.RemainingTime <= 0) {
-                sr.color = baseColor; // 恢复真正的底色
+            // 无敌结束逻辑
+            if (invincible.RemainingTime <= 0)
+            {
                 entity.RemoveComponent<InvincibleComponent>();
+                
+                // 恢复到基础颜色
+                sr.color = baseColor;
                 continue;
             }
 
-            // 闪烁时，RGB 保持 baseColor，只动 Alpha
+            // --- 闪烁反馈逻辑 ---
+            // 使用 PingPong 改变 Alpha，但保持 BaseColor 的 RGB 值
             float alpha = Mathf.PingPong(Time.time * 12, 1.0f);
             sr.color = new Color(baseColor.r, baseColor.g, baseColor.b, alpha);
         }
