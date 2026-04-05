@@ -7,6 +7,7 @@ public class BulletEffectSystem : SystemBase
 
     public override void Update(float deltaTime)
     {
+        // 获取所有发生了碰撞事件的子弹
         var hitBullets = GetEntitiesWith<BulletHitEventComponent, PositionComponent>();
         var ecs = ECSManager.Instance;
 
@@ -18,7 +19,7 @@ public class BulletEffectSystem : SystemBase
 
             if (target == null || !target.IsAlive) continue;
 
-            // 1. 处理单体伤害 (Normal, Slow)
+            // 1. 处理单体伤害
             if (bullet.HasComponent<DamageComponent>())
             {
                 var dmg = bullet.GetComponent<DamageComponent>().Value;
@@ -50,15 +51,18 @@ public class BulletEffectSystem : SystemBase
                 else
                 {
                     target.AddComponent(new SlowEffectComponent(bSlow.SlowRatio, bSlow.RemainingDuration));
-                    // 挂载冰冻特效视觉组件
-                    if (PoolManager.Instance.SlowVFXPrefab != null)
+                    
+                    // 挂载冰冻特效视觉组件 (此处由 SlowEffectSystem 负责回收，不加 Lifetime)
+                    var slowPrefab = PoolManager.Instance.SlowVFXPrefab;
+                    if (slowPrefab != null)
                     {
-                        GameObject vfx = PoolManager.Instance.Spawn(PoolManager.Instance.SlowVFXPrefab, Vector3.zero, Quaternion.identity);
+                        GameObject vfx = PoolManager.Instance.Spawn(slowPrefab, Vector3.zero, Quaternion.identity);
                         target.AddComponent(new AttachedVFXComponent(vfx));
                     }
                 }
             }
 
+            // 销毁子弹实体
             ecs.DestroyEntity(bullet);
         }
     }
@@ -71,10 +75,18 @@ public class BulletEffectSystem : SystemBase
 
     private void ProcessAOE(float x, float y, AOEComponent aoe)
     {
-        // 视觉：生成爆炸特效
-        if (PoolManager.Instance.ExplosionVFXPrefab != null)
+        var pool = PoolManager.Instance;
+        var explosionPrefab = pool.ExplosionVFXPrefab;
+
+        // --- 核心更新：使用 ECS 托管爆炸特效寿命 ---
+        if (explosionPrefab != null)
         {
-            PoolManager.Instance.Spawn(PoolManager.Instance.ExplosionVFXPrefab, new Vector3(x, y, 0), Quaternion.identity);
+            GameObject vfxGo = pool.Spawn(explosionPrefab, new Vector3(x, y, 0), Quaternion.identity);
+            Entity vfxEntity = ECSManager.Instance.CreateEntity();
+            // 传入实例和预制体以便对象池回收
+            vfxEntity.AddComponent(new ViewComponent(vfxGo, explosionPrefab)); 
+            // 设置 1 秒后自动销毁
+            vfxEntity.AddComponent(new LifetimeComponent { RemainingTime = 1.0f }); 
         }
 
         var enemies = ECSManager.Instance.Grid.GetNearbyEnemies(x, y);
@@ -91,8 +103,6 @@ public class BulletEffectSystem : SystemBase
     private void ProcessChain(Entity startTarget, PositionComponent hitPos, ChainComponent config)
     {
         var ecs = ECSManager.Instance;
-        
-        // --- 核心修复：第一个目标也需要受到伤害 ---
         ApplyDamage(startTarget, config.Damage);
         
         List<Entity> hitHistory = new List<Entity> { startTarget };
@@ -121,12 +131,15 @@ public class BulletEffectSystem : SystemBase
                 var nPos = next.GetComponent<PositionComponent>();
                 Vector3 nextPosV3 = new Vector3(nPos.X, nPos.Y, 0);
 
-                // 生成闪电链视觉实体
-                Entity vfx = ecs.CreateEntity();
-                vfx.AddComponent(new LightningVFXComponent(lastVfxPos, nextPosV3));
-                if (PoolManager.Instance.LightningChainVFX != null)
+                // --- 核心更新：生成闪电链视觉实体并设置寿命 ---
+                var chainPrefab = PoolManager.Instance.LightningChainVFX;
+                if (chainPrefab != null)
                 {
-                    vfx.AddComponent(new ViewComponent(PoolManager.Instance.Spawn(PoolManager.Instance.LightningChainVFX, Vector3.zero, Quaternion.identity)));
+                    GameObject vfxGo = PoolManager.Instance.Spawn(chainPrefab, Vector3.zero, Quaternion.identity);
+                    Entity vfxEntity = ecs.CreateEntity();
+                    vfxEntity.AddComponent(new LightningVFXComponent(lastVfxPos, nextPosV3));
+                    vfxEntity.AddComponent(new ViewComponent(vfxGo, chainPrefab));
+                    vfxEntity.AddComponent(new LifetimeComponent { RemainingTime = 0.2f }); // 闪电链存在时间较短
                 }
 
                 current = next;

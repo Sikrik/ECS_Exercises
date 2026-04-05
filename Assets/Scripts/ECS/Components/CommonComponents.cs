@@ -6,7 +6,13 @@
 public class ViewComponent : Component
 {
     public GameObject GameObject;
-    public ViewComponent(GameObject go) => GameObject = go;
+    public GameObject Prefab; // 新增：记录这个物体是从哪个预制体生成的
+    
+    public ViewComponent(GameObject go, GameObject prefab) 
+    { 
+        GameObject = go; 
+        Prefab = prefab; 
+    }
 }
 
 /// <summary>

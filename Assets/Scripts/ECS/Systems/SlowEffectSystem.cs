@@ -19,31 +19,26 @@ public class SlowEffectSystem : SystemBase
             SpriteRenderer sr = null;
             if (view.GameObject != null) view.GameObject.TryGetComponent(out sr);
 
-            if (sr != null)
-            {
-                // --- 核心修复：如果是第一次执行，记录原始颜色 ---
-                if (slow.OriginalColor.a == 0) // 通过 alpha 为 0 判断是否是初次记录
-                {
-                    slow.OriginalColor = sr.color;
-                }
-                
+            if (sr != null) {
+                // --- 核心修复：初次记录原始颜色 ---
+                if (slow.OriginalColor.a == 0) slow.OriginalColor = sr.color;
                 sr.color = IceBlue;
             }
 
             slow.RemainingDuration -= deltaTime;
 
-            if (slow.RemainingDuration <= 0)
-            {
-                // --- 核心修复：恢复记录的原始颜色 ---
+            if (slow.RemainingDuration <= 0) {
+                // --- 核心修复：恢复原始颜色 ---
                 if (sr != null) sr.color = slow.OriginalColor;
 
-                if (entity.HasComponent<AttachedVFXComponent>())
-                {
-                    var vfxComp = entity.GetComponent<AttachedVFXComponent>();
-                    if (vfxComp.EffectObject != null) PoolManager.Instance.Despawn(vfxComp.EffectObject);
+                // 清理 Attached VFX
+                if (entity.HasComponent<AttachedVFXComponent>()) {
+                    var vfx = entity.GetComponent<AttachedVFXComponent>();
+                    // 这里由于不是 Entity 销毁，手动调一次池子回收
+                    if (vfx.EffectObject != null)
+                        PoolManager.Instance.Despawn(PoolManager.Instance.SlowVFXPrefab, vfx.EffectObject);
                     entity.RemoveComponent<AttachedVFXComponent>();
                 }
-
                 entity.RemoveComponent<SlowEffectComponent>();
             }
         }
