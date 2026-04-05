@@ -12,6 +12,7 @@ public class EnemyComponent : Component
     public float CurrentCooldown;
     // 新增：敌人类型
     public EnemyType Type;
+    public float MoveSpeed;
     
     // 碰撞击退与恢复状态
     public float KnockbackDirX;
