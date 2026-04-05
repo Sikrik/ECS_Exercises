@@ -45,3 +45,23 @@ public class AttachedVFXComponent : Component
     public GameObject EffectObject;
     public AttachedVFXComponent(GameObject go) => EffectObject = go;
 }
+
+/// <summary>
+/// 闪电链视觉数据组件：仅用于存储渲染闪电所需的位置和时间数据
+/// 由 BulletEffectSystem 创建，由 LightningRenderSystem 使用并销毁
+/// </summary>
+public class LightningVFXComponent : Component 
+{
+    public Vector3 StartPos; // 闪电起始点
+    public Vector3 EndPos;   // 闪电结束点
+    public float Duration;   // 特效持续时间
+    public float Timer;      // 已播放时间计时器
+
+    public LightningVFXComponent(Vector3 s, Vector3 e, float d = 0.15f) 
+    { 
+        StartPos = s; 
+        EndPos = e; 
+        Duration = d; 
+        Timer = 0;
+    }
+}

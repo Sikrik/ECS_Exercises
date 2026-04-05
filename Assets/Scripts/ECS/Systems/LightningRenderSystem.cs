@@ -7,6 +7,7 @@ public class LightningRenderSystem : SystemBase
 
     public override void Update(float deltaTime)
     {
+        // 筛选视觉组件
         var vfxs = GetEntitiesWith<LightningVFXComponent, ViewComponent>();
         var ecs = ECSManager.Instance;
 
@@ -18,20 +19,17 @@ public class LightningRenderSystem : SystemBase
 
             if (view == null || view.GameObject == null) continue;
 
-            // 修复：确保 LineRenderer 存在
             var line = view.GameObject.GetComponent<LineRenderer>();
-            if (line == null)
-            {
-                line = view.GameObject.AddComponent<LineRenderer>();
-                line.startWidth = 0.05f; line.endWidth = 0.05f;
-                line.material = new Material(Shader.Find("Sprites/Default"));
-                line.startColor = Color.cyan; line.endColor = Color.white;
-            }
+            if (line == null) continue;
 
             vfx.Timer += deltaTime;
-            if (vfx.Timer >= vfx.Duration) { ecs.DestroyEntity(entity); continue; }
+            if (vfx.Timer >= vfx.Duration) 
+            { 
+                ecs.DestroyEntity(entity); 
+                continue; 
+            }
 
-            // 绘制抖动效果
+            // 绘制闪电抖动逻辑 (保持不变)
             line.positionCount = 6;
             line.SetPosition(0, vfx.StartPos);
             line.SetPosition(5, vfx.EndPos);
@@ -42,7 +40,7 @@ public class LightningRenderSystem : SystemBase
                 line.SetPosition(k, mid);
             }
 
-            // 淡出效果
+            // 透明度淡出
             float alpha = 1.0f - (vfx.Timer / vfx.Duration);
             line.startColor = new Color(line.startColor.r, line.startColor.g, line.startColor.b, alpha);
         }
