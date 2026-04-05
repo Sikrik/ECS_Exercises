@@ -16,6 +16,15 @@ public class ViewComponent : Component
 }
 
 /// <summary>
+/// 基础颜色组件：存储实体最原始、自然的状态颜色
+/// </summary>
+public class BaseColorComponent : Component 
+{
+    public Color Value;
+    public BaseColorComponent(Color c) => Value = c;
+}
+
+/// <summary>
 /// 基础位置组件：仅存储当前坐标
 /// </summary>
 public class PositionComponent : Component

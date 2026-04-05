@@ -10,31 +10,31 @@ public class SlowEffectSystem : SystemBase
     public override void Update(float deltaTime)
     {
         var entities = GetEntitiesWith<SlowEffectComponent, ViewComponent>();
-
         foreach (var entity in entities)
         {
             var slow = entity.GetComponent<SlowEffectComponent>();
             var view = entity.GetComponent<ViewComponent>();
 
-            SpriteRenderer sr = null;
-            if (view.GameObject != null) view.GameObject.TryGetComponent(out sr);
+            if (view.GameObject == null) continue;
+            if (!view.GameObject.TryGetComponent<SpriteRenderer>(out var sr)) continue;
 
-            if (sr != null) {
-                // --- 核心修复：初次记录原始颜色 ---
-                if (slow.OriginalColor.a == 0) slow.OriginalColor = sr.color;
-                sr.color = IceBlue;
+            // --- 核心修复：确保记录的是真正的基础颜色 ---
+            if (!entity.HasComponent<BaseColorComponent>()) {
+                entity.AddComponent(new BaseColorComponent(sr.color));
             }
+            var baseColor = entity.GetComponent<BaseColorComponent>().Value;
 
+            // 持续变蓝
+            sr.color = IceBlue;
             slow.RemainingDuration -= deltaTime;
 
             if (slow.RemainingDuration <= 0) {
-                // --- 核心修复：恢复原始颜色 ---
-                if (sr != null) sr.color = slow.OriginalColor;
-
-                // 清理 Attached VFX
+                // 恢复基础颜色，而不是写死 Color.white 或 slow.OriginalColor
+                sr.color = baseColor;
+            
+                // 清理 VFX 逻辑保持不变...
                 if (entity.HasComponent<AttachedVFXComponent>()) {
                     var vfx = entity.GetComponent<AttachedVFXComponent>();
-                    // 这里由于不是 Entity 销毁，手动调一次池子回收
                     if (vfx.EffectObject != null)
                         PoolManager.Instance.Despawn(PoolManager.Instance.SlowVFXPrefab, vfx.EffectObject);
                     entity.RemoveComponent<AttachedVFXComponent>();
