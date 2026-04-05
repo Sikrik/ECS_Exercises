@@ -1,30 +1,33 @@
-﻿using System.Collections.Generic;
+﻿// Assets/Scripts/ECS/Systems/SlowEffectSystem.cs 完整修复版
+using System.Collections.Generic;
 using UnityEngine;
-/// <summary>
-/// 减速效果系统，处理减速效果的计时与移除
-/// </summary>
+
 public class SlowEffectSystem : SystemBase
 {
     public SlowEffectSystem(List<Entity> entities) : base(entities) { }
     
     public override void Update(float deltaTime)
     {
-        // 筛选所有带有减速效果的实体
         var slowedEntities = GetEntitiesWith<SlowEffectComponent>();
         
-        // 倒序遍历，避免删除元素导致索引错乱
+        // 安全检查：防止列表本身为 null
+        if (slowedEntities == null) return; 
+        
         for (int i = slowedEntities.Count - 1; i >= 0; i--)
         {
             var entity = slowedEntities[i];
+            // 检查实体是否存活
+            if (entity == null || !entity.IsAlive) continue;
+
             var slowEffect = entity.GetComponent<SlowEffectComponent>();
             
-            // 减少剩余时间
+            // 关键修复：检查组件是否存在，防止缓存导致的 null
+            if (slowEffect == null) continue; 
+            
             slowEffect.RemainingDuration -= deltaTime;
             
-            // 时间耗尽，移除减速组件
             if (slowEffect.RemainingDuration <= 0)
             {
-                // 特效结束，销毁持续视觉特效
                 if (slowEffect.EffectObject != null)
                 {
                     Object.Destroy(slowEffect.EffectObject);

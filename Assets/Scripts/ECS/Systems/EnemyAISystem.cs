@@ -128,7 +128,6 @@ public class EnemyAISystem : SystemBase
                 enemyVel.Y = 0;
             }
         }
-        // 归还List到对象池，减少GC
-        ReturnListToPool(enemies);
+
     }
 }
