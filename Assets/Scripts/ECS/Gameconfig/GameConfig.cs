@@ -46,7 +46,7 @@ public class GameConfig
     public float ChainLightningShootInterval = 0.8f;
     public int ChainLightningDamage = 25;
     public int ChainLightningMaxTargets = 5;
-    public float ChainLightningChainRange = 2.5f;
+    public float ChainLightningChainRange = 5.0f;
     
     // ===================== 范围伤害子弹配置 =====================
     public float AOEBulletShootInterval = 1f;

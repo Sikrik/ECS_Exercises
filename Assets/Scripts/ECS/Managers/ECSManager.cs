@@ -76,7 +76,22 @@ public class ECSManager : MonoBehaviour
             system.Update(deltaTime);
         }
     }
+    private void SetupLightningLine(LineRenderer line, Vector3 start, Vector3 end) {
+        int segments = 5; // 分成5段
+        line.positionCount = segments + 1;
+        line.SetPosition(0, start);
+        line.SetPosition(segments, end);
 
+        for (int i = 1; i < segments; i++) {
+            float pos = (float)i / segments;
+            Vector3 midPoint = Vector3.Lerp(start, end, pos);
+            // 在垂直于闪电方向增加随机偏移
+            Vector2 direction = (end - start).normalized;
+            Vector2 normal = new Vector2(-direction.y, direction.x);
+            midPoint += (Vector3)normal * Random.Range(-0.2f, 0.2f);
+            line.SetPosition(i, midPoint);
+        }
+    }
     void InitGame()
     {
         // 初始化各对象池
@@ -98,6 +113,7 @@ public class ECSManager : MonoBehaviour
         RegisterSystem(new MovementSystem(_entities));
         RegisterSystem(new BulletCollisionSystem(_entities)); // 移动后立即检测碰撞
         RegisterSystem(new CollisionSystem(_entities));
+        RegisterSystem(new LightningRenderSystem(_entities));
         RegisterSystem(new BulletLifeTimeSystem(_entities));
         RegisterSystem(new HealthSystem(_entities));
         RegisterSystem(new EnemySpawnSystem(_entities, NormalEnemyPrefab));
