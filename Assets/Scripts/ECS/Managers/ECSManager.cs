@@ -16,6 +16,23 @@ public class ECSManager : MonoBehaviour
     public int Score = 0;
     public GridSystem Grid => GetSystem<GridSystem>();
 
+    // --- 新增：查询缓存与对象池逻辑，用于适配 SystemBase ---
+    public Dictionary<System.Type, List<Entity>> QueryCache = new Dictionary<System.Type, List<Entity>>();
+    private Stack<List<Entity>> _listPool = new Stack<List<Entity>>();
+
+    public List<Entity> GetListFromPool()
+    {
+        if (_listPool.Count > 0) return _listPool.Pop();
+        return new List<Entity>();
+    }
+
+    public void ReturnListToPool(List<Entity> list)
+    {
+        list.Clear();
+        _listPool.Push(list);
+    }
+    // --------------------------------------------------
+
     void Awake()
     {
         Instance = this;
@@ -30,35 +47,24 @@ public class ECSManager : MonoBehaviour
 
     private void LoadConfig()
     {
-        // 假设 Config 已经通过 Inspector 拖入或在此处通过 Json 加载
         if (Config == null) Config = new GameConfig();
     }
 
     private void InitSystems()
     {
         _systems.Clear();
-
-        // 1. 输入与空间管理 (基础)
         _systems.Add(new PlayerInputSystem(_entities));
         _systems.Add(new GridSystem(_entities, 2.0f));
-
-        // 2. 生成与决策 (逻辑)
         _systems.Add(new EnemySpawnSystem(_entities));
         _systems.Add(new PlayerShootingSystem(_entities, Grid));
         _systems.Add(new EnemyAISystem(_entities));
-
-        // 3. 物理与冲突处理 (核心)
         _systems.Add(new MovementSystem(_entities));
         _systems.Add(new CollisionSystem(_entities));
         _systems.Add(new BulletCollisionSystem(_entities, Grid));
         _systems.Add(new BulletEffectSystem(_entities));
-
-        // 4. 状态计时与效果 (处理)
         _systems.Add(new SlowEffectSystem(_entities));
         _systems.Add(new LifetimeSystem(_entities));
         _systems.Add(new HealthSystem(_entities));
-
-        // 5. 表现与同步 (视觉)
         _systems.Add(new VFXSystem(_entities));
         _systems.Add(new LightningRenderSystem(_entities));
         _systems.Add(new InvincibleVisualSystem(_entities));
@@ -68,21 +74,26 @@ public class ECSManager : MonoBehaviour
     private void CreatePlayer()
     {
         if (PlayerPrefab == null) return;
-
         GameObject go = Instantiate(PlayerPrefab, Vector3.zero, Quaternion.identity);
         PlayerEntity = CreateEntity();
-
-        // 原子化组装玩家实体
-        PlayerEntity.AddComponent(new PlayerTag()); // 身份
-        PlayerEntity.AddComponent(new PositionComponent(0, 0, 0)); // 位置
-        PlayerEntity.AddComponent(new VelocityComponent(0, 0, 0)); // 速度
-        PlayerEntity.AddComponent(new HealthComponent(Config.PlayerMaxHealth)); // 血量
-        PlayerEntity.AddComponent(new CollisionComponent(Config.PlayerCollisionRadius)); // 碰撞半径
-        PlayerEntity.AddComponent(new ViewComponent(go)); // 视图引用
+        PlayerEntity.AddComponent(new PlayerTag());
+        PlayerEntity.AddComponent(new PositionComponent(0, 0, 0));
+        PlayerEntity.AddComponent(new VelocityComponent(0, 0, 0));
+        PlayerEntity.AddComponent(new HealthComponent(Config.PlayerMaxHealth));
+        PlayerEntity.AddComponent(new CollisionComponent(Config.PlayerCollisionRadius));
+        PlayerEntity.AddComponent(new ViewComponent(go));
     }
 
     void Update()
     {
+        // --- 核心修复：每帧更新前清空缓存并归还列表到对象池 ---
+        foreach (var list in QueryCache.Values)
+        {
+            ReturnListToPool(list);
+        }
+        QueryCache.Clear();
+        // --------------------------------------------------
+
         float deltaTime = Time.deltaTime;
         for (int i = 0; i < _systems.Count; i++)
         {
@@ -90,7 +101,6 @@ public class ECSManager : MonoBehaviour
         }
     }
 
-    // 实体管理接口
     public Entity CreateEntity()
     {
         Entity entity = new Entity();
