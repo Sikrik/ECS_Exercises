@@ -43,6 +43,7 @@ public class ECSManager : MonoBehaviour
     [Header("特效引用")]
     public GameObject LightningChainVFX; 
     public GameObject NormalHitVFX;
+    public ObjectPool LightningVFXPool { get; private set; } // 新增特效池属性
 
     void Awake()
     {
@@ -66,6 +67,8 @@ public class ECSManager : MonoBehaviour
         NormalEnemyPool = new ObjectPool(NormalEnemyPrefab, 10, 50);
         FastEnemyPool = new ObjectPool(FastEnemyPrefab, 10, 50);
         TankEnemyPool = new ObjectPool(TankEnemyPrefab, 10, 50);
+       
+        LightningVFXPool = new ObjectPool(LightningChainVFX, 20, 100);
     }
 
     void InitGame()
@@ -85,6 +88,8 @@ public class ECSManager : MonoBehaviour
         
         RegisterSystem(new LightningRenderSystem(_entities)); 
         RegisterSystem(new ViewSyncSystem(_entities));
+        
+
     }
 
     void Update()
@@ -113,9 +118,7 @@ public class ECSManager : MonoBehaviour
 
     public void DestroyEntity(Entity entity)
     {
-        if (entity == null || !entity.IsAlive) return;
-        entity.MarkAsDead();
-
+        // ... 前置代码 ...
         if (entity.HasComponent<ViewComponent>())
         {
             var view = entity.GetComponent<ViewComponent>();
@@ -126,7 +129,7 @@ public class ECSManager : MonoBehaviour
                 else if (entity.HasComponent<EnemyComponent>())
                     GetEnemyPool(entity.GetComponent<EnemyComponent>().Type).Release(view.GameObject);
                 else if (entity.HasComponent<LightningVFXComponent>())
-                    ChainLightningBulletPool.Release(view.GameObject);
+                    LightningVFXPool.Release(view.GameObject); // 关键修复：归还到正确的特效池
                 else
                     Destroy(view.GameObject);
             }

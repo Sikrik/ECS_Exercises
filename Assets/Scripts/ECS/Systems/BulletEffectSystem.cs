@@ -32,14 +32,17 @@ public class BulletEffectSystem : SystemBase
         }
     }
 
+    // 修改 BulletEffectSystem.cs 中的 TriggerChainLightning 方法
     private void TriggerChainLightning(Entity target, PositionComponent startPos)
     {
         var ecs = ECSManager.Instance;
         var config = ecs.Config;
         var enemies = GetEntitiesWith<EnemyComponent, PositionComponent, HealthComponent>();
-        
+    
+        // 关键修复：记录已经触发过闪电的敌人，防止无限重复弹射
+        List<Entity> hitHistory = new List<Entity> { target }; 
         Entity current = target;
-        Vector3 lastPos = new Vector3(startPos.X, startPos.Y, 0);
+        Vector3 lastVfxPos = new Vector3(startPos.X, startPos.Y, 0);
 
         for (int i = 0; i < config.ChainLightningMaxTargets - 1; i++)
         {
@@ -49,24 +52,33 @@ public class BulletEffectSystem : SystemBase
 
             foreach (var e in enemies)
             {
-                if (!e.IsAlive || e == current) continue;
+                // 关键修复：不仅检查 e != current，还要检查是否在 hitHistory 中
+                if (!e.IsAlive || hitHistory.Contains(e)) continue; 
+            
                 var ePos = e.GetComponent<PositionComponent>();
                 float d2 = (ePos.X - curPosComp.X) * (ePos.X - curPosComp.X) + (ePos.Y - curPosComp.Y) * (ePos.Y - curPosComp.Y);
-                if (d2 < minDistSq) { minDistSq = d2; next = e; }
+            
+                if (d2 < minDistSq)
+                {
+                    minDistSq = d2;
+                    next = e;
+                }
             }
 
             if (next != null)
             {
+                hitHistory.Add(next); // 将新目标加入历史记录
                 next.GetComponent<HealthComponent>().CurrentHealth -= config.ChainLightningDamage;
+            
                 var nextPos = next.GetComponent<PositionComponent>();
-                
-                // 创建视觉实体
-                Entity vfx = ecs.CreateEntity();
-                vfx.AddComponent(new LightningVFXComponent(lastPos, new Vector3(nextPos.X, nextPos.Y, 0)));
-                vfx.AddComponent(new ViewComponent(ecs.ChainLightningBulletPool.Get()));
-                
+                Entity vfxEntity = ecs.CreateEntity();
+                vfxEntity.AddComponent(new LightningVFXComponent(lastVfxPos, new Vector3(nextPos.X, nextPos.Y, 0)));
+            
+                // 关键修复：从 ecs.LightningVFXPool 获取对象，而不是子弹池
+                vfxEntity.AddComponent(new ViewComponent(ecs.LightningVFXPool.Get())); 
+            
                 current = next;
-                lastPos = new Vector3(nextPos.X, nextPos.Y, 0);
+                lastVfxPos = new Vector3(nextPos.X, nextPos.Y, 0);
             }
             else break;
         }
