@@ -45,10 +45,10 @@ public class TraceComponent : Component
 /// <summary>
 /// 速度组件：存储当前运动矢量
 /// </summary>
-// Assets/Scripts/ECS/Components/ActorComponents.cs
+// Assets/Scripts/ECS/Components/CommonComponents.cs 里的对应部分
 public class VelocityComponent : Component
 {
-    public float VX; // 必须是大写且 public
+    public float VX; // 必须是大写
     public float VY;
     public VelocityComponent(float vx, float vy) { VX = vx; VY = vy; }
 }

@@ -4,20 +4,22 @@ using UnityEngine.SceneManagement;
 
 public class ECSManager : MonoBehaviour
 {
-    // --- 新增：全局得分 ---
-    public int Score = 0;
     public static ECSManager Instance;
     public GameConfig Config;
     public GameObject PlayerPrefab;
 
+    public int Score = 0; // 全局得分
+
     private List<Entity> _entities = new List<Entity>();
     private List<SystemBase> _systems = new List<SystemBase>();
     
-    // --- 仿 DOTS 核心：GameObject 到 Entity 的映射表 ---
     private Dictionary<int, Entity> _gameObjectToEntity = new Dictionary<int, Entity>();
 
     public Entity PlayerEntity { get; private set; }
-    public GridSystem Grid { get; private set; }
+    public GridSystem Grid { get; private set; } //
+
+    public Dictionary<System.Type, List<Entity>> QueryCache = new Dictionary<System.Type, List<Entity>>();
+    private Stack<List<Entity>> _listPool = new Stack<List<Entity>>();
 
     void Awake()
     {
@@ -33,6 +35,10 @@ public class ECSManager : MonoBehaviour
 
     void Update()
     {
+        // 每帧清理查询缓存
+        foreach (var list in QueryCache.Values) ReturnListToPool(list);
+        QueryCache.Clear();
+
         float deltaTime = Time.deltaTime;
         foreach (var system in _systems)
         {
@@ -51,17 +57,18 @@ public class ECSManager : MonoBehaviour
 
     private void InitSystems()
     {
-        Grid = new GridSystem(2.0f);
+        _systems.Clear();
+        // --- 核心修复：构造函数参数匹配 ---
+        Grid = new GridSystem(2.0f, _entities); 
         
-        // 注意系统顺序：先烘焙(Baking)，再处理 AI 和 物理检测
-        _systems.Add(new PhysicsBakingSystem(_entities)); // 自动化烘焙
+        _systems.Add(new PhysicsBakingSystem(_entities));
         _systems.Add(new PlayerInputSystem(_entities));
         _systems.Add(new EnemyAISystem(_entities));
         _systems.Add(new EnemySpawnSystem(_entities));
         _systems.Add(new PlayerShootingSystem(_entities, Grid));
         _systems.Add(new MovementSystem(_entities));
-        _systems.Add(new CollisionSystem(_entities));     // 基于法线的物理反弹
-        _systems.Add(new BulletCollisionSystem(_entities));
+        _systems.Add(new CollisionSystem(_entities));
+        _systems.Add(new BulletCollisionSystem(_entities, Grid)); // 补全 Grid 参数
         _systems.Add(new BulletEffectSystem(_entities));
         _systems.Add(new HealthSystem(_entities));
         _systems.Add(new LifetimeSystem(_entities));
@@ -78,12 +85,17 @@ public class ECSManager : MonoBehaviour
         PlayerEntity = CreateEntity();
         PlayerEntity.AddComponent(new PlayerTag());
         PlayerEntity.AddComponent(new PositionComponent(0, 0, 0));
-        PlayerEntity.AddComponent(new VelocityComponent(0, 0, 0));
+        PlayerEntity.AddComponent(new VelocityComponent(0, 0)); // 使用新的双参数构造函数
         PlayerEntity.AddComponent(new HealthComponent(Config.PlayerMaxHealth));
         PlayerEntity.AddComponent(new ViewComponent(go, PlayerPrefab));
-        
-        // --- 触发自动化烘焙 ---
         PlayerEntity.AddComponent(new NeedsBakingTag());
+    }
+
+    public void RestartGame()
+    {
+        // 简单直接的重启方案：重新加载当前场景
+        Time.timeScale = 1;
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     public Entity CreateEntity()
@@ -93,14 +105,12 @@ public class ECSManager : MonoBehaviour
         return entity;
     }
 
-    // 映射表注册接口
     public void RegisterEntityView(GameObject go, Entity entity)
     {
         if (go == null) return;
         _gameObjectToEntity[go.GetInstanceID()] = entity;
     }
 
-    // 映射表查询接口
     public Entity GetEntityFromGameObject(GameObject go)
     {
         if (go != null && _gameObjectToEntity.TryGetValue(go.GetInstanceID(), out var entity))
@@ -115,9 +125,7 @@ public class ECSManager : MonoBehaviour
             var view = entity.GetComponent<ViewComponent>();
             if (view.GameObject != null)
             {
-                // 销毁实体时同步清理映射表
                 _gameObjectToEntity.Remove(view.GameObject.GetInstanceID());
-                
                 if (view.Prefab != null)
                     PoolManager.Instance.Despawn(view.Prefab, view.GameObject);
                 else
@@ -127,9 +135,7 @@ public class ECSManager : MonoBehaviour
         entity.IsAlive = false;
         _entities.Remove(entity);
     }
-    // --- 新增：重启游戏方法 ---
-    public void RestartGame()
-    {
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-    }
+
+    public List<Entity> GetListFromPool() => _listPool.Count > 0 ? _listPool.Pop() : new List<Entity>();
+    public void ReturnListToPool(List<Entity> list) { list.Clear(); _listPool.Push(list); }
 }

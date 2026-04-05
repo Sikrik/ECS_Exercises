@@ -29,8 +29,8 @@ public class PlayerInputSystem : SystemBase
         float moveSpeed = ECSManager.Instance.Config.PlayerMoveSpeed; 
         
         // 更新速度组件数据（由 MovementSystem 负责最终位移计算）
-        vel.SpeedX = inputDir.x * moveSpeed;
-        vel.SpeedY = inputDir.y * moveSpeed;
+        vel.VX = inputDir.x * moveSpeed;
+        vel.VY = inputDir.y * moveSpeed;
         
         // 3. 处理子弹类型切换输入 (保留原有逻辑)
         HandleBulletSwitching();

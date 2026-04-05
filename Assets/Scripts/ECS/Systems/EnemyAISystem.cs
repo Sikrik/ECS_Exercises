@@ -43,8 +43,8 @@ public class EnemyAISystem : SystemBase
     {
         var kb = entity.GetComponent<KnockbackComponent>();
         float progress = kb.Timer / 0.2f; 
-        vel.X = kb.DirX * kb.Speed * progress;
-        vel.Y = kb.DirY * kb.Speed * progress;
+        vel.VX = kb.DirX * kb.Speed * progress;
+        vel.VY = kb.DirY * kb.Speed * progress;
 
         kb.Timer -= dt;
         if (kb.Timer <= 0) entity.RemoveComponent<KnockbackComponent>();
@@ -59,8 +59,8 @@ public class EnemyAISystem : SystemBase
         if (mag > 0.1f)
         {
             float progress = 1.0f - (recovery.Timer / 0.4f); 
-            vel.X = (dx / mag) * stats.MoveSpeed * progress;
-            vel.Y = (dy / mag) * stats.MoveSpeed * progress;
+            vel.VX = (dx / mag) * stats.MoveSpeed * progress;
+            vel.VY = (dy / mag) * stats.MoveSpeed * progress;
         }
 
         recovery.Timer -= dt;
@@ -79,12 +79,12 @@ public class EnemyAISystem : SystemBase
             {
                 finalSpeed *= (1.0f - enemy.GetComponent<SlowEffectComponent>().SlowRatio);
             }
-            vel.X = (dx / mag) * finalSpeed;
-            vel.Y = (dy / mag) * finalSpeed;
+            vel.VX = (dx / mag) * finalSpeed;
+            vel.VY = (dy / mag) * finalSpeed;
         }
         else
         {
-            vel.X = 0; vel.Y = 0;
+            vel.VX = 0; vel.VY = 0;
         }
     }
 }

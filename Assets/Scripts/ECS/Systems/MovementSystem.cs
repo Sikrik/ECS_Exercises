@@ -27,8 +27,8 @@ public class MovementSystem : SystemBase
             }
             
             // 2. 基础位移逻辑
-            pos.X += vel.SpeedX * deltaTime;
-            pos.Y += vel.SpeedY * deltaTime;
+            pos.X += vel.VX * deltaTime;
+            pos.Y += vel.VY * deltaTime;
             
             // 3. 相机跟随：使用 PlayerTag 识别玩家
             if (!foundPlayer && entity.HasComponent<PlayerTag>())

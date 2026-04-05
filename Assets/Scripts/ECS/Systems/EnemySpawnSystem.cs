@@ -35,7 +35,7 @@ public class EnemySpawnSystem : SystemBase
         Entity enemy = ecs.CreateEntity();
         enemy.AddComponent(new EnemyTag());
         enemy.AddComponent(new PositionComponent(spawnPos.x, spawnPos.y, 0));
-        enemy.AddComponent(new VelocityComponent(0, 0, 0));
+        enemy.AddComponent(new VelocityComponent(0, 0));
         enemy.AddComponent(new ViewComponent(go, prefab));
 
         // --- 仿 DOTS 核心：添加功能标签 ---

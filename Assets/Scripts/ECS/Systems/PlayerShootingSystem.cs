@@ -45,7 +45,7 @@ public class PlayerShootingSystem : SystemBase
         Entity bullet = ecs.CreateEntity();
         bullet.AddComponent(new BulletTag());
         bullet.AddComponent(new PositionComponent(pPos.X, pPos.Y, 0));
-        bullet.AddComponent(new VelocityComponent(dir.x * config.BulletSpeed, dir.y * config.BulletSpeed, 0));
+        bullet.AddComponent(new VelocityComponent(dir.x * config.BulletSpeed, dir.y * config.BulletSpeed));
         bullet.AddComponent(new LifetimeComponent { RemainingTime = config.BulletLifeTime });
         bullet.AddComponent(new CollisionComponent(config.BulletCollisionRadius));
         bullet.AddComponent(new TraceComponent(pPos.X, pPos.Y));
