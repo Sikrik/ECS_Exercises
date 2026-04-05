@@ -12,6 +12,7 @@ public abstract class SystemBase
     private struct CacheKey<T1, T2> {}
     private struct CacheKey<T1, T2, T3> {}
     private struct CacheKey<T1, T2, T3, T4> {}
+    private struct CacheKey<T1, T2, T3, T4,T5> {}
     
     public SystemBase(List<Entity> entities)
     {
@@ -95,6 +96,26 @@ public abstract class SystemBase
         foreach (var entity in _entities)
         {
             if (entity.IsAlive && entity.HasComponent<T1>() && entity.HasComponent<T2>() && entity.HasComponent<T3>() && entity.HasComponent<T4>())
+            {
+                list.Add(entity);
+            }
+        }
+        
+        ECSManager.Instance.QueryCache[key] = list;
+        return list;
+    }
+    protected List<Entity> GetEntitiesWith<T1, T2, T3, T4,T5>() where T1 : Component where T2 : Component where T3 : Component where T4 : Component where T5 : Component
+    {
+        var key = typeof(CacheKey<T1, T2, T3, T4,T5>);
+        if (ECSManager.Instance.QueryCache.TryGetValue(key, out var list))
+        {
+            return list;
+        }
+        
+        list = ECSManager.Instance.GetListFromPool();
+        foreach (var entity in _entities)
+        {
+            if (entity.IsAlive && entity.HasComponent<T1>() && entity.HasComponent<T2>() && entity.HasComponent<T3>() && entity.HasComponent<T4>()&& entity.HasComponent<T5>())
             {
                 list.Add(entity);
             }

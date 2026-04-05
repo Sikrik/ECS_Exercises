@@ -38,11 +38,11 @@ public class GameConfig
     public float EnemyAttackCooldown;
     public float EnemyHitRecoveryDuration; 
 
-    [Header("Fast Enemy Settings")] // --- 核心修复：补全缺失符号 ---
+    [Header("Fast Enemy Settings")] 
     public float FastEnemyMaxHealth;
     public float FastEnemySpeed;
 
-    [Header("Tank Enemy Settings")] // --- 核心修复：补全缺失符号 ---
+    [Header("Tank Enemy Settings")] 
     public float TankEnemyMaxHealth;
     public float TankEnemySpeed;
 

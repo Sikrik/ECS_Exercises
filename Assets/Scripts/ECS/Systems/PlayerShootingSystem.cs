@@ -47,11 +47,11 @@ public class PlayerShootingSystem : SystemBase
         bullet.AddComponent(new LifetimeComponent { RemainingTime = config.BulletLifeTime });
         bullet.AddComponent(new ViewComponent(bulletGo, prefab));
         
-        // --- 核心修复：开启物理烘焙和轨迹追踪 ---
+        // --- 核心修复：不再手动加 CollisionComponent，交给烘焙系统 ---
         bullet.AddComponent(new NeedsBakingTag()); 
         bullet.AddComponent(new TraceComponent(pPos.X, pPos.Y));
 
-        // 根据子弹类型分发原子组件
+        // 根据子弹类型分发效果（保持不变）
         switch (CurrentBulletType)
         {
             case BulletType.Normal:

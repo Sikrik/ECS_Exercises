@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement; // 必须引用，用于实现重启功能
 
@@ -43,7 +44,7 @@ public class ECSManager : MonoBehaviour
         // 1. 每帧开始前清理查询缓存
         foreach (var list in QueryCache.Values) ReturnListToPool(list);
         QueryCache.Clear();
-
+        Physics2D.SyncTransforms();
         // 2. 依次运行所有系统
         float deltaTime = Time.deltaTime;
         for (int i = 0; i < _systems.Count; i++)
@@ -59,7 +60,10 @@ public class ECSManager : MonoBehaviour
     {
         TextAsset configText = Resources.Load<TextAsset>("game_config");
         if (configText != null)
+        {
             Config = JsonUtility.FromJson<GameConfig>(configText.text);
+            Debug.Log("加载了配置");
+        }
         else
             Config = new GameConfig(); // 容错处理
     }
@@ -70,30 +74,27 @@ public class ECSManager : MonoBehaviour
     private void InitSystems()
     {
         _systems.Clear();
-        
-        // 初始化空间网格
         Grid = new GridSystem(2.0f, _entities); 
-        
-        // --- 核心修复：必须将 Grid 加入更新列表，否则敌人坐标不刷新导致无法射击 ---
         _systems.Add(Grid); 
 
-        // 仿 DOTS 烘焙系统：必须放在最前面处理新生的物理组件
         _systems.Add(new PhysicsBakingSystem(_entities)); 
-        
         _systems.Add(new PlayerInputSystem(_entities));
         _systems.Add(new EnemyAISystem(_entities));
         _systems.Add(new EnemySpawnSystem(_entities));
         _systems.Add(new PlayerShootingSystem(_entities, Grid));
         _systems.Add(new MovementSystem(_entities));
-        
-        // 碰撞系统：放在移动之后处理反弹
+    
         _systems.Add(new CollisionSystem(_entities));     
         _systems.Add(new BulletCollisionSystem(_entities, Grid)); 
-        
         _systems.Add(new BulletEffectSystem(_entities));
-        _systems.Add(new HealthSystem(_entities));
-        _systems.Add(new LifetimeSystem(_entities));
+    
+        // --- 补全视觉处理系统 ---
+        _systems.Add(new LightningRenderSystem(_entities)); // 处理闪电链绘制
+        _systems.Add(new VFXSystem(_entities));             // 处理冰冻等特效跟随
+    
         _systems.Add(new SlowEffectSystem(_entities));
+        _systems.Add(new LifetimeSystem(_entities));
+        _systems.Add(new HealthSystem(_entities));
         _systems.Add(new InvincibleVisualSystem(_entities));
         _systems.Add(new ViewSyncSystem(_entities));
     }
