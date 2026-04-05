@@ -29,10 +29,8 @@ public class PlayerShootingSystem : SystemBase
         if (player == null || !player.IsAlive) return;
 
         var pPos = player.GetComponent<PositionComponent>();
-        
-        // --- 核心修复：调用正确的搜寻逻辑 ---
         Entity target = FindNearestInGrid(pPos.X, pPos.Y);
-        if (target == null) return; // 如果周围没怪，就不浪费子弹了
+        if (target == null) return;
 
         var tPos = target.GetComponent<PositionComponent>();
         Vector2 dir = new Vector2(tPos.X - pPos.X, tPos.Y - pPos.Y).normalized;
@@ -47,13 +45,13 @@ public class PlayerShootingSystem : SystemBase
         bullet.AddComponent(new PositionComponent(pPos.X, pPos.Y, 0));
         bullet.AddComponent(new VelocityComponent(dir.x * config.BulletSpeed, dir.y * config.BulletSpeed));
         bullet.AddComponent(new LifetimeComponent { RemainingTime = config.BulletLifeTime });
-        bullet.AddComponent(new CollisionComponent(config.BulletCollisionRadius));
-        bullet.AddComponent(new TraceComponent(pPos.X, pPos.Y));
-        
-        // 记录来源以便回收
         bullet.AddComponent(new ViewComponent(bulletGo, prefab));
+        
+        // --- 核心修复：开启物理烘焙和轨迹追踪 ---
+        bullet.AddComponent(new NeedsBakingTag()); 
+        bullet.AddComponent(new TraceComponent(pPos.X, pPos.Y));
 
-        // 根据类型挂载原子效果组件
+        // 根据子弹类型分发原子组件
         switch (CurrentBulletType)
         {
             case BulletType.Normal:
@@ -72,27 +70,18 @@ public class PlayerShootingSystem : SystemBase
         }
     }
 
-    // --- 核心修复：实现真正的网格搜寻逻辑 ---
     private Entity FindNearestInGrid(float x, float y)
     {
         if (_grid == null) return null;
-
-        var nearbyEnemies = _grid.GetNearbyEnemies(x, y);
+        var enemies = _grid.GetNearbyEnemies(x, y);
         Entity nearest = null;
         float minDistSq = float.MaxValue;
-
-        foreach (var e in nearbyEnemies)
+        foreach (var e in enemies)
         {
             if (!e.IsAlive || !e.HasComponent<EnemyTag>()) continue;
-
             var ePos = e.GetComponent<PositionComponent>();
             float d2 = (ePos.X - x) * (ePos.X - x) + (ePos.Y - y) * (ePos.Y - y);
-            
-            if (d2 < minDistSq)
-            {
-                minDistSq = d2;
-                nearest = e;
-            }
+            if (d2 < minDistSq) { minDistSq = d2; nearest = e; }
         }
         return nearest;
     }

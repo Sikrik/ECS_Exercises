@@ -7,14 +7,16 @@ public class GameConfig
     [Header("Player Settings")]
     public float PlayerMaxHealth;
     public float PlayerMoveSpeed;
-    public float PlayerCollisionRadius;
     public float PlayerInvincibleDuration;
+
+    [Header("Physics & Bounce Settings")]
+    public float CollisionPushDistance = 0.2f; 
+    public float CollisionBounceForce = 5.0f;
 
     [Header("Bullet Settings")]
     public float BulletSpeed;
     public float BulletDamage;
     public float BulletLifeTime;
-    public float BulletCollisionRadius;
     public float ShootInterval;
 
     [Header("Special Bullet Settings")]
@@ -34,28 +36,17 @@ public class GameConfig
     public float EnemyMoveSpeed;
     public int EnemyDamage;
     public float EnemyAttackCooldown;
-    public float EnemyCollisionRadius;
-    public float EnemyHitRecoveryDuration;
-    public float NormalEnemyKnockbackSpeed;
-    public float NormalEnemyKnockbackDuration;
+    public float EnemyHitRecoveryDuration; 
 
-    [Header("Fast Enemy Settings")]
+    [Header("Fast Enemy Settings")] // --- 核心修复：补全缺失符号 ---
     public float FastEnemyMaxHealth;
     public float FastEnemySpeed;
-    public float FastEnemyCollisionRadius;
-    public float FastEnemyKnockbackSpeed;
-    public float FastEnemyKnockbackDuration;
 
-    [Header("Tank Enemy Settings")]
+    [Header("Tank Enemy Settings")] // --- 核心修复：补全缺失符号 ---
     public float TankEnemyMaxHealth;
     public float TankEnemySpeed;
-    public float TankEnemyCollisionRadius;
-    public float TankEnemyKnockbackSpeed;
-    public float TankEnemyKnockbackDuration;
 
     [Header("Spawn Settings")]
     public float InitialSpawnInterval;
-    public float MinSpawnInterval;
-    public float SpawnIntervalDecrease;
     public int EnemyKillScore;
 }

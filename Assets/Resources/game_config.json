@@ -1,13 +1,14 @@
 ﻿{
   "PlayerMaxHealth": 100.0,
   "PlayerMoveSpeed": 6.0,
-  "PlayerCollisionRadius": 0.5,
   "PlayerInvincibleDuration": 1.0,
+
+  "CollisionPushDistance": 0.2,
+  "CollisionBounceForce": 5.0,
 
   "BulletSpeed": 12.0,
   "BulletDamage": 15.0,
   "BulletLifeTime": 3.0,
-  "BulletCollisionRadius": 0.2,
   "ShootInterval": 0.25,
 
   "SlowBulletShootInterval": 0.4,
@@ -25,25 +26,13 @@
   "EnemyMoveSpeed": 2.5,
   "EnemyDamage": 15,
   "EnemyAttackCooldown": 1.2,
-  "EnemyCollisionRadius": 0.4,
   "EnemyHitRecoveryDuration": 0.4,
-  "NormalEnemyKnockbackSpeed": 6.0,
-  "NormalEnemyKnockbackDuration": 0.2,
+
+  "InitialSpawnInterval": 2.0,
+  "EnemyKillScore": 10,
 
   "FastEnemyMaxHealth": 20.0,
   "FastEnemySpeed": 4.5,
-  "FastEnemyCollisionRadius": 0.3,
-  "FastEnemyKnockbackSpeed": 8.0,
-  "FastEnemyKnockbackDuration": 0.15,
-
   "TankEnemyMaxHealth": 150.0,
-  "TankEnemySpeed": 1.2,
-  "TankEnemyCollisionRadius": 0.7,
-  "TankEnemyKnockbackSpeed": 2.5,
-  "TankEnemyKnockbackDuration": 0.1,
-
-  "InitialSpawnInterval": 2.0,
-  "MinSpawnInterval": 0.5,
-  "SpawnIntervalDecrease": 0.02,
-  "EnemyKillScore": 10
+  "TankEnemySpeed": 1.2
 }

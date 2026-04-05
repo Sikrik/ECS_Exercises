@@ -8,7 +8,7 @@ public class GridSystem : SystemBase
 
     public GridSystem(float cellSize, List<Entity> entities) : base(entities)
     {
-        CellSize = cellSize;
+        CellSize = cellSize; // 修正：直接赋值给公有的 CellSize 字段
     }
 
     public override void Update(float deltaTime)

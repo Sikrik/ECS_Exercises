@@ -3,45 +3,64 @@ using UnityEngine;
 
 public class BulletCollisionSystem : SystemBase 
 {
-    private GridSystem _grid;
-    public BulletCollisionSystem(List<Entity> entities, GridSystem grid) : base(entities) { _grid = grid; }
+    private ContactFilter2D _filter;
+    private RaycastHit2D[] _results = new RaycastHit2D[5];
+
+    public BulletCollisionSystem(List<Entity> entities, GridSystem grid) : base(entities) 
+    { 
+        _filter = new ContactFilter2D();
+        _filter.SetLayerMask(LayerMask.GetMask("Enemy"));
+        _filter.useTriggers = true;
+    }
 
     public override void Update(float deltaTime) 
     {
-        // 筛选带有标签、位置和半径的子弹
-        var bullets = GetEntitiesWith<BulletTag, PositionComponent, CollisionComponent>();
+        // 筛选拥有轨迹追踪和物理组件的子弹
+        var bullets = GetEntitiesWith<BulletTag, PositionComponent, TraceComponent, PhysicsColliderComponent>();
 
-        for (int i = bullets.Count - 1; i >= 0; i--) 
+        foreach (var b in bullets) 
         {
-            var b = bullets[i];
             if (!b.IsAlive) continue;
 
-            var bPos = b.GetComponent<PositionComponent>();
-            var bCol = b.GetComponent<CollisionComponent>();
+            var pos = b.GetComponent<PositionComponent>();
+            var trace = b.GetComponent<TraceComponent>();
+            
+            // --- 核心修复：使用射线检测解决穿透 ---
+            Vector2 start = new Vector2(trace.PreviousX, trace.PreviousY);
+            Vector2 end = new Vector2(pos.X, pos.Y);
+            Vector2 direction = end - start;
+            float distance = direction.magnitude;
 
-            // 空间优化：只检查网格附近的敌人
-            var nearbyEnemies = _grid.GetNearbyEnemies(bPos.X, bPos.Y);
-
-            foreach (var enemy in nearbyEnemies) 
+            // 如果位移太小（比如刚生成），退化为重叠检测
+            if (distance < 0.01f)
             {
-                // 确保目标是存活的敌人 (带有 EnemyTag)
-                if (!enemy.IsAlive || !enemy.HasComponent<EnemyTag>()) continue;
-                
-                var ePos = enemy.GetComponent<PositionComponent>();
-                var eCol = enemy.GetComponent<CollisionComponent>();
-
-                float r = bCol.Radius + eCol.Radius;
-                // 平方距离检测
-                float dx = ePos.X - bPos.X;
-                float dy = ePos.Y - bPos.Y;
-                
-                if ((dx * dx + dy * dy) <= (r * r)) 
+                var bPhys = b.GetComponent<PhysicsColliderComponent>();
+                Collider2D[] overlapResults = new Collider2D[1];
+                if (bPhys.Collider.OverlapCollider(_filter, overlapResults) > 0)
                 {
-                    // 命中！挂载命中事件组件，由 BulletEffectSystem 处理具体伤害
-                    b.AddComponent(new BulletHitEventComponent(enemy));
-                    break; 
+                    HandleHit(b, overlapResults[0].gameObject);
                 }
+                continue;
             }
+
+            // 发射射线扫描本帧经过的轨迹
+            int hitCount = Physics2D.Raycast(start, direction.normalized, _filter, _results, distance);
+            
+            if (hitCount > 0)
+            {
+                // 击中轨迹上的第一个目标
+                HandleHit(b, _results[0].collider.gameObject);
+            }
+        }
+    }
+
+    private void HandleHit(Entity bullet, GameObject hitGo)
+    {
+        Entity enemy = ECSManager.Instance.GetEntityFromGameObject(hitGo);
+        if (enemy != null && enemy.IsAlive)
+        {
+            // 挂载命中事件
+            bullet.AddComponent(new BulletHitEventComponent(enemy));
         }
     }
 }
