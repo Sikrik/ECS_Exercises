@@ -118,20 +118,16 @@ public class ECSManager : MonoBehaviour
 
     public void DestroyEntity(Entity entity)
     {
-        // ... 前置代码 ...
+        if (entity == null || !entity.IsAlive) return;
+        entity.MarkAsDead();
+
         if (entity.HasComponent<ViewComponent>())
         {
             var view = entity.GetComponent<ViewComponent>();
             if (view != null && view.GameObject != null)
             {
-                if (entity.HasComponent<BulletComponent>())
-                    GetBulletPool(entity.GetComponent<BulletComponent>().Type).Release(view.GameObject);
-                else if (entity.HasComponent<EnemyComponent>())
-                    GetEnemyPool(entity.GetComponent<EnemyComponent>().Type).Release(view.GameObject);
-                else if (entity.HasComponent<LightningVFXComponent>())
-                    LightningVFXPool.Release(view.GameObject); // 关键修复：归还到正确的特效池
-                else
-                    Destroy(view.GameObject);
+                // 核心修改：直接交给 PoolManager 智能归还
+                PoolManager.Instance.Despawn(view.GameObject);
             }
         }
         _entities.Remove(entity);
