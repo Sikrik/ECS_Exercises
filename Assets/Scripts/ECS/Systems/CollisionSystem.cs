@@ -1,92 +1,108 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// 碰撞系统：利用 Unity 物理引擎获取法线，实现高精度反弹逻辑
+/// </summary>
 public class CollisionSystem : SystemBase
 {
-    public CollisionSystem(List<Entity> entities) : base(entities) { }
+    // 预分配数组减少 GC 内存抖动
+    private Collider2D[] _results = new Collider2D[20];
+    private ContactFilter2D _enemyFilter;
+
+    public CollisionSystem(List<Entity> entities) : base(entities)
+    {
+        // 设置过滤器：只检测在 "Enemy" 层级的物体
+        // 请确保在 Unity 编辑器里创建了名为 "Enemy" 的 Layer
+        _enemyFilter = new ContactFilter2D();
+        _enemyFilter.SetLayerMask(LayerMask.GetMask("Enemy"));
+        _enemyFilter.useTriggers = true; // 我们使用的是 Trigger 模式
+    }
 
     public override void Update(float deltaTime)
     {
-        var player = ECSManager.Instance.PlayerEntity;
+        var ecs = ECSManager.Instance;
+        var player = ecs.PlayerEntity;
         if (player == null || !player.IsAlive) return;
 
-        var pPos = player.GetComponent<PositionComponent>();
-        var pCol = player.GetComponent<CollisionComponent>();
-        var pHealth = player.GetComponent<HealthComponent>();
-        var config = ECSManager.Instance.Config;
+        // 获取玩家的物理组件（由 PhysicsBakingSystem 自动烘焙）
+        var pPhys = player.GetComponent<PhysicsColliderComponent>();
+        if (pPhys == null || pPhys.Collider == null) return;
 
-        var enemies = GetEntitiesWith<EnemyTag, PositionComponent, CollisionComponent>();
+        // --- 第一步：空间查询 (Spatial Query) ---
+        // 直接问 Unity：现在玩家的 Collider 撞到了哪些敌人？
+        int hitCount = pPhys.Collider.OverlapCollider(_enemyFilter, _results);
 
-        foreach (var enemy in enemies)
+        for (int i = 0; i < hitCount; i++)
         {
-            if (!enemy.IsAlive) continue;
-
-            var ePos = enemy.GetComponent<PositionComponent>();
-            var eCol = enemy.GetComponent<CollisionComponent>();
-
-            float dx = ePos.X - pPos.X;
-            float dy = ePos.Y - pPos.Y;
-            float distSq = dx * dx + dy * dy;
-            float radiusSum = pCol.Radius + eCol.Radius;
-
-            if (distSq <= radiusSum * radiusSum)
+            Collider2D enemyCollider = _results[i];
+            
+            // 通过映射字典瞬间找回对应的 Entity
+            Entity enemy = ecs.GetEntityFromGameObject(enemyCollider.gameObject);
+            
+            if (enemy != null && enemy.IsAlive && enemy.HasComponent<EnemyTag>())
             {
-                // 碰撞伤害逻辑
-                if (!player.HasComponent<InvincibleComponent>())
-                {
-                    var eStats = enemy.GetComponent<EnemyStatsComponent>();
-                    if (eStats != null)
-                    {
-                        pHealth.CurrentHealth -= eStats.Damage;
-                        player.AddComponent(new InvincibleComponent { RemainingTime = config.PlayerInvincibleDuration });
-                        Debug.Log($"玩家受击！剩余血量: {pHealth.CurrentHealth}");
-                    }
-                }
-
-                // 碰撞击退逻辑 (仅限 BouncyTag 实体)
-                if (enemy.HasComponent<BouncyTag>())
-                {
-                    float mag = Mathf.Sqrt(distSq);
-                    if (mag > 0.01f)
-                    {
-                        var eStats = enemy.GetComponent<EnemyStatsComponent>();
-                        var kb = new KnockbackComponent
-                        {
-                            DirX = dx / mag,
-                            DirY = dy / mag,
-                            Timer = GetKnockbackDuration(eStats, config),
-                            Speed = GetKnockbackSpeed(eStats, config)
-                        };
-                        enemy.AddComponent(kb);
-                    }
-                }
-
-                if (pHealth.CurrentHealth <= 0) break;
+                HandlePhysicsBounce(player, enemy, pPhys.Collider, enemyCollider);
             }
         }
     }
 
-    // --- 核心修复：根据新的 GameConfig 字段名进行解析 ---
-    private float GetKnockbackDuration(EnemyStatsComponent stats, GameConfig config)
+    /// <summary>
+    /// 处理基于法线的物理反弹
+    /// </summary>
+    private void HandlePhysicsBounce(Entity player, Entity enemy, Collider2D pCol, Collider2D eCol)
     {
-        // 如果没有 Stats 组件，默认使用普通敌人的配置
-        if (stats == null) return config.NormalEnemyKnockbackDuration; 
-        return stats.Type switch
+        var config = ECSManager.Instance.Config;
+        
+        // --- 第二步：法线计算 (Normal Calculation) ---
+        // Unity 的 Distance 方法会返回两个任意形状 Collider 之间的最短距离信息
+        ColliderDistance2D distInfo = pCol.Distance(eCol);
+
+        if (distInfo.isOverlapped)
         {
-            EnemyType.Fast => config.FastEnemyKnockbackDuration,
-            EnemyType.Tank => config.TankEnemyKnockbackDuration,
-            _ => config.NormalEnemyKnockbackDuration // 默认使用 Normal 字段
-        };
+            // distInfo.normal 是垂直于接触面切线的向量（法线）
+            // 它指向让两个物体分开的方向
+            Vector2 normal = distInfo.normal;
+
+            // 1. 处理反弹位移 (仅针对拥有 BouncyTag 的敌人)
+            if (enemy.HasComponent<BouncyTag>())
+            {
+                var ePos = enemy.GetComponent<PositionComponent>();
+                
+                // 沿着法线方向推开一小段距离，解决“嵌入”问题
+                // 这里的 0.2f 可以根据打击感需求调整
+                float pushDistance = 0.2f; 
+                ePos.X += normal.x * pushDistance;
+                ePos.Y += normal.y * pushDistance;
+
+                // 2. 处理反弹速度（可选：让敌人有个向后飞的速度）
+                var eVel = enemy.GetComponent<VelocityComponent>();
+                if (eVel != null)
+                {
+                    float bounceForce = 5.0f;
+                    eVel.VX = normal.x * bounceForce;
+                    eVel.VY = normal.y * bounceForce;
+                }
+            }
+
+            // 3. 处理伤害逻辑
+            ApplyDamage(player, enemy, config);
+        }
     }
 
-    private float GetKnockbackSpeed(EnemyStatsComponent stats, GameConfig config)
+    private void ApplyDamage(Entity player, Entity enemy, GameConfig config)
     {
-        if (stats == null) return config.NormalEnemyKnockbackSpeed;
-        return stats.Type switch
+        if (!player.HasComponent<InvincibleComponent>())
         {
-            EnemyType.Fast => config.FastEnemyKnockbackSpeed,
-            EnemyType.Tank => config.TankEnemyKnockbackSpeed,
-            _ => config.NormalEnemyKnockbackSpeed
-        };
+            var pHealth = player.GetComponent<HealthComponent>();
+            var eStats = enemy.GetComponent<EnemyStatsComponent>();
+            
+            pHealth.CurrentHealth -= (eStats != null ? eStats.Damage : 10);
+            
+            // 触发受击无敌
+            player.AddComponent(new InvincibleComponent { RemainingTime = config.PlayerInvincibleDuration });
+            
+            Debug.Log($"[Collision] 基于法线反弹！玩家剩余血量: {pHealth.CurrentHealth}");
+        }
     }
 }

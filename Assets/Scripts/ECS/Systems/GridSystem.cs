@@ -11,9 +11,15 @@ public class GridSystem : SystemBase
     // 网格容器：Key 为网格坐标，Value 为该格内的实体列表
     public Dictionary<Vector2Int, List<Entity>> Grid = new Dictionary<Vector2Int, List<Entity>>();
 
-    public GridSystem(List<Entity> entities, float cellSize) : base(entities)
+    private float _cellSize;
+    public GridSystem(float cellSize, List<Entity> entities) : base(entities)
     {
-        CellSize = cellSize;
+        _cellSize = cellSize;
+    }
+
+    public GridSystem(float entities) : base(BASE)
+    {
+        throw new System.NotImplementedException();
     }
 
     /// <summary>

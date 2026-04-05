@@ -84,10 +84,7 @@ public class AIStateComponent : Component
     public float CurrentCooldown;
 }
 
-/// <summary>
-/// 弹性组件：标记该实体碰撞后会触发弹开（击退）
-/// </summary>
-public class BouncyTag : Component { }
+
 
 /// <summary>
 /// 击退状态组件：仅在实体被弹开时存在

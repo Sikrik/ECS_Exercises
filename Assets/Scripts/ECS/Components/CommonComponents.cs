@@ -45,14 +45,12 @@ public class TraceComponent : Component
 /// <summary>
 /// 速度组件：存储当前运动矢量
 /// </summary>
+// Assets/Scripts/ECS/Components/ActorComponents.cs
 public class VelocityComponent : Component
 {
-    public float SpeedX, SpeedY, SpeedZ;
-    public VelocityComponent(float x, float y, float z) { SpeedX = x; SpeedY = y; SpeedZ = z; }
-
-    // 快捷访问接口
-    public float X { get { return SpeedX; } set { SpeedX = value; } }
-    public float Y { get { return SpeedY; } set { SpeedY = value; } }
+    public float VX; // 必须是大写且 public
+    public float VY;
+    public VelocityComponent(float vx, float vy) { VX = vx; VY = vy; }
 }
 
 /// <summary>
@@ -78,3 +76,16 @@ public class CollisionComponent : Component
     public float Radius;
     public CollisionComponent(float radius) => Radius = radius;
 }
+
+// 1. 物理碰撞体组件：持有对 Unity Collider2D 的引用
+public class PhysicsColliderComponent : Component
+{
+    public Collider2D Collider;
+    public PhysicsColliderComponent(Collider2D collider) => Collider = collider;
+}
+/// <summary>
+/// 弹性组件：标记该实体碰撞后会触发弹开（击退）
+/// </summary>
+public class BouncyTag : Component { }
+// 2. 烘焙标记：告诉系统这个实体刚出生，需要把 GameObject 里的 Collider 拿过来
+public class NeedsBakingTag : Component { }
