@@ -2,7 +2,8 @@
 using UnityEngine;
 
 /// <summary>
-/// 资源池管理器：负责所有游戏对象的生成与回收，减少频繁销毁带来的内存碎片
+/// 资源池管理器：负责所有 GameObject 的生命周期。
+/// 独立于 ECS 逻辑，专门处理物理对象的生成与回收。
 /// </summary>
 public class PoolManager : MonoBehaviour
 {
@@ -14,23 +15,17 @@ public class PoolManager : MonoBehaviour
     public GameObject ChainBulletPrefab;
     public GameObject AOEBulletPrefab;
 
-    [Header("敌人预制体")]
-    public GameObject NormalEnemyPrefab;
-    public GameObject FastEnemyPrefab;
-    public GameObject TankEnemyPrefab;
-
     [Header("特效预制体")]
-    public GameObject LightningChainVFX; // 必须包含 LineRenderer 组件
+    public GameObject LightningChainVFX; // 必须带有 LineRenderer
     public GameObject NormalHitVFX;
-    public GameObject ExplosionVFX;
 
-    // 预制体与对应对象池的映射表
+    // 内部映射表，根据预制体查找对应的对象池
     private Dictionary<GameObject, ObjectPool> _poolMap = new Dictionary<GameObject, ObjectPool>();
 
     void Awake() => Instance = this;
 
     /// <summary>
-    /// 从池中获取或创建一个对象
+    /// 生成对象：如果池中没有，则会自动初始化。
     /// </summary>
     public GameObject Spawn(GameObject prefab, Vector3 position, Quaternion rotation)
     {
@@ -38,7 +33,6 @@ public class PoolManager : MonoBehaviour
 
         if (!_poolMap.ContainsKey(prefab))
         {
-            // 默认初始化大小10，最大100
             _poolMap[prefab] = new ObjectPool(prefab, 10, 100);
         }
         
@@ -48,18 +42,13 @@ public class PoolManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 将对象归还到对应的池中
+    /// 回收对象。
     /// </summary>
     public void Despawn(GameObject prefab, GameObject instance)
     {
         if (prefab != null && _poolMap.TryGetValue(prefab, out var pool))
-        {
             pool.Release(instance);
-        }
         else
-        {
-            // 如果找不到池，则直接物理销毁
             Destroy(instance);
-        }
     }
 }
