@@ -1,29 +1,30 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// 碰撞系统：负责处理实体间的物理接触逻辑
+/// 重构要点：
+/// 1. 使用 InvincibleComponent 替代原本在 Health/Player 组件里的计时器。
+/// 2. 只有拥有 BouncyTag 的实体才会产生击退效果。
+/// 3. 通过添加 KnockbackComponent 来触发击退，而不是修改基础组件。
+/// </summary>
 public class CollisionSystem : SystemBase
 {
     public CollisionSystem(List<Entity> entities) : base(entities) { }
 
     public override void Update(float deltaTime)
     {
-        var playerEntity = ECSManager.Instance.PlayerEntity;
-        if (playerEntity == null || !playerEntity.IsAlive) return;
+        // 1. 获取玩家实体
+        var player = ECSManager.Instance.PlayerEntity;
+        if (player == null || !player.IsAlive) return;
 
-        var pPos = playerEntity.GetComponent<PositionComponent>();
-        var pCol = playerEntity.GetComponent<CollisionComponent>();
-        var pComp = playerEntity.GetComponent<PlayerComponent>();
-        var pHealth = playerEntity.GetComponent<HealthComponent>();
+        var pPos = player.GetComponent<PositionComponent>();
+        var pCol = player.GetComponent<CollisionComponent>();
+        var pHealth = player.GetComponent<HealthComponent>();
         var config = ECSManager.Instance.Config;
 
-        // 更新玩家无敌时间计时
-        if (pComp.InvincibleTimer > 0)
-        {
-            pComp.InvincibleTimer -= deltaTime;
-        }
-
-        // 获取所有具有位置和碰撞属性的敌人
-        var enemies = GetEntitiesWith<EnemyComponent, PositionComponent, CollisionComponent>();
+        // 2. 筛选出所有敌人：必须拥有 EnemyTag, PositionComponent 和 CollisionComponent
+        var enemies = GetEntitiesWith<EnemyTag, PositionComponent, CollisionComponent>();
 
         foreach (var enemy in enemies)
         {
@@ -31,7 +32,6 @@ public class CollisionSystem : SystemBase
 
             var ePos = enemy.GetComponent<PositionComponent>();
             var eCol = enemy.GetComponent<CollisionComponent>();
-            var eComp = enemy.GetComponent<EnemyComponent>();
 
             // 高性能平方距离碰撞检测
             float dx = ePos.X - pPos.X;
@@ -41,50 +41,67 @@ public class CollisionSystem : SystemBase
 
             if (distSq <= radiusSum * radiusSum)
             {
-                // --- 逻辑1：碰撞伤害 (受无敌帧保护) ---
-                if (pComp.InvincibleTimer <= 0)
+                // --- 逻辑 A：碰撞伤害 ---
+                // 只有当玩家没有 InvincibleComponent 时才触发伤害
+                if (!player.HasComponent<InvincibleComponent>())
                 {
-                    pHealth.CurrentHealth -= eComp.Damage;
-                    pComp.InvincibleTimer = pComp.InvincibleDuration; 
-                    Debug.Log($"玩家受击！剩余血量: {pHealth.CurrentHealth}");
+                    // 获取敌人属性组件读取伤害值
+                    var eStats = enemy.GetComponent<EnemyStatsComponent>();
+                    if (eStats != null)
+                    {
+                        pHealth.CurrentHealth -= eStats.Damage;
+                        // 给玩家挂载无敌组件
+                        player.AddComponent(new InvincibleComponent { RemainingTime = config.PlayerInvincibleDuration });
+                        Debug.Log($"玩家受击！剩余血量: {pHealth.CurrentHealth}");
+                    }
                 }
 
-                // --- 逻辑2：条件弹开 (仅在对方有 BouncyComponent 时触发) ---
-                if (enemy.HasComponent<BouncyComponent>())
+                // --- 逻辑 B：碰撞弹开 ---
+                // 只有拥有 BouncyTag 的敌人发生碰撞才会触发击退
+                if (enemy.HasComponent<BouncyTag>())
                 {
                     float mag = Mathf.Sqrt(distSq);
                     if (mag > 0.01f)
                     {
-                        // 设置击退方向
-                        eComp.KnockbackDirX = dx / mag;
-                        eComp.KnockbackDirY = dy / mag;
+                        var eStats = enemy.GetComponent<EnemyStatsComponent>();
                         
-                        // 根据敌人类型从配置中读取击退参数
-                        switch (eComp.Type)
+                        // 动态挂载击退组件
+                        var kb = new KnockbackComponent
                         {
-                            case EnemyType.Fast:
-                                eComp.KnockbackSpeed = config.FastEnemyKnockbackSpeed;
-                                eComp.KnockbackTimer = config.FastEnemyKnockbackDuration;
-                                break;
-                            case EnemyType.Tank:
-                                eComp.KnockbackSpeed = config.TankEnemyKnockbackSpeed;
-                                eComp.KnockbackTimer = config.TankEnemyKnockbackDuration;
-                                break;
-                            default:
-                                eComp.KnockbackSpeed = config.NormalEnemyKnockbackSpeed;
-                                eComp.KnockbackTimer = config.NormalEnemyKnockbackDuration;
-                                break;
-                        }
+                            DirX = dx / mag,
+                            DirY = dy / mag,
+                            Timer = GetKnockbackDuration(eStats, config),
+                            Speed = GetKnockbackSpeed(eStats, config)
+                        };
+                        enemy.AddComponent(kb);
                     }
-                }
-                else
-                {
-                    // 如果没有弹性组件，敌人速度在 AI 系统中不会被切换为击退速度
-                    // 它们会继续贴着玩家尝试移动，产生“贴着”的效果
                 }
 
                 if (pHealth.CurrentHealth <= 0) break;
             }
         }
+    }
+
+    // 辅助方法：根据敌人类型获取配置的击退参数
+    private float GetKnockbackDuration(EnemyStatsComponent stats, GameConfig config)
+    {
+        if (stats == null) return config.EnemyKnockbackDuration;
+        return stats.Type switch
+        {
+            EnemyType.Fast => config.FastEnemyKnockbackDuration,
+            EnemyType.Tank => config.TankEnemyKnockbackDuration,
+            _ => config.NormalEnemyKnockbackDuration
+        };
+    }
+
+    private float GetKnockbackSpeed(EnemyStatsComponent stats, GameConfig config)
+    {
+        if (stats == null) return config.EnemyKnockbackSpeed;
+        return stats.Type switch
+        {
+            EnemyType.Fast => config.FastEnemyKnockbackSpeed,
+            EnemyType.Tank => config.TankEnemyKnockbackSpeed,
+            _ => config.NormalEnemyKnockbackSpeed
+        };
     }
 }

@@ -3,7 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// 敌人生成系统：负责根据游戏进度动态在视野外生成不同类型的敌人
-/// 优化点：适配 PoolManager 智能接口，移除冗余的对象池引用
+/// 重构要点：使用组合模式挂载原子化组件（EnemyTag, EnemyStatsComponent, AIStateComponent 等）
 /// </summary>
 public class EnemySpawnSystem : SystemBase
 {
@@ -66,38 +66,51 @@ public class EnemySpawnSystem : SystemBase
                 break;
         }
 
-        // 4. 核心架构适配：通过 PoolManager 智能生成对象
+        // 4. 通过 PoolManager 生成视觉对象
         GameObject prefab = PoolManager.Instance.GetEnemyPrefab(type);
         GameObject enemyGo = PoolManager.Instance.Spawn(prefab, new Vector3(spawnPos.x, spawnPos.y, 0), Quaternion.identity);
 
         if (enemyGo == null) return;
 
-        // 5. 自动同步视觉半径（如果 Sprite 尺寸与配置不符）
+        // 5. 自动同步视觉半径
         if (enemyGo.TryGetComponent<SpriteRenderer>(out var sr))
         {
             radius = Mathf.Min(sr.bounds.size.x, sr.bounds.size.y) * 0.5f;
         }
 
-        // 6. 创建 ECS 实体并组装组件
+        // 6. 核心重构：创建 ECS 实体并按原子化方案组装组件
         Entity enemy = ecs.CreateEntity();
-        enemy.AddComponent(new PositionComponent(spawnPos.x, spawnPos.y, 0));
-        enemy.AddComponent(new VelocityComponent(0, 0, 0));
-        enemy.AddComponent(new HealthComponent(health));
-        enemy.AddComponent(new CollisionComponent(radius));
-        enemy.AddComponent(new ViewComponent(enemyGo));
-        if (type == EnemyType.Normal || type == EnemyType.Fast)
-        {
-            enemy.AddComponent(new BouncyComponent());
-        }
-        // 敌人业务组件
-        enemy.AddComponent(new EnemyComponent()
+        
+        // --- 基础通用组件 ---
+        enemy.AddComponent(new PositionComponent(spawnPos.x, spawnPos.y, 0)); //
+        enemy.AddComponent(new VelocityComponent(0, 0, 0)); //
+        enemy.AddComponent(new HealthComponent(health)); //
+        enemy.AddComponent(new CollisionComponent(radius)); //
+        enemy.AddComponent(new ViewComponent(enemyGo)); //
+        
+        // --- 敌人专属原子组件 ---
+        enemy.AddComponent(new EnemyTag()); // 身份标记
+        
+        // 基础属性：存储伤害、速度等静态配置
+        enemy.AddComponent(new EnemyStatsComponent()
         {
             Type = type,
             Damage = config.EnemyDamage,
             AttackCooldown = config.EnemyAttackCooldown,
-            CurrentCooldown = 0,
-            MoveSpeed = speed // 确保速度被记录在组件中
+            MoveSpeed = speed
         });
+
+        // AI 运行状态：存储计时器等动态数据
+        enemy.AddComponent(new AIStateComponent()
+        {
+            CurrentCooldown = 0
+        });
+
+        // 根据类型决定是否具有“弹性”（只有普通和快速敌人会被弹开）
+        if (type == EnemyType.Normal || type == EnemyType.Fast)
+        {
+            enemy.AddComponent(new BouncyTag()); //
+        }
     }
 
     private Vector2 CalculateSpawnPosition()

@@ -1,39 +1,43 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+
 /// <summary>
-/// 玩家输入系统，负责处理玩家的键盘输入
-/// 处理玩家的移动输入，更新玩家的速度
+/// 玩家输入系统：负责处理键盘输入并转化为物理速度
+/// 重构要点：使用 PlayerTag 标记定位玩家
 /// </summary>
 public class PlayerInputSystem : SystemBase
 {
-    /// <summary>
-    /// 初始化玩家输入系统
-    /// </summary>
-    /// <param name="entities">系统可处理的实体列表</param>
     public PlayerInputSystem(List<Entity> entities) : base(entities) { }
     
-    /// <summary>
-    /// 每帧更新，处理玩家的输入
-    /// </summary>
-    /// <param name="deltaTime">上一帧到当前帧的时间间隔</param>
     public override void Update(float deltaTime)
     {
-        var playerEntities = GetEntitiesWith<PlayerComponent, VelocityComponent>();
+        // 1. 筛选出玩家实体：必须拥有 PlayerTag 和 VelocityComponent
+        var playerEntities = GetEntitiesWith<PlayerTag, VelocityComponent>();
         if (playerEntities.Count == 0) return;
         
         var player = playerEntities[0];
         var vel = player.GetComponent<VelocityComponent>();
         
-        // 移动输入（保留原有逻辑）
+        // 2. 处理移动输入
         float inputX = Input.GetAxisRaw("Horizontal");
         float inputY = Input.GetAxisRaw("Vertical");
+        
+        // 归一化输入向量，防止斜向移动过快
         Vector2 inputDir = new Vector2(inputX, inputY).normalized;
         
+        // 从全局配置获取玩家移动速度
         float moveSpeed = ECSManager.Instance.Config.PlayerMoveSpeed; 
+        
+        // 更新速度组件数据（由 MovementSystem 负责最终位移计算）
         vel.SpeedX = inputDir.x * moveSpeed;
         vel.SpeedY = inputDir.y * moveSpeed;
         
-        // 子弹类型切换输入
+        // 3. 处理子弹类型切换输入 (保留原有逻辑)
+        HandleBulletSwitching();
+    }
+    
+    private void HandleBulletSwitching()
+    {
         if (Input.GetKeyDown(KeyCode.Alpha1))
         {
             PlayerShootingSystem.CurrentBulletType = BulletType.Normal;
@@ -55,6 +59,4 @@ public class PlayerInputSystem : SystemBase
             Debug.Log("切换到范围伤害子弹");
         }
     }
-    
-  
 }

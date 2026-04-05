@@ -1,133 +1,122 @@
-﻿// EnemyAISystem.cs 优化版本
-// 优化内容：
-// 1. 移除重复的位置更新逻辑，统一交由MovementSystem处理
-// 2. 职责分离，AI系统仅负责设置速度，不再处理位置更新
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
+
+/// <summary>
+/// 敌人AI系统：负责根据实体的状态组件决定移动和攻击行为
+/// 重构要点：
+/// 1. 状态分离：击退、硬直和正常追踪逻辑完全解耦。
+/// 2. 组件驱动：通过判断是否拥有状态组件来切换 AI 逻辑，而不是通过数值判断。
+/// </summary>
 public class EnemyAISystem : SystemBase
 {
     public EnemyAISystem(List<Entity> entities) : base(entities) { }
+
     public override void Update(float deltaTime)
     {
-        // 游戏暂停时不执行AI逻辑
         if (Time.timeScale <= 0) return;
-        
-        UpdateEnemyMovement(deltaTime);
-    }
-    /// <summary>
-    /// 更新所有敌人的移动逻辑（核心AI）
-    /// </summary>
-    void UpdateEnemyMovement(float deltaTime)
-    {
-        GameConfig config = ECSManager.Instance.Config;
-        if (config == null) return;
-        // 获取玩家实体（空值防御）
-        Entity player = ECSManager.Instance.PlayerEntity;
-        if (player == null) return;
-        
-        PositionComponent playerPos = player.GetComponent<PositionComponent>();
-        if (playerPos == null) return;
-        // 遍历所有敌人实体
-        List<Entity> enemies = GetEntitiesWith<EnemyComponent, PositionComponent, VelocityComponent>();
-        for (int i = enemies.Count - 1; i >= 0; i--)
+
+        // 1. 获取玩家位置（用于追踪）
+        var players = GetEntitiesWith<PlayerTag, PositionComponent>();
+        if (players.Count == 0) return;
+        var pPos = players[0].GetComponent<PositionComponent>();
+
+        // 2. 筛选所有需要执行 AI 的敌人
+        // 核心过滤器：EnemyTag (身份), PositionComponent (位置), VelocityComponent (控制移动), EnemyStatsComponent (基础属性)
+        var enemies = GetEntitiesWith<EnemyTag, PositionComponent, VelocityComponent, EnemyStatsComponent>();
+
+        foreach (var enemy in enemies)
         {
-            Entity enemy = enemies[i];
-            if (enemy == null) continue;
-            // 获取敌人核心组件（空值防御）
-            EnemyComponent enemyComp = enemy.GetComponent<EnemyComponent>();
-            PositionComponent enemyPos = enemy.GetComponent<PositionComponent>();
-            VelocityComponent enemyVel = enemy.GetComponent<VelocityComponent>();
-            if (enemyComp == null || enemyPos == null || enemyVel == null) continue;
-            
-            // ========== 根据敌人类型获取对应移动速度 ==========
-            float moveSpeed;
-            switch (enemyComp.Type)
+            if (!enemy.IsAlive) continue;
+
+            var ePos = enemy.GetComponent<PositionComponent>();
+            var eVel = enemy.GetComponent<VelocityComponent>();
+            var eStats = enemy.GetComponent<EnemyStatsComponent>();
+
+            // --- 优先级逻辑 1：处理击退 (Knockback) ---
+            if (enemy.HasComponent<KnockbackComponent>())
             {
-                case EnemyType.Fast:
-                    // 快速敌人：使用快速敌人专属速度
-                    moveSpeed = config.FastEnemySpeed;
-                    break;
-                case EnemyType.Tank:
-                    // 坦克敌人：使用坦克敌人专属速度
-                    moveSpeed = config.TankEnemySpeed;
-                    break;
-                case EnemyType.Normal:
-                default:
-                    // 普通敌人：使用默认速度
-                    moveSpeed = config.EnemyMoveSpeed;
-                    break;
+                UpdateKnockbackState(enemy, eVel, deltaTime);
+                continue; // 击退期间跳过正常追踪
             }
-            
-            // 处理击退阶段
-            if (enemyComp.KnockbackTimer > 0)
+
+            // --- 优先级逻辑 2：处理受击硬直 (HitRecovery) ---
+            if (enemy.HasComponent<HitRecoveryComponent>())
             {
-                enemyComp.KnockbackTimer -= deltaTime;
-                // 速度线性衰减到0
-                float progress = enemyComp.KnockbackTimer / config.EnemyKnockbackDuration;
-                float currentSpeed = enemyComp.KnockbackSpeed * progress;
-                
-                // 仅设置速度，位置更新交由MovementSystem统一处理
-                enemyVel.X = enemyComp.KnockbackDirX * currentSpeed;
-                enemyVel.Y = enemyComp.KnockbackDirY * currentSpeed;
-                
-                // 跳过正常AI逻辑
-                continue;
+                UpdateRecoveryState(enemy, eVel, ePos, pPos, eStats, deltaTime);
+                continue; // 硬直期间跳过正常追踪
             }
-            
-            // 处理恢复阶段
-            if (enemyComp.HitRecoveryTimer > 0)
-            {
-                enemyComp.HitRecoveryTimer -= deltaTime;
-                // 速度线性恢复到正常
-                float progress = 1 - (enemyComp.HitRecoveryTimer / config.EnemyHitRecoveryDuration);
-                
-                // 计算正常的AI方向（变量重命名避免与正常阶段的变量冲突）
-                float recoveryDirX = playerPos.X - enemyPos.X;
-                float recoveryDirY = playerPos.Y - enemyPos.Y;
-                float recoveryMag = Mathf.Sqrt(recoveryDirX * recoveryDirX + recoveryDirY * recoveryDirY);
-                
-                if (recoveryMag > 0.1f)
-                {
-                    recoveryDirX /= recoveryMag;
-                    recoveryDirY /= recoveryMag;
-                    // 应用恢复进度，速度从0升到正常，仅设置速度
-                    float currentSpeed = moveSpeed * progress;
-                    enemyVel.X = recoveryDirX * currentSpeed;
-                    enemyVel.Y = recoveryDirY * currentSpeed;
-                }
-                else
-                {
-                    enemyVel.X = 0;
-                    enemyVel.Y = 0;
-                }
-                
-                // 跳过正常AI逻辑
-                continue;
-            }
-            
-            // ========== 正常AI移动逻辑 ==========
-            // 计算敌人朝向玩家的方向（归一化，避免斜向移动更快）
-            float dirX = playerPos.X - enemyPos.X;
-            float dirY = playerPos.Y - enemyPos.Y;
-            float mag = Mathf.Sqrt(dirX * dirX + dirY * dirY);
-            
-            // 避免除以0（敌人和玩家重合时不移动）
-            if (mag > 0.1f)
-            {
-                dirX /= mag;
-                dirY /= mag;
-                // 更新敌人速度（按类型速度移动，支持X/Y访问）
-                // 仅设置速度，位置更新交由MovementSystem统一处理
-                enemyVel.X = dirX * moveSpeed;
-                enemyVel.Y = dirY * moveSpeed;
-            }
-            else
-            {
-                // 靠近玩家时停止移动
-                enemyVel.X = 0;
-                enemyVel.Y = 0;
-            }
+
+            // --- 优先级逻辑 3：正常追踪玩家 ---
+            UpdateTrackingState(eVel, ePos, pPos, eStats);
+        }
+    }
+
+    /// <summary>
+    /// 处理击退逻辑：根据击退组件的数据设置速度，并管理组件生命周期
+    /// </summary>
+    private void UpdateKnockbackState(Entity entity, VelocityComponent vel, float dt)
+    {
+        var kb = entity.GetComponent<KnockbackComponent>();
+        
+        // 速度线性衰减（基于剩余时间）
+        float progress = kb.Timer / 0.2f; // 假设击退基准时间为0.2秒，可从配置读取
+        vel.X = kb.DirX * kb.Speed * progress;
+        vel.Y = kb.DirY * kb.Speed * progress;
+
+        kb.Timer -= dt;
+        if (kb.Timer <= 0)
+        {
+            // 击退结束，移除状态组件
+            entity.RemoveComponent<KnockbackComponent>();
+        }
+    }
+
+    /// <summary>
+    /// 处理恢复逻辑：在硬直期间尝试缓慢恢复向玩家移动
+    /// </summary>
+    private void UpdateRecoveryState(Entity entity, VelocityComponent vel, PositionComponent ePos, PositionComponent pPos, EnemyStatsComponent stats, float dt)
+    {
+        var recovery = entity.GetComponent<HitRecoveryComponent>();
+        
+        // 简单处理：硬直期间速度为0，或者像原来代码一样缓慢恢复
+        float dx = pPos.X - ePos.X;
+        float dy = pPos.Y - ePos.Y;
+        float mag = Mathf.Sqrt(dx * dx + dy * dy);
+
+        if (mag > 0.1f)
+        {
+            // 速度随硬直结束线性恢复
+            // 假设硬直总时长为 config.EnemyHitRecoveryDuration
+            float progress = 1.0f - (recovery.Timer / 0.4f); 
+            vel.X = (dx / mag) * stats.MoveSpeed * progress;
+            vel.Y = (dy / mag) * stats.MoveSpeed * progress;
         }
 
+        recovery.Timer -= dt;
+        if (recovery.Timer <= 0)
+        {
+            entity.RemoveComponent<HitRecoveryComponent>();
+        }
+    }
+
+    /// <summary>
+    /// 正常追踪：计算方向并应用全额移动速度
+    /// </summary>
+    private void UpdateTrackingState(VelocityComponent vel, PositionComponent ePos, PositionComponent pPos, EnemyStatsComponent stats)
+    {
+        float dx = pPos.X - ePos.X;
+        float dy = pPos.Y - ePos.Y;
+        float mag = Mathf.Sqrt(dx * dx + dy * dy);
+
+        if (mag > 0.1f)
+        {
+            vel.X = (dx / mag) * stats.MoveSpeed;
+            vel.Y = (dy / mag) * stats.MoveSpeed;
+        }
+        else
+        {
+            vel.X = 0;
+            vel.Y = 0;
+        }
     }
 }

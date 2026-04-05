@@ -1,42 +1,46 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
-// MovementSystem.cs 完整代码（仅保留相机跟随，删除玩家边界限制）
+
 public class MovementSystem : SystemBase
 {
     public MovementSystem(List<Entity> entities) : base(entities) { }
+
     public override void Update(float deltaTime)
     {
+        // 筛选出所有能动的物体
         var entities = GetEntitiesWith<PositionComponent, VelocityComponent>();
-        // 获取主相机，用于后续跟随逻辑
         var camera = Camera.main;
-        
-        // 初始化玩家位置（用于相机跟随）
         Vector3 playerPosition = Vector3.zero;
+        bool foundPlayer = false;
         
         foreach (var entity in entities)
         {
             var pos = entity.GetComponent<PositionComponent>();
             var vel = entity.GetComponent<VelocityComponent>();
             
-            // 保存上一帧的位置，用于高速物体的碰撞检测，解决穿透问题
-            pos.PreviousX = pos.X;
-            pos.PreviousY = pos.Y;
+            // 1. 轨迹追踪优化：仅针对有 TraceComponent 的物体更新旧位置（防穿透）
+            if (entity.HasComponent<TraceComponent>())
+            {
+                var trace = entity.GetComponent<TraceComponent>();
+                trace.PreviousX = pos.X;
+                trace.PreviousY = pos.Y;
+            }
             
-            // 原有移动逻辑（保留，玩家可自由移动，无边界限制）
+            // 2. 基础位移逻辑
             pos.X += vel.SpeedX * deltaTime;
             pos.Y += vel.SpeedY * deltaTime;
             
-            // 仅记录玩家当前位置，用于相机跟随（删除边界限制代码）
-            if (entity.HasComponent<PlayerComponent>())
+            // 3. 相机跟随：使用 PlayerTag 识别玩家
+            if (!foundPlayer && entity.HasComponent<PlayerTag>())
             {
                 playerPosition = new Vector3(pos.X, pos.Y, camera.transform.position.z);
+                foundPlayer = true;
             }
         }
         
-        // 相机跟随逻辑：平滑跟随玩家，保持相机Z轴不变（避免画面拉伸）
-        if (camera != null)
+        // 平滑跟随逻辑保持不变
+        if (foundPlayer && camera != null)
         {
-            // 平滑插值，参数0.1f为跟随灵敏度，值越小跟随越平缓（可在配置中添加，方便调整）
             camera.transform.position = Vector3.Lerp(
                 camera.transform.position,
                 playerPosition,
