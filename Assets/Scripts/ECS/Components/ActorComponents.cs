@@ -68,3 +68,11 @@ public class EnemyComponent : Component
     /// <summary>受击硬直剩余时间（秒），期间敌人无法行动</summary>
     public float HitRecoveryTimer;
 }
+
+/// <summary>
+/// 弹性组件：标记该实体具有弹性，碰撞后会触发弹开（击退）效果
+/// 这是一个标记组件，不包含任何数据
+/// </summary>
+public class BouncyComponent : Component 
+{ 
+}

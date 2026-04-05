@@ -85,7 +85,10 @@ public class EnemySpawnSystem : SystemBase
         enemy.AddComponent(new HealthComponent(health));
         enemy.AddComponent(new CollisionComponent(radius));
         enemy.AddComponent(new ViewComponent(enemyGo));
-        
+        if (type == EnemyType.Normal || type == EnemyType.Fast)
+        {
+            enemy.AddComponent(new BouncyComponent());
+        }
         // 敌人业务组件
         enemy.AddComponent(new EnemyComponent()
         {
