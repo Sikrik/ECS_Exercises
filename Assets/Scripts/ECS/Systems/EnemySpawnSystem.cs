@@ -1,151 +1,119 @@
-﻿// EnemySpawnSystem.cs 修复版本，适配协同文档的新代码
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
+
+/// <summary>
+/// 敌人生成系统：负责根据游戏进度动态在视野外生成不同类型的敌人
+/// 优化点：适配 PoolManager 智能接口，移除冗余的对象池引用
+/// </summary>
 public class EnemySpawnSystem : SystemBase
 {
-    // 生成计时器
     private float _spawnTimer;
-    // 敌人预制体引用（保留兼容，实际已改用对象池）
-    private GameObject _enemyPrefab;
-    
-    // 构造函数
-    public EnemySpawnSystem(List<Entity> entities, GameObject enemyPrefab) : base(entities)
+
+    public EnemySpawnSystem(List<Entity> entities) : base(entities)
     {
-        _enemyPrefab = enemyPrefab;
         _spawnTimer = 0;
     }
+
     public override void Update(float deltaTime)
     {
-        // 游戏暂停时不生成敌人
         if (Time.timeScale <= 0) return;
+
+        var ecs = ECSManager.Instance;
+        var config = ecs.Config;
         
         _spawnTimer += deltaTime;
-        GameConfig config = ECSManager.Instance.Config;
-        
-        // 动态调整生成间隔：得分越高，生成越快，使用可配置的难度参数
+
+        // 难度曲线：随分数增加缩短生成间隔
         float spawnInterval = Mathf.Max(
-            config.MinSpawnInterval, 
-            config.InitialSpawnInterval - (ECSManager.Instance.Score * config.SpawnIntervalDecrease)
+            config.MinSpawnInterval,
+            config.InitialSpawnInterval - (ecs.Score * config.SpawnIntervalDecrease)
         );
-        // 达到生成间隔，生成敌人
+
         if (_spawnTimer >= spawnInterval)
         {
-            SpawnEnemyAtCameraOuterCircle();
+            SpawnEnemy();
             _spawnTimer = 0;
         }
     }
-    /// <summary>
-    /// 在相机视野外的随机位置生成敌人（核心生成逻辑）
-    /// </summary>
-    void SpawnEnemyAtCameraOuterCircle()
+
+    private void SpawnEnemy()
     {
-        GameConfig config = ECSManager.Instance.Config;
-        if (config == null) return;
-        // 1. 获取相机边界，计算生成范围（在相机视野外一圈）
-        Camera mainCam = Camera.main;
-        if (mainCam == null) 
-        {
-            // 兼容非MainCamera标签的相机
-            mainCam = Object.FindObjectOfType<Camera>();
-            if (mainCam == null) return;
-        }
-        // 计算相机正交视野的边界
-        float camHeight = mainCam.orthographicSize;
-        float camWidth = camHeight * mainCam.aspect;
-        // 生成半径：相机视野外扩展一段距离，避免直接出现在视野里
-        float spawnRadius = Mathf.Max(camWidth, camHeight) + 2f;
-        // 2. 随机生成角度和位置（在相机外的圆形区域）
-        float randomAngle = Random.Range(0, Mathf.PI * 2);
-        float spawnX = Mathf.Cos(randomAngle) * spawnRadius;
-        float spawnY = Mathf.Sin(randomAngle) * spawnRadius;
-        // 3. 根据得分动态选择敌人类型（难度递进）
-        EnemyType enemyType;
-        float random = Random.value;
-        
-        // 得分越高，强敌人概率越高
-        if (ECSManager.Instance.Score > 100 && random < 0.2f)
-        {
-            // 得分>100：20%概率生成坦克敌人（血厚、移速慢）
-            enemyType = EnemyType.Tank;
-        }
-        else if (ECSManager.Instance.Score > 50 && random < 0.3f)
-        {
-            // 得分>50：30%概率生成快速敌人（血少、移速快）
-            enemyType = EnemyType.Fast;
-        }
-        else
-        {
-            // 默认生成普通敌人
-            enemyType = EnemyType.Normal;
-        }
-        // 4. 根据敌人类型获取对应对象池的预制体，并设置属性
-        GameObject enemyGo = null;
-        float enemyHealth = config.EnemyMaxHealth;
-        float enemySpeed = config.EnemyMoveSpeed;
-        float enemyCollisionRadius = config.EnemyCollisionRadius;
-        switch (enemyType)
+        var ecs = ECSManager.Instance;
+        var config = ecs.Config;
+
+        // 1. 计算生成坐标（相机视野外随机圆环）
+        Vector2 spawnPos = CalculateSpawnPosition();
+
+        // 2. 根据难度（分数）随机敌人类型
+        EnemyType type = SelectEnemyTypeByScore(ecs.Score);
+
+        // 3. 获取属性配置
+        float health = config.EnemyMaxHealth;
+        float speed = config.EnemyMoveSpeed;
+        float radius = config.EnemyCollisionRadius;
+
+        switch (type)
         {
             case EnemyType.Fast:
-                // 快速敌人：从快速敌人对象池获取
-                enemyGo = ECSManager.Instance.FastEnemyPool.Get();
-                enemyHealth = config.FastEnemyMaxHealth;
-                enemySpeed = config.FastEnemySpeed;
-                enemyCollisionRadius = config.FastEnemyCollisionRadius;
+                health = config.FastEnemyMaxHealth;
+                speed = config.FastEnemySpeed;
+                radius = config.FastEnemyCollisionRadius;
                 break;
-            
             case EnemyType.Tank:
-                // 坦克敌人：从坦克敌人对象池获取
-                enemyGo = ECSManager.Instance.TankEnemyPool.Get();
-                enemyHealth = config.TankEnemyMaxHealth;
-                enemySpeed = config.TankEnemySpeed;
-                enemyCollisionRadius = config.TankEnemyCollisionRadius;
-                break;
-            
-            case EnemyType.Normal:
-            default:
-                // 普通敌人：从普通敌人对象池获取
-                enemyGo = ECSManager.Instance.NormalEnemyPool.Get();
+                health = config.TankEnemyMaxHealth;
+                speed = config.TankEnemySpeed;
+                radius = config.TankEnemyCollisionRadius;
                 break;
         }
-        // 防御：对象池获取失败时，用默认预制体兜底
-        if (enemyGo == null)
+
+        // 4. 核心架构适配：通过 PoolManager 智能生成对象
+        GameObject prefab = PoolManager.Instance.GetEnemyPrefab(type);
+        GameObject enemyGo = PoolManager.Instance.Spawn(prefab, new Vector3(spawnPos.x, spawnPos.y, 0), Quaternion.identity);
+
+        if (enemyGo == null) return;
+
+        // 5. 自动同步视觉半径（如果 Sprite 尺寸与配置不符）
+        if (enemyGo.TryGetComponent<SpriteRenderer>(out var sr))
         {
-            enemyGo = Object.Instantiate(_enemyPrefab);
-            Debug.LogWarning($"敌人对象池获取失败，使用默认预制体生成{enemyType}敌人");
+            radius = Mathf.Min(sr.bounds.size.x, sr.bounds.size.y) * 0.5f;
         }
-        
-        // 自动同步碰撞半径与Sprite视觉大小，解决视觉与碰撞体不匹配问题
-        if (enemyGo.TryGetComponent<SpriteRenderer>(out var spriteRenderer))
-        {
-            // 获取Sprite的世界空间大小，计算碰撞半径（取宽高的最小值的一半，保证圆形碰撞贴合Sprite）
-            float spriteWidth = spriteRenderer.bounds.size.x;
-            float spriteHeight = spriteRenderer.bounds.size.y;
-            // 自动覆盖配置的半径，保证碰撞体与视觉大小完全匹配
-            enemyCollisionRadius = Mathf.Min(spriteWidth, spriteHeight) * 0.5f;
-        }
-        
-        // 5. 创建敌人实体并添加组件
-        Entity enemy = ECSManager.Instance.CreateEntity();
-        // 位置组件（生成在随机位置）
-        enemy.AddComponent(new PositionComponent(spawnX, spawnY, 0));
-        // 速度组件（初始为0，由AI系统控制移动）
+
+        // 6. 创建 ECS 实体并组装组件
+        Entity enemy = ecs.CreateEntity();
+        enemy.AddComponent(new PositionComponent(spawnPos.x, spawnPos.y, 0));
         enemy.AddComponent(new VelocityComponent(0, 0, 0));
-        // 敌人核心组件（包含类型、伤害、冷却）
+        enemy.AddComponent(new HealthComponent(health));
+        enemy.AddComponent(new CollisionComponent(radius));
+        enemy.AddComponent(new ViewComponent(enemyGo));
+        
+        // 敌人业务组件
         enemy.AddComponent(new EnemyComponent()
         {
-            Damage = config.EnemyDamage,       // 所有敌人伤害暂时统一，可后续拆分
+            Type = type,
+            Damage = config.EnemyDamage,
             AttackCooldown = config.EnemyAttackCooldown,
             CurrentCooldown = 0,
-            Type = enemyType                   // 标记敌人类型
+            MoveSpeed = speed // 确保速度被记录在组件中
         });
-        // 血量组件（不同敌人血量不同）
-        enemy.AddComponent(new HealthComponent(enemyHealth));
-        // 碰撞组件（不同敌人碰撞半径不同）
-        enemy.AddComponent(new CollisionComponent(enemyCollisionRadius));
-        // 6. 设置敌人GameObject的位置，并绑定到视图组件
-        enemyGo.transform.position = new Vector3(spawnX, spawnY, 0);
-        enemyGo.transform.rotation = Quaternion.identity;
-        enemyGo.SetActive(true); // 确保对象池取出的对象是激活状态
-        enemy.AddComponent(new ViewComponent(enemyGo));
+    }
+
+    private Vector2 CalculateSpawnPosition()
+    {
+        Camera cam = Camera.main;
+        float height = cam.orthographicSize;
+        float width = height * cam.aspect;
+        
+        float spawnRadius = Mathf.Max(width, height) + 2.0f;
+        float angle = Random.Range(0, Mathf.PI * 2);
+        
+        return new Vector2(Mathf.Cos(angle) * spawnRadius, Mathf.Sin(angle) * spawnRadius);
+    }
+
+    private EnemyType SelectEnemyTypeByScore(int score)
+    {
+        float rand = Random.value;
+        if (score > 100 && rand < 0.2f) return EnemyType.Tank;
+        if (score > 50 && rand < 0.3f) return EnemyType.Fast;
+        return EnemyType.Normal;
     }
 }

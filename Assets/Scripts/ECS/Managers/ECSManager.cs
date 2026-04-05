@@ -1,9 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// ECS 总管理器：负责实体的生命周期、系统调度以及所有框架级基础设施
-/// </summary>
 public class ECSManager : MonoBehaviour
 {
     public static ECSManager Instance { get; private set; }
@@ -17,79 +14,46 @@ public class ECSManager : MonoBehaviour
     public int Score { get; set; }
     public GameConfig Config { get; private set; }
 
-    // --- 查询缓存与 List 池 ---
+    // --- 基础设施 ---
     public Dictionary<System.Type, List<Entity>> QueryCache = new Dictionary<System.Type, List<Entity>>();
     private Queue<List<Entity>> _listPool = new Queue<List<Entity>>();
-
-    // --- 对象池引用 (属性不能加 [Header]) ---
-    public ObjectPool NormalBulletPool { get; private set; }
-    public ObjectPool SlowBulletPool { get; private set; }
-    public ObjectPool ChainLightningBulletPool { get; private set; }
-    public ObjectPool AOEBulletPool { get; private set; }
-    public ObjectPool NormalEnemyPool { get; private set; }
-    public ObjectPool FastEnemyPool { get; private set; }
-    public ObjectPool TankEnemyPool { get; private set; }
+    public GridSystem Grid { get; private set; }
 
     [Header("预制体引用")]
     public GameObject PlayerPrefab;
-    public GameObject NormalBulletPrefab;
-    public GameObject SlowBulletPrefab;
-    public GameObject ChainBulletPrefab;
-    public GameObject AOEBulletPrefab;
-    public GameObject NormalEnemyPrefab;
-    public GameObject FastEnemyPrefab;
-    public GameObject TankEnemyPrefab;
-
-    [Header("特效引用")]
-    public GameObject LightningChainVFX; 
-    public GameObject NormalHitVFX;
-    public ObjectPool LightningVFXPool { get; private set; } // 新增特效池属性
 
     void Awake()
     {
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
-
+        Instance = this;
         LoadConfig();
         Score = 0;
-        InitPools();
     }
 
     void Start() => InitGame();
 
-    void InitPools()
-    {
-        NormalBulletPool = new ObjectPool(NormalBulletPrefab, 20, 100);
-        SlowBulletPool = new ObjectPool(SlowBulletPrefab, 10, 50);
-        ChainLightningBulletPool = new ObjectPool(ChainBulletPrefab, 10, 50);
-        AOEBulletPool = new ObjectPool(AOEBulletPrefab, 10, 50);
-
-        NormalEnemyPool = new ObjectPool(NormalEnemyPrefab, 10, 50);
-        FastEnemyPool = new ObjectPool(FastEnemyPrefab, 10, 50);
-        TankEnemyPool = new ObjectPool(TankEnemyPrefab, 10, 50);
-       
-        LightningVFXPool = new ObjectPool(LightningChainVFX, 20, 100);
-    }
-
     void InitGame()
     {
+        // 1. 初始化空间分割系统 (网格大小设为 3)
+        Grid = new GridSystem(_entities, 3.0f);
+
+        // 2. 创建玩家
         CreatePlayerEntity();
 
+        // 3. 注册系统流水线 (注意顺序)
         RegisterSystem(new PlayerInputSystem(_entities));
-        RegisterSystem(new PlayerShootingSystem(_entities));
         RegisterSystem(new EnemyAISystem(_entities));
         RegisterSystem(new MovementSystem(_entities));
         
-        RegisterSystem(new BulletCollisionSystem(_entities)); 
-        RegisterSystem(new BulletEffectSystem(_entities));    
+        RegisterSystem(Grid); // 更新实体在网格中的位置
+        
+        RegisterSystem(new PlayerShootingSystem(_entities, Grid)); 
+        RegisterSystem(new BulletCollisionSystem(_entities, Grid)); // 基于网格的碰撞检测
+        RegisterSystem(new BulletEffectSystem(_entities));          // 组件驱动的效果处理
         
         RegisterSystem(new HealthSystem(_entities));
-        RegisterSystem(new EnemySpawnSystem(_entities, NormalEnemyPrefab));
-        
+        RegisterSystem(new EnemySpawnSystem(_entities, null));
         RegisterSystem(new LightningRenderSystem(_entities)); 
         RegisterSystem(new ViewSyncSystem(_entities));
-        
-
     }
 
     void Update()
@@ -103,7 +67,7 @@ public class ECSManager : MonoBehaviour
 
     public Entity CreateEntity() { var e = new Entity(); _entities.Add(e); return e; }
 
-    void CreatePlayerEntity()
+    private void CreatePlayerEntity()
     {
         PlayerEntity = CreateEntity();
         PlayerEntity.AddComponent(new PositionComponent(0, 0, 0));
@@ -111,40 +75,34 @@ public class ECSManager : MonoBehaviour
         PlayerEntity.AddComponent(new PlayerComponent());
         PlayerEntity.AddComponent(new HealthComponent(Config.PlayerMaxHealth));
         PlayerEntity.AddComponent(new CollisionComponent(Config.PlayerCollisionRadius));
-        
         GameObject go = Instantiate(PlayerPrefab);
         PlayerEntity.AddComponent(new ViewComponent(go));
     }
 
+    /// <summary>
+    /// 高性能销毁：使用 Swap-back 算法实现 O(1) 删除
+    /// </summary>
     public void DestroyEntity(Entity entity)
     {
         if (entity == null || !entity.IsAlive) return;
         entity.MarkAsDead();
 
+        // 回收 GameObject
         if (entity.HasComponent<ViewComponent>())
         {
             var view = entity.GetComponent<ViewComponent>();
             if (view != null && view.GameObject != null)
-            {
-                // 核心修改：直接交给 PoolManager 智能归还
                 PoolManager.Instance.Despawn(view.GameObject);
-            }
         }
-        _entities.Remove(entity);
+
+        // Swap-back 优化：将末尾实体移到当前位置再删除末尾
+        int index = _entities.IndexOf(entity);
+        if (index != -1)
+        {
+            _entities[index] = _entities[_entities.Count - 1];
+            _entities.RemoveAt(_entities.Count - 1);
+        }
     }
-
-    private ObjectPool GetBulletPool(BulletType t) => t switch {
-        BulletType.Slow => SlowBulletPool,
-        BulletType.ChainLightning => ChainLightningBulletPool,
-        BulletType.AOE => AOEBulletPool,
-        _ => NormalBulletPool
-    };
-
-    private ObjectPool GetEnemyPool(EnemyType t) => t switch {
-        EnemyType.Fast => FastEnemyPool,
-        EnemyType.Tank => TankEnemyPool,
-        _ => NormalEnemyPool
-    };
 
     public List<Entity> GetListFromPool() => _listPool.Count > 0 ? _listPool.Dequeue() : new List<Entity>();
     public void ReturnListToPool(List<Entity> list) { list.Clear(); _listPool.Enqueue(list); }

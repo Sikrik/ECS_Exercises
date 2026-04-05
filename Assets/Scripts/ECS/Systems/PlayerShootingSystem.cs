@@ -1,31 +1,21 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// 玩家射击系统：负责子弹的生产、属性初始化及自动目标锁定
-/// </summary>
 public class PlayerShootingSystem : SystemBase
 {
     private float _shootTimer;
-    private float _currentShootInterval;
-    
-    // 静态变量，存储当前选中的子弹类型（UI切换时修改此值）
+    private GridSystem _grid;
     public static BulletType CurrentBulletType = BulletType.Normal;
     
-    public PlayerShootingSystem(List<Entity> entities) : base(entities) 
+    public PlayerShootingSystem(List<Entity> entities, GridSystem grid) : base(entities) 
     {
-        if (ECSManager.Instance.Config != null)
-            _currentShootInterval = ECSManager.Instance.Config.ShootInterval;
+        _grid = grid;
     }
     
     public override void Update(float deltaTime)
     {
         var config = ECSManager.Instance.Config;
-        if (config == null) return;
-
-        // 根据当前选中的子弹类型动态调整射击频率
-        _currentShootInterval = CurrentBulletType switch
-        {
+        float interval = CurrentBulletType switch {
             BulletType.Slow => config.SlowBulletShootInterval,
             BulletType.ChainLightning => config.ChainLightningShootInterval,
             BulletType.AOE => config.AOEBulletShootInterval,
@@ -33,90 +23,74 @@ public class PlayerShootingSystem : SystemBase
         };
         
         _shootTimer += deltaTime;
-        if (_shootTimer >= _currentShootInterval)
+        if (_shootTimer >= interval)
         {
             _shootTimer = 0;
-            Shoot();
+            Shoot(config);
         }
     }
     
-    void Shoot()
+    void Shoot(GameConfig config)
     {
         var ecs = ECSManager.Instance;
         var player = ecs.PlayerEntity;
         if (player == null || !player.IsAlive) return;
         
-        var playerPos = player.GetComponent<PositionComponent>();
+        var pPos = player.GetComponent<PositionComponent>();
         
-        // 1. 寻找最近的敌人作为目标
-        Entity target = FindNearestEnemy(playerPos);
+        // 1. 空间优化：只在网格中寻找最近目标
+        Entity target = FindNearestInGrid(pPos.X, pPos.Y);
         if (target == null) return;
         
-        var targetPos = target.GetComponent<PositionComponent>();
-        Vector2 dir = new Vector2(targetPos.X - playerPos.X, targetPos.Y - playerPos.Y).normalized;
+        var tPos = target.GetComponent<PositionComponent>();
+        Vector2 dir = new Vector2(tPos.X - pPos.X, tPos.Y - pPos.Y).normalized;
         
-        // 2. 核心架构优化：从 PoolManager 获取对应的子弹预制体并生成
+        // 2. 生成物理对象
         GameObject prefab = PoolManager.Instance.GetBulletPrefab(CurrentBulletType);
-        GameObject bulletGo = PoolManager.Instance.Spawn(prefab, new Vector3(playerPos.X, playerPos.Y, 0), Quaternion.identity);
+        GameObject bulletGo = PoolManager.Instance.Spawn(prefab, new Vector3(pPos.X, pPos.Y, 0), Quaternion.identity);
         
-        // 3. 创建子弹实体并挂载基础组件
+        // 3. 创建实体
         Entity bullet = ecs.CreateEntity();
-        float speed = ecs.Config.BulletSpeed;
-        
-        bullet.AddComponent(new PositionComponent(playerPos.X, playerPos.Y, 0));
-        bullet.AddComponent(new VelocityComponent(dir.x * speed, dir.y * speed, 0));
+        bullet.AddComponent(new PositionComponent(pPos.X, pPos.Y, 0));
+        bullet.AddComponent(new VelocityComponent(dir.x * config.BulletSpeed, dir.y * config.BulletSpeed, 0));
         bullet.AddComponent(new ViewComponent(bulletGo));
-        
-        // 4. 根据类型配置业务数据组件
-        BulletComponent bulletComp = new BulletComponent { Type = CurrentBulletType };
-        var config = ecs.Config;
-        
+        bullet.AddComponent(new BulletComponent { Type = CurrentBulletType });
+
+        // 4. 核心架构重构：根据子弹类型组合“能力组件”
+        // 这样 BulletEffectSystem 就不需要写 switch-case 了
         switch(CurrentBulletType)
         {
-            case BulletType.Slow:
-                bulletComp.Damage = config.SlowBulletDamage;
-                bulletComp.LifeTime = config.BulletLifeTime;
-                break;
-            case BulletType.ChainLightning:
-                bulletComp.Damage = config.ChainLightningDamage;
-                bulletComp.LifeTime = config.BulletLifeTime;
+            case BulletType.Normal:
+                bullet.AddComponent(new DamageComponent(config.BulletDamage));
                 break;
             case BulletType.AOE:
-                bulletComp.Damage = config.AOEBulletDamage;
-                bulletComp.LifeTime = config.BulletLifeTime;
+                bullet.AddComponent(new AOEComponent(config.AOEBulletRadius, config.AOEBulletDamage));
                 break;
-            default:
-                bulletComp.Damage = config.BulletDamage;
-                bulletComp.LifeTime = config.BulletLifeTime;
+            case BulletType.ChainLightning:
+                bullet.AddComponent(new DamageComponent(config.BulletDamage)); // 初始命中伤害
+                bullet.AddComponent(new ChainComponent(config.ChainLightningMaxTargets, config.ChainLightningChainRange, config.ChainLightningDamage));
                 break;
         }
-        bullet.AddComponent(bulletComp);
 
-        // 5. 自动同步碰撞半径与视觉大小
+        // 5. 同步半径
         float radius = config.BulletCollisionRadius;
         if (bulletGo.TryGetComponent<SpriteRenderer>(out var sr))
-        {
             radius = Mathf.Min(sr.bounds.size.x, sr.bounds.size.y) * 0.5f;
-        }
         bullet.AddComponent(new CollisionComponent(radius));
     }
     
-    Entity FindNearestEnemy(PositionComponent playerPos)
+    private Entity FindNearestInGrid(float x, float y)
     {
-        var enemies = GetEntitiesWith<EnemyComponent, PositionComponent>();
+        var nearbyEnemies = _grid.GetNearbyEnemies(x, y);
         Entity nearest = null;
-        float minDist = float.MaxValue;
+        float minDistSq = float.MaxValue;
         
-        foreach (var enemy in enemies)
+        foreach (var e in nearbyEnemies)
         {
-            if (!enemy.IsAlive) continue;
-            var enemyPos = enemy.GetComponent<PositionComponent>();
-            float dist = Vector2.SqrMagnitude(new Vector2(playerPos.X - enemyPos.X, playerPos.Y - enemyPos.Y));
-            if (dist < minDist)
-            {
-                minDist = dist;
-                nearest = enemy;
-            }
+            if (!e.IsAlive) continue;
+            var ePos = e.GetComponent<PositionComponent>();
+            float d2 = (ePos.X - x) * (ePos.X - x) + (ePos.Y - y) * (ePos.Y - y);
+            if (d2 < minDistSq) { minDistSq = d2; nearest = e; }
         }
         return nearest;
     }
