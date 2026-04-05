@@ -5,7 +5,7 @@ public class PlayerShootingSystem : SystemBase
 {
     private float _shootTimer;
     private GridSystem _grid;
-    public static BulletType CurrentBulletType = BulletType.Normal;
+    public static BulletType CurrentBulletType = BulletType.Normal; // 可以在外部修改此类型测试
     
     public PlayerShootingSystem(List<Entity> entities, GridSystem grid) : base(entities) { _grid = grid; }
     
@@ -35,11 +35,19 @@ public class PlayerShootingSystem : SystemBase
         var tPos = target.GetComponent<PositionComponent>();
         Vector2 dir = new Vector2(tPos.X - pPos.X, tPos.Y - pPos.Y).normalized;
         
+        // 1. 获取对应的预制体
         GameObject prefab = PoolManager.Instance.GetBulletPrefab(CurrentBulletType);
+        if (prefab == null) 
+        {
+            Debug.LogError($"PoolManager 中未分配 {CurrentBulletType} 的预制体！");
+            return;
+        }
+
         GameObject bulletGo = PoolManager.Instance.Spawn(prefab, new Vector3(pPos.X, pPos.Y, 0), Quaternion.identity);
         
+        // 2. 创建 ECS 实体并按原子化方案组装组件
         Entity bullet = ecs.CreateEntity();
-        bullet.AddComponent(new BulletTag());
+        bullet.AddComponent(new BulletTag()); 
         bullet.AddComponent(new PositionComponent(pPos.X, pPos.Y, 0));
         bullet.AddComponent(new VelocityComponent(dir.x * config.BulletSpeed, dir.y * config.BulletSpeed, 0));
         bullet.AddComponent(new ViewComponent(bulletGo));
@@ -47,7 +55,7 @@ public class PlayerShootingSystem : SystemBase
         bullet.AddComponent(new CollisionComponent(config.BulletCollisionRadius));
         bullet.AddComponent(new TraceComponent(pPos.X, pPos.Y));
 
-        // 根据类型挂载效果组件，现在 config 中的字段已补全
+        // --- 核心修复：必须添加具体的效果组件，否则 BulletEffectSystem 无法处理 ---
         switch (CurrentBulletType)
         {
             case BulletType.Normal:
@@ -58,6 +66,7 @@ public class PlayerShootingSystem : SystemBase
                 bullet.AddComponent(new SlowEffectComponent(config.SlowRatio, config.SlowDuration));
                 break;
             case BulletType.ChainLightning:
+                // 只有挂载了 ChainComponent，击中后才会有闪电效果
                 bullet.AddComponent(new ChainComponent(config.ChainTargets, config.ChainRange, config.ChainDamage));
                 break;
             case BulletType.AOE:

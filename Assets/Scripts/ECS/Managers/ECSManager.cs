@@ -126,4 +126,28 @@ public class ECSManager : MonoBehaviour
     {
         return (T)_systems.Find(s => s is T);
     }
+    
+    public void RestartGame()
+    {
+        // 1. 恢复游戏时间（防止在 Game Over 暂停状态下重启）
+        Time.timeScale = 1;
+
+        // 2. 清理所有现有实体（必须倒序遍历，因为 DestroyEntity 会修改 List）
+        for (int i = _entities.Count - 1; i >= 0; i--)
+        {
+            DestroyEntity(_entities[i]);
+        }
+        _entities.Clear();
+
+        // 3. 重置游戏数据
+        Score = 0;
+
+        // 4. 重新初始化系统（这会重置所有系统的内部计时器，如刷怪计时）
+        InitSystems();
+
+        // 5. 重新创建玩家
+        CreatePlayer();
+    
+        Debug.Log("游戏已重新开始，加油鸭！");
+    }
 }
