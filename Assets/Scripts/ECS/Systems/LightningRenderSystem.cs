@@ -8,29 +8,43 @@ public class LightningRenderSystem : SystemBase
     public override void Update(float deltaTime)
     {
         var vfxs = GetEntitiesWith<LightningVFXComponent, ViewComponent>();
+        var ecs = ECSManager.Instance;
 
         for (int i = vfxs.Count - 1; i >= 0; i--)
         {
             var entity = vfxs[i];
             var vfx = entity.GetComponent<LightningVFXComponent>();
-            var line = entity.GetComponent<ViewComponent>().GameObject.GetComponent<LineRenderer>();
+            var view = entity.GetComponent<ViewComponent>();
 
-            vfx.Timer += deltaTime;
-            if (vfx.Timer >= vfx.Duration)
+            if (view == null || view.GameObject == null) continue;
+
+            // 修复：确保 LineRenderer 存在
+            var line = view.GameObject.GetComponent<LineRenderer>();
+            if (line == null)
             {
-                ECSManager.Instance.DestroyEntity(entity);
-                continue;
+                line = view.GameObject.AddComponent<LineRenderer>();
+                line.startWidth = 0.05f; line.endWidth = 0.05f;
+                line.material = new Material(Shader.Find("Sprites/Default"));
+                line.startColor = Color.cyan; line.endColor = Color.white;
             }
 
-            // 绘制逻辑（抖动效果）
+            vfx.Timer += deltaTime;
+            if (vfx.Timer >= vfx.Duration) { ecs.DestroyEntity(entity); continue; }
+
+            // 绘制抖动效果
             line.positionCount = 6;
             line.SetPosition(0, vfx.StartPos);
             line.SetPosition(5, vfx.EndPos);
-            for(int k=1; k<5; k++) {
-                Vector3 mid = Vector3.Lerp(vfx.StartPos, vfx.EndPos, k/5f);
-                mid += (Vector3)Random.insideUnitCircle * 0.2f;
+            for (int k = 1; k < 5; k++)
+            {
+                Vector3 mid = Vector3.Lerp(vfx.StartPos, vfx.EndPos, k / 5f);
+                mid += (Vector3)Random.insideUnitCircle * 0.15f;
                 line.SetPosition(k, mid);
             }
+
+            // 淡出效果
+            float alpha = 1.0f - (vfx.Timer / vfx.Duration);
+            line.startColor = new Color(line.startColor.r, line.startColor.g, line.startColor.b, alpha);
         }
     }
 }

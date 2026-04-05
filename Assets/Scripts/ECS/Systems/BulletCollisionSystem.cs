@@ -27,11 +27,8 @@ public class BulletCollisionSystem : SystemBase
                 var eCol = enemy.GetComponent<CollisionComponent>();
 
                 float r = bCol.Radius + eCol.Radius;
-                
-                // 线段检测法：检测从 PreviousPosition 到当前 Position 的轨迹是否穿过敌人
                 if (CheckSegmentCollision(bPos.PreviousX, bPos.PreviousY, bPos.X, bPos.Y, ePos.X, ePos.Y, r))
                 {
-                    // 标记命中：下游系统会捕捉到这个组件并执行扣血/特效
                     bullet.AddComponent(new BulletHitEventComponent(enemy));
                     break; 
                 }
