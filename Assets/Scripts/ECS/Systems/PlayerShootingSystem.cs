@@ -17,9 +17,7 @@ public class PlayerShootingSystem : SystemBase
         _shootTimer += deltaTime;
         if (_shootTimer >= interval)
         {
-            // 核心修复：只有成功射击后才清空计时器
-            // 这样如果范围内没敌人，计时器会保持在就绪状态，一旦有敌人进入射程立即开火
-            if (Shoot(config)) 
+            if (Shoot(config)) // 只有成功找到敌人并射击才重置计时器
             {
                 _shootTimer = 0;
             }
@@ -33,9 +31,7 @@ public class PlayerShootingSystem : SystemBase
         if (player == null || !player.IsAlive) return false;
 
         var pPos = player.GetComponent<PositionComponent>();
-        
-        // 核心修复：扩大网格搜索深度（从 1 改为 3），确保能打到屏幕边缘的敌人
-        Entity target = FindNearestInGrid(pPos.X, pPos.Y, 3); 
+        Entity target = FindNearestInGrid(pPos.X, pPos.Y, 3); // 扩大索敌深度
         if (target == null) return false;
 
         var tPos = target.GetComponent<PositionComponent>();
@@ -52,19 +48,16 @@ public class PlayerShootingSystem : SystemBase
         bullet.AddComponent(new VelocityComponent(dir.x * config.BulletSpeed, dir.y * config.BulletSpeed));
         bullet.AddComponent(new LifetimeComponent { RemainingTime = config.BulletLifeTime });
         bullet.AddComponent(new ViewComponent(bulletGo, prefab));
-        
         bullet.AddComponent(new NeedsBakingTag()); 
         bullet.AddComponent(new TraceComponent(pPos.X, pPos.Y));
         bullet.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Enemy")));
 
-        // 分发子弹效果
+        // --- 核心修复：所有子弹都必须有基础伤害组件，否则 DamageSystem 会忽略碰撞 ---
+        bullet.AddComponent(new DamageComponent(config.BulletDamage));
+
         switch (CurrentBulletType)
         {
-            case BulletType.Normal:
-                bullet.AddComponent(new DamageComponent(config.BulletDamage));
-                break;
             case BulletType.Slow:
-                bullet.AddComponent(new DamageComponent(config.BulletDamage * 0.5f));
                 bullet.AddComponent(new SlowEffectComponent(config.SlowRatio, config.SlowDuration));
                 break;
             case BulletType.ChainLightning:
@@ -81,8 +74,7 @@ public class PlayerShootingSystem : SystemBase
     private Entity FindNearestInGrid(float x, float y, int radius)
     {
         if (_grid == null) return null;
-        // 使用带半径参数的索敌方法
-        var enemies = _grid.GetNearbyEnemies(x, y, radius); 
+        var enemies = _grid.GetNearbyEnemies(x, y, radius);
         Entity nearest = null;
         float minDistSq = float.MaxValue;
         foreach (var e in enemies)

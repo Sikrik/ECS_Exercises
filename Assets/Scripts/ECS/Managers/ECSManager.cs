@@ -39,17 +39,60 @@ public class ECSManager : MonoBehaviour
 
     void Update()
     {
-        foreach (var list in QueryCache.Values)
-        {
-            ReturnListToPool(list);
-        }
+        foreach (var list in QueryCache.Values) ReturnListToPool(list);
         QueryCache.Clear();
-
         float deltaTime = Time.deltaTime;
-        for (int i = 0; i < _systems.Count; i++)
+        for (int i = 0; i < _systems.Count; i++) _systems[i].Update(deltaTime);
+    }
+
+    private void InitSystems()
+    {
+        _systems.Clear();
+        Grid = new GridSystem(2.0f, _entities); 
+        _systems.Add(Grid); //
+
+        // --- 1. 感知层 ---
+        _systems.Add(new InputCaptureSystem(_entities));    // 读键盘
+        _systems.Add(new EnemyTrackingSystem(_entities));   // 怪物追踪意图
+
+        // --- 2. 控制层 (意图转换) ---
+        _systems.Add(new PlayerControlSystem(_entities));   // 输入意图 -> 物理速度
+        _systems.Add(new StateTimerSystem(_entities));      // 击退/硬直倒计时
+
+        // --- 3. 基础逻辑层 ---
+        _systems.Add(new EnemySpawnSystem(_entities));
+        _systems.Add(new PlayerShootingSystem(_entities, Grid));
+        _systems.Add(new PhysicsBakingSystem(_entities)); 
+        _systems.Add(new MovementSystem(_entities));
+        _systems.Add(new ViewSyncSystem(_entities));
+
+        // --- 4. 战斗响应流水线 ---
+        _systems.Add(new PhysicsDetectionSystem(_entities)); // 物理碰撞检测
+        _systems.Add(new DamageSystem(_entities));           // 处理伤害
+        _systems.Add(new KnockbackSystem(_entities));        // 处理排斥（内含子弹过滤）
+        _systems.Add(new BulletEffectSystem(_entities));     // 处理特效并销毁子弹
+
+        // --- 5. 状态与视觉 ---
+        _systems.Add(new HealthSystem(_entities));           // 检查死亡并销毁敌人
+        _systems.Add(new InvincibleVisualSystem(_entities));
+        _systems.Add(new EventCleanupSystem(_entities));     // 最后清理本帧事件
+    }
+
+    public void DestroyEntity(Entity e)
+    {
+        // 核心修复：必须清理关联的视觉对象，否则模型会残留在原地
+        if (e.HasComponent<ViewComponent>())
         {
-            _systems[i].Update(deltaTime);
+            var view = e.GetComponent<ViewComponent>();
+            if (view.GameObject != null)
+            {
+                _gameObjectToEntity.Remove(view.GameObject.GetInstanceID());
+                if (view.Prefab != null) PoolManager.Instance.Despawn(view.Prefab, view.GameObject);
+                else Destroy(view.GameObject);
+            }
         }
+        e.IsAlive = false;
+        _entities.Remove(e);
     }
 
     private void LoadConfig()
@@ -87,42 +130,7 @@ public class ECSManager : MonoBehaviour
         }
     }
 
-    private void InitSystems()
-    {
-        _systems.Clear();
-        Grid = new GridSystem(2.0f, _entities); 
-        _systems.Add(Grid); // 关键修复：必须添加到系统列表，它才会运行！
-
-        // 1. 输入与AI
-        _systems.Add(new PlayerInputSystem(_entities));
-        _systems.Add(new EnemyAISystem(_entities));
-
-        // 2. 生产与物理烘焙
-        _systems.Add(new EnemySpawnSystem(_entities));
-        _systems.Add(new PlayerShootingSystem(_entities, Grid));
-        _systems.Add(new PhysicsBakingSystem(_entities)); 
-
-        // 3. 位移与空间同步 (必须在碰撞前运行)
-        _systems.Add(new MovementSystem(_entities));
-        _systems.Add(new ViewSyncSystem(_entities));
-
-        // 4. 通用碰撞架构 (已摘除旧的专用系统)
-        _systems.Add(new PhysicsDetectionSystem(_entities));
-        _systems.Add(new DamageSystem(_entities));
-        _systems.Add(new KnockbackSystem(_entities));
-        _systems.Add(new BulletEffectSystem(_entities));
-
-        // 5. 状态与生命周期
-        _systems.Add(new SlowEffectSystem(_entities));
-        _systems.Add(new HealthSystem(_entities));
-        _systems.Add(new LifetimeSystem(_entities));
-        
-        // 6. 视觉与清理
-        _systems.Add(new LightningRenderSystem(_entities));
-        _systems.Add(new VFXSystem(_entities));
-        _systems.Add(new InvincibleVisualSystem(_entities));
-        _systems.Add(new EventCleanupSystem(_entities));
-    }
+    
 
     private void CreatePlayer()
     {
@@ -162,27 +170,7 @@ public class ECSManager : MonoBehaviour
         return null;
     }
 
-    public void DestroyEntity(Entity e)
-    {
-        if (e.HasComponent<ViewComponent>())
-        {
-            var view = e.GetComponent<ViewComponent>();
-            if (view.GameObject != null)
-            {
-                // 必须从映射表中移除，否则物理系统会继续报错
-                _gameObjectToEntity.Remove(view.GameObject.GetInstanceID());
-            
-                // 回收到池子
-                if (view.Prefab != null)
-                    PoolManager.Instance.Despawn(view.Prefab, view.GameObject);
-                else
-                    Destroy(view.GameObject);
-            }
-        }
-
-        e.IsAlive = false;
-        _entities.Remove(e);
-    }
+    
 
     public List<Entity> GetListFromPool()
     {
