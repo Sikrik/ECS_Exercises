@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 [Serializable]
@@ -30,7 +31,7 @@ public class GameConfig
     public float AOEBulletShootInterval;
     public float AOERadius;
     public float AOEDamage;
-
+    public Dictionary<string, EnemyData> EnemyRecipes = new Dictionary<string, EnemyData>();
     [Header("Enemy Base Settings")]
     public float EnemyMaxHealth;
     public float EnemyMoveSpeed;

@@ -1,68 +1,36 @@
 ﻿using System;
-using System.Globalization;
-using System.Reflection;
+using System.Collections.Generic;
 using UnityEngine;
 
 public static class ConfigLoader
 {
-    /// <summary>
-    /// 从 Resources 加载 CSV 配置文件并填充到 GameConfig 对象中
-    /// </summary>
-    /// <param name="path">资源路径 (如 "game_config")</param>
     public static GameConfig Load(string path)
     {
         TextAsset csvText = Resources.Load<TextAsset>(path);
-        if (csvText == null)
-        {
-            Debug.LogError($"[ConfigLoader] 找不到配置文件: Resources/{path}");
-            return null;
-        }
+        if (csvText == null) return null;
 
         GameConfig config = new GameConfig();
         string[] lines = csvText.text.Split('\n');
-        
-        // 获取 GameConfig 的所有字段信息用于反射填充
-        FieldInfo[] fields = typeof(GameConfig).GetFields(BindingFlags.Public | BindingFlags.Instance);
 
-        // 从第二行开始解析 (跳过表头)
+        // 这里仅展示敌人配方解析的核心逻辑 (假设从特定行开始或使用新的 CSV 结构)
         for (int i = 1; i < lines.Length; i++)
         {
             string line = lines[i].Trim();
             if (string.IsNullOrEmpty(line)) continue;
 
-            string[] columns = line.Split(',');
-            if (columns.Length < 2) continue;
+            string[] cols = line.Split(',');
+            // 假设 CSV 格式: ID, Health, Speed, Damage, Traits
+            if (cols.Length < 5) continue;
 
-            string key = columns[0].Trim();
-            
-            // 处理可能的 UTF-8 BOM 字符
-            if (i == 1 && key.Length > 0 && key[0] == '\uFEFF')
-            {
-                key = key.Substring(1);
-            }
-
-            string valueStr = columns[1].Trim();
-
-            // 通过反射匹配字段名并赋值
-            foreach (var field in fields)
-            {
-                if (field.Name.Equals(key, StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        object val = Convert.ChangeType(valueStr, field.FieldType, CultureInfo.InvariantCulture);
-                        field.SetValue(config, val);
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogWarning($"[ConfigLoader] 字段 {key} 转换失败: {ex.Message}");
-                    }
-                    break;
-                }
-            }
+            EnemyData data = new EnemyData {
+                Id = cols[0],
+                Health = float.Parse(cols[1]),
+                Speed = float.Parse(cols[2]),
+                Damage = int.Parse(cols[3]),
+                Traits = cols[4].Split('|') // 使用 | 分隔多个特性
+            };
+            config.EnemyRecipes[data.Id] = data;
         }
-
-        Debug.Log("[ConfigLoader] 配置文件解析成功");
         return config;
     }
 }
