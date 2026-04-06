@@ -36,7 +36,8 @@ public class ECSManager : MonoBehaviour
     {
         Instance = this;
         // --- 核心改动：调用独立的加载器 ---
-        Config = ConfigLoader.Load("game_config");
+        // 调用合并后的加载器
+        Config = ConfigLoader.Load();
     }
 
     void Start()

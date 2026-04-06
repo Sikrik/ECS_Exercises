@@ -50,4 +50,5 @@ public class GameConfig
     [Header("Spawn Settings")]
     public float InitialSpawnInterval;
     public int EnemyKillScore;
+    
 }
