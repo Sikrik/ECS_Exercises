@@ -30,8 +30,7 @@ public class SlowEffectSystem : SystemBase
 
             if (sr != null)
             {
-                // --- 核心修复：记录基础颜色 (懒加载) ---
-                // 如果实体还没有基础颜色记录，说明当前 sr.color 是它最原始的状态
+                // --- 核心逻辑：记录基础颜色 (懒加载) ---
                 if (!entity.HasComponent<BaseColorComponent>())
                 {
                     entity.AddComponent(new BaseColorComponent(sr.color));
@@ -41,13 +40,13 @@ public class SlowEffectSystem : SystemBase
                 sr.color = IceBlue;
             }
 
-            // 更新计时器
+            // --- 关键修正：使用 RemainingDuration 而不是 Timer ---
             slow.RemainingDuration -= deltaTime;
 
             // 效果结束后的清理工作
             if (slow.RemainingDuration <= 0)
             {
-                // --- 核心修复：从 BaseColorComponent 恢复原始颜色 ---
+                // 从 BaseColorComponent 恢复原始颜色
                 if (sr != null && entity.HasComponent<BaseColorComponent>())
                 {
                     sr.color = entity.GetComponent<BaseColorComponent>().Value;
@@ -59,7 +58,7 @@ public class SlowEffectSystem : SystemBase
                     var vfxComp = entity.GetComponent<AttachedVFXComponent>();
                     if (vfxComp.EffectObject != null)
                     {
-                        // 使用对象池回收特效，而不是直接销毁
+                        // 使用对象池回收特效
                         PoolManager.Instance.Despawn(PoolManager.Instance.SlowVFXPrefab, vfxComp.EffectObject);
                     }
                     entity.RemoveComponent<AttachedVFXComponent>();

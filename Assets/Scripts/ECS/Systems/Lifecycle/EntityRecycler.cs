@@ -1,24 +1,26 @@
 ﻿using UnityEngine;
 
-/// <summary>
-/// 实体回收器：专门负责清理实体关联的 GameObject 和映射关系
-/// </summary>
 public static class EntityRecycler
 {
+    /// <summary>
+    /// 专门负责清理实体关联的 Unity 资源和映射
+    /// </summary>
     public static void Cleanup(Entity e)
     {
         var ecs = ECSManager.Instance;
 
-        // 1. 处理 ViewComponent 关联的 GameObject 回收
+        // 1. 处理视觉对象和映射回收
         if (e.HasComponent<ViewComponent>())
         {
             var view = e.GetComponent<ViewComponent>();
             if (view.GameObject != null)
             {
-                // 从映射表中注销，防止物理系统再找到已失效的物体
-                ecs.UnregisterView(view.GameObject);
+                // 从字典中注销映射
+                var col = view.GameObject.GetComponentInChildren<Collider2D>();
+                if (col != null) ecs.UnregisterView(col.gameObject);
+                else ecs.UnregisterView(view.GameObject);
 
-                // 回收到对象池或销毁
+                // 回收到对象池
                 if (view.Prefab != null)
                 {
                     PoolManager.Instance.Despawn(view.Prefab, view.GameObject);
@@ -30,18 +32,17 @@ public static class EntityRecycler
             }
         }
 
-        // 2. 处理挂载的特效回收（如减速烟雾等）
+        // 2. 处理挂载的特效回收 (如减速烟雾)
         if (e.HasComponent<AttachedVFXComponent>())
         {
             var vfx = e.GetComponent<AttachedVFXComponent>();
             if (vfx.EffectObject != null)
             {
-                // 这里假设减速特效使用的是 PoolManager 里的 SlowVFXPrefab
                 PoolManager.Instance.Despawn(PoolManager.Instance.SlowVFXPrefab, vfx.EffectObject);
             }
         }
 
-        // 3. 标记实体在逻辑上已死亡
+        // 3. 逻辑标记
         e.IsAlive = false;
     }
 }
