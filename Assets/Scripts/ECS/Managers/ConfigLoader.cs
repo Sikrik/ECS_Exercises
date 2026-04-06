@@ -40,21 +40,29 @@ public static class ConfigLoader
         }
     }
 
-    private static void ParseEnemyRecipes(GameConfig config, TextAsset csv) {
-        string[] lines = csv.text.Split('\n');
-        for (int i = 1; i < lines.Length; i++) {
+    private static void ParseEnemyRecipes(GameConfig config, TextAsset csv)
+    {
+        // 优化：使用更健壮的换行符分割方式
+        string[] lines = csv.text.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+    
+        for (int i = 1; i < lines.Length; i++) // 跳过表头
+        {
             string line = lines[i].Trim();
             if (string.IsNullOrEmpty(line)) continue;
+
             string[] cols = line.Split(',');
-        
-            // 假设 CSV 格式：ID, Health, Speed, Damage, HitRecovery, Traits
+            if (cols.Length < 5) continue;
+
+            // 修复：增加 Trim() 和 CultureInfo.InvariantCulture 彻底解决 FormatException
             EnemyData data = new EnemyData {
                 Id = cols[0].Trim(),
-                Health = float.Parse(cols[1]),
-                Speed = float.Parse(cols[2]),
-                Damage = int.Parse(cols[3]),
-                HitRecoveryDuration = float.Parse(cols[4]), // 解析新增列
-                Traits = cols[5].Split('|')
+                Health = float.Parse(cols[1].Trim(), CultureInfo.InvariantCulture),
+                Speed = float.Parse(cols[2].Trim(), CultureInfo.InvariantCulture),
+                Damage = int.Parse(cols[3].Trim(), CultureInfo.InvariantCulture),
+                // 优化：处理空特性清单的情况
+                Traits = string.IsNullOrWhiteSpace(cols[4]) ? 
+                    new string[0] : 
+                    cols[4].Trim().Split('|')
             };
             config.EnemyRecipes[data.Id] = data;
         }
