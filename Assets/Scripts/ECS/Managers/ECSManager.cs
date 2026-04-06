@@ -91,6 +91,7 @@ public class ECSManager : MonoBehaviour
     {
         _systems.Clear();
         Grid = new GridSystem(2.0f, _entities); 
+        _systems.Add(Grid); // 关键修复：必须添加到系统列表，它才会运行！
 
         // 1. 输入与AI
         _systems.Add(new PlayerInputSystem(_entities));
@@ -163,6 +164,22 @@ public class ECSManager : MonoBehaviour
 
     public void DestroyEntity(Entity e)
     {
+        if (e.HasComponent<ViewComponent>())
+        {
+            var view = e.GetComponent<ViewComponent>();
+            if (view.GameObject != null)
+            {
+                // 必须从映射表中移除，否则物理系统会继续报错
+                _gameObjectToEntity.Remove(view.GameObject.GetInstanceID());
+            
+                // 回收到池子
+                if (view.Prefab != null)
+                    PoolManager.Instance.Despawn(view.Prefab, view.GameObject);
+                else
+                    Destroy(view.GameObject);
+            }
+        }
+
         e.IsAlive = false;
         _entities.Remove(e);
     }
