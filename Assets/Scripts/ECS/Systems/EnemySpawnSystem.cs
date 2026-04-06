@@ -38,6 +38,7 @@ public class EnemySpawnSystem : SystemBase
         enemy.AddComponent(new VelocityComponent(0, 0));
         enemy.AddComponent(new ViewComponent(go, prefab));
         enemy.AddComponent(new NeedsBakingTag()); // 等待烘焙系统处理物理
+        enemy.AddComponent(new DamageComponent(config.EnemyDamage));
 
         // --- BUG 修复：坦克分类讨论 ---
         // 只有非坦克单位才添加 BouncyTag，使其能被弹开

@@ -15,22 +15,24 @@ public class HealthSystem : SystemBase
             var entity = entities[i];
             var health = entity.GetComponent<HealthComponent>();
             
+            // 核心逻辑：检测死亡
             if (health.CurrentHealth <= 0)
             {
-                // 使用 EnemyTag 识别敌人死亡并计分
+                // 1. 如果是敌人死亡：增加得分
                 if (entity.HasComponent<EnemyTag>())
                 {
                     ECSManager.Instance.Score += ECSManager.Instance.Config.EnemyKillScore;
                 }
                 
-                // 使用 PlayerTag 识别玩家死亡
+                // 2. 如果是玩家死亡：暂停游戏并显示 UI
                 if (entity.HasComponent<PlayerTag>())
                 {
                     Debug.Log("游戏结束！");
-                    Time.timeScale = 0;
-                    UIManager.Instance.ShowGameOver();
+                    Time.timeScale = 0; // 暂停所有物理和逻辑更新
+                    UIManager.Instance.ShowGameOver(); // 弹出 UI
                 }
                 
+                // 3. 统一通过 ECSManager 销毁实体数据及视觉物体
                 ECSManager.Instance.DestroyEntity(entity);
             }
         }

@@ -2,7 +2,7 @@
 using UnityEngine;
 
 /// <summary>
-/// 击退系统：处理实体间的物理排斥效果，排除子弹触发的击退。
+/// 击退系统：处理防重叠修正与物理反馈。
 /// </summary>
 public class KnockbackSystem : SystemBase
 {
@@ -11,40 +11,36 @@ public class KnockbackSystem : SystemBase
     public override void Update(float deltaTime)
     {
         var config = ECSManager.Instance.Config;
-        
-        // 筛选出所有发生了碰撞事件的实体
         var hitEntities = GetEntitiesWith<CollisionEventComponent>();
 
         foreach (var entity in hitEntities)
         {
-            // 核心修复：如果发起碰撞的是子弹，则不产生物理弹开效果
             if (entity.HasComponent<BulletTag>()) continue;
 
             var evt = entity.GetComponent<CollisionEventComponent>();
             var target = evt.Target;
 
-            // 仅对具有 BouncyTag（弹性标记）的活着的实体生效
-            if (target != null && target.IsAlive && target.HasComponent<BouncyTag>())
+            if (target != null && target.IsAlive)
             {
                 var tPos = target.GetComponent<PositionComponent>();
-                var tVel = target.GetComponent<VelocityComponent>();
 
-                // 1. 位置修正：根据碰撞法线将目标推开，防止重叠嵌入
+                // --- 核心修复 2：通用位置修正 (防重叠) ---
+                // 无论是否有弹性，都必须沿法线推开，防止嵌入重叠
                 tPos.X += evt.Normal.x * config.CollisionPushDistance;
                 tPos.Y += evt.Normal.y * config.CollisionPushDistance;
 
-                // 2. 速度反馈：赋予目标瞬间的反向冲力
-                if (tVel != null)
+                // --- 差异化反馈：只有有弹性的怪才会被弹飞 ---
+                if (target.HasComponent<BouncyTag>())
                 {
-                    tVel.VX = evt.Normal.x * config.CollisionBounceForce;
-                    tVel.VY = evt.Normal.y * config.CollisionBounceForce;
+                    var tVel = target.GetComponent<VelocityComponent>();
+                    if (tVel != null)
+                    {
+                        tVel.VX = evt.Normal.x * config.CollisionBounceForce;
+                        tVel.VY = evt.Normal.y * config.CollisionBounceForce;
+                    }
+                    // 挂载受击硬直，暂时屏蔽 AI 追踪
+                    target.AddComponent(new HitRecoveryComponent { Timer = config.EnemyHitRecoveryDuration });
                 }
-
-                // 3. 状态挂载：给目标添加受击硬直（EnemyAISystem 会根据此组件暂停追踪）
-                target.AddComponent(new HitRecoveryComponent 
-                { 
-                    Timer = config.EnemyHitRecoveryDuration 
-                });
             }
         }
     }

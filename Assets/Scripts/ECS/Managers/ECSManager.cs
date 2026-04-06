@@ -64,80 +64,63 @@ public class ECSManager : MonoBehaviour
     /// <summary>
     /// 初始化系统流水线：顺序决定了逻辑优先级
     /// </summary>
-    private void InitSystems()
-    {
-        _systems.Clear();
-        Grid = new GridSystem(2.0f, _entities); 
-        _systems.Add(Grid); // 必须添加，否则索敌失效
+   private void InitSystems()
+{
+    _systems.Clear();
 
-        // --- 1. 感知层 (捕捉输入与移动决策) ---
-        _systems.Add(new InputCaptureSystem(_entities));    // 读键盘意图
-        _systems.Add(new EnemyTrackingSystem(_entities));   // 怪物追踪决策
+    // --- 阶段 1：空间环境初始化 ---
+    // 必须最先运行，为后续射击和追踪系统提供最新的敌人位置网格
+    Grid = new GridSystem(2.0f, _entities); 
+    _systems.Add(Grid); //
 
-        // --- 2. 控制层 (意图转换为物理速度) ---
-        _systems.Add(new PlayerControlSystem(_entities));   // 输入意图 -> 速度
-        _systems.Add(new StateTimerSystem(_entities));      // 击退/硬直计时器
+    // --- 阶段 2：感知层 (捕捉玩家意图与 AI 决策) ---
+    // 此时只产生“移动意图”，不直接修改物理速度，实现输入与物理的彻底解耦
+    _systems.Add(new InputCaptureSystem(_entities));    // 捕捉键盘按键与子弹切换指令
+    _systems.Add(new EnemyTrackingSystem(_entities));   // 计算怪物的追踪方向意图
 
-        // --- 3. 基础生产与物理层 ---
-        _systems.Add(new EnemySpawnSystem(_entities));      // 敌人生成
-        _systems.Add(new PlayerShootingSystem(_entities, Grid)); // 射击逻辑
-        _systems.Add(new PhysicsBakingSystem(_entities));   // 物理组件烘焙
-        _systems.Add(new MovementSystem(_entities));        // 坐标位移更新
-        _systems.Add(new ViewSyncSystem(_entities));        // 同步坐标到 GameObject
+    // --- 阶段 3：状态控制层 (将意图转化为最终速度) ---
+    // 在这里综合处理“想去哪”与“是否处于被击退/硬直状态”
+    _systems.Add(new PlayerControlSystem(_entities));   // 将玩家移动意图转为 Velocity
+    _systems.Add(new StateTimerSystem(_entities));      // 处理击退、受击硬直的倒计时逻辑
 
-        // --- 4. 战斗响应流水线 ---
-        _systems.Add(new PhysicsDetectionSystem(_entities)); // 通用碰撞检测
-        _systems.Add(new DamageSystem(_entities));           // 处理伤害计算
-        _systems.Add(new KnockbackSystem(_entities));        // 处理物理排斥
-        _systems.Add(new BulletEffectSystem(_entities));     // 处理子弹特效并销毁
+    // --- 阶段 4：生产与物理烘焙 ---
+    // 生成新实体并将其 Unity 组件“翻译”为 ECS 数据
+    _systems.Add(new EnemySpawnSystem(_entities));      // 定时生成不同类型的敌人
+    _systems.Add(new PlayerShootingSystem(_entities, Grid)); // 射击逻辑并计算目标
+    _systems.Add(new PhysicsBakingSystem(_entities));   // 烘焙 Collider 并注册视图映射
 
-        // --- 5. 状态维持与视觉反馈 (关键修复点) ---
-        _systems.Add(new HealthSystem(_entities));           // 检查死亡
-        _systems.Add(new InvincibleVisualSystem(_entities)); // 受击闪烁
-        _systems.Add(new VFXSystem(_entities));              // 修复：让特效跟随目标
-        _systems.Add(new LightningRenderSystem(_entities));  // 修复：渲染闪电链
-        _systems.Add(new EventCleanupSystem(_entities));     // 清理本帧碰撞事件
-        _systems.Add(new SlowEffectSystem(_entities));
-    }
+    // --- 阶段 5：位移执行与物理同步 ---
+    // 在进行碰撞检测前，必须先更新坐标并同步给 Unity Transform
+    _systems.Add(new MovementSystem(_entities));        // 应用速度更新 Position
+    _systems.Add(new ViewSyncSystem(_entities));        // 坐标同步：让物理碰撞体跟上逻辑位置
+
+    // --- 阶段 6：通用碰撞响应流水线 (核心解耦逻辑) ---
+    // 基于 CollisionEventComponent 的事件驱动模型
+    _systems.Add(new PhysicsDetectionSystem(_entities)); // [核心] 发现物理重叠并产生碰撞事件
+    _systems.Add(new DamageSystem(_entities));           // 响应事件：处理扣血计算
+    _systems.Add(new KnockbackSystem(_entities));        // 响应事件：处理位置修正（防重叠）与速度反弹
+    _systems.Add(new BulletEffectSystem(_entities));     // 响应事件：处理 AOE/闪电/减速并销毁子弹
+
+    // --- 阶段 7：状态维持、生命周期与视觉反馈 ---
+    _systems.Add(new SlowEffectSystem(_entities));       // 更新减速状态并恢复颜色表现
+    _systems.Add(new HealthSystem(_entities));           // 检查血量归零并执行实体回收
+    _systems.Add(new LifetimeSystem(_entities));         // 销毁寿命到期的特效或子弹
+    _systems.Add(new InvincibleVisualSystem(_entities)); // 处理受击后的 Alpha 闪烁反馈
+    _systems.Add(new VFXSystem(_entities));              // 让减速烟雾等特效跟随逻辑坐标
+    _systems.Add(new LightningRenderSystem(_entities));  // 绘制连锁闪电的电弧表现
+
+    // --- 阶段 8：帧末清理 ---
+    // 最后一环，移除本帧产生的瞬时碰撞事件，防止下一帧重复触发
+    _systems.Add(new EventCleanupSystem(_entities));     //
+}
 
     /// <summary>
     /// 销毁实体并清理所有关联资源
     /// </summary>
-    public void DestroyEntity(Entity e)
-    {
-        // 1. 清理主体视觉对象
-        if (e.HasComponent<ViewComponent>())
-        {
-            var view = e.GetComponent<ViewComponent>();
-            if (view.GameObject != null)
-            {
-                _gameObjectToEntity.Remove(view.GameObject.GetInstanceID());
-                if (view.Prefab != null) 
-                    PoolManager.Instance.Despawn(view.Prefab, view.GameObject);
-                else 
-                    Destroy(view.GameObject);
-            }
-        }
-
-        // 2. 修复：清理挂载在该实体上的 VFX 特效 (如减速烟雾)
-        if (e.HasComponent<AttachedVFXComponent>())
-        {
-            var vfx = e.GetComponent<AttachedVFXComponent>();
-            if (vfx.EffectObject != null)
-            {
-                // 将特效物体回收到池中
-                PoolManager.Instance.Despawn(PoolManager.Instance.SlowVFXPrefab, vfx.EffectObject);
-            }
-        }
-
-        e.IsAlive = false;
-        _entities.Remove(e);
-    }
-
+    // 仅展示核心修改部分，其余保持不变
     private void CreatePlayer()
     {
         if (PlayerPrefab == null) return;
-        
         GameObject go = Instantiate(PlayerPrefab, Vector3.zero, Quaternion.identity);
 
         PlayerEntity = CreateEntity();
@@ -146,15 +129,33 @@ public class ECSManager : MonoBehaviour
         PlayerEntity.AddComponent(new VelocityComponent(0, 0)); 
         PlayerEntity.AddComponent(new HealthComponent(Config.PlayerMaxHealth));
         PlayerEntity.AddComponent(new ViewComponent(go, PlayerPrefab));
-        PlayerEntity.AddComponent(new NeedsBakingTag());
-        // ... 组件挂载
-        PlayerEntity.AddComponent(new ViewComponent(go, PlayerPrefab));
     
-        // 2. 核心修复：必须手动注册视图，否则碰撞检测找不到玩家实体！
-        RegisterEntityView(go, PlayerEntity);
-        
-        // 设置玩家的碰撞过滤：只撞敌人层
+        // --- 核心修复：挂载此标记，让 BakingSystem 去注册 View 和 Collider ---
+        PlayerEntity.AddComponent(new NeedsBakingTag()); 
+    
         PlayerEntity.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Enemy")));
+    }
+
+    public void DestroyEntity(Entity e)
+    {
+        // --- 核心修复：物理和视觉层必须同步清理 ---
+        if (e.HasComponent<ViewComponent>())
+        {
+            var view = e.GetComponent<ViewComponent>();
+            if (view.GameObject != null)
+            {
+                // 如果有碰撞体，也需要从映射表中移除
+                var col = view.GameObject.GetComponentInChildren<Collider2D>();
+                if (col != null) _gameObjectToEntity.Remove(col.gameObject.GetInstanceID());
+                else _gameObjectToEntity.Remove(view.GameObject.GetInstanceID());
+
+                if (view.Prefab != null) PoolManager.Instance.Despawn(view.Prefab, view.GameObject);
+                else Destroy(view.GameObject);
+            }
+        }
+    
+        e.IsAlive = false;
+        _entities.Remove(e);
     }
 
     private void LoadConfig()

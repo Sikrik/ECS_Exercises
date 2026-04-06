@@ -1,6 +1,9 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// 怪物追踪系统：仅处理正常状态下的追踪逻辑，不干扰物理反馈。
+/// </summary>
 public class EnemyTrackingSystem : SystemBase
 {
     public EnemyTrackingSystem(List<Entity> entities) : base(entities) { }
@@ -11,14 +14,18 @@ public class EnemyTrackingSystem : SystemBase
         if (player == null || !player.IsAlive) return;
         var pPos = player.GetComponent<PositionComponent>();
 
-        // 核心解耦点：通过 GetEntitiesWith 自动过滤掉处于“击退”或“硬直”状态的敌人
-        // 只要在筛选条件里不包含 KnockbackComponent，处于击退中的怪就不会进这个循环
-        var trackingEnemies = GetEntitiesWith<EnemyTag, PositionComponent, VelocityComponent, EnemyStatsComponent>();
+        // 筛选带 EnemyTag 的活着的实体
+        var enemies = GetEntitiesWith<EnemyTag, PositionComponent, VelocityComponent, EnemyStatsComponent>();
 
-        foreach (var enemy in trackingEnemies)
+        foreach (var enemy in enemies)
         {
-            // 如果身上有击退或硬直，跳过追踪（意图被抑制）
-            if (enemy.HasComponent<KnockbackComponent>() || enemy.HasComponent<HitRecoveryComponent>()) continue;
+            // --- 核心解耦点 ---
+            // 如果敌人身上有“硬直”或“击退”标记，系统直接跳过本帧追踪
+            // 这样物理系统的速度反馈（Knockback）就不会被 AI 覆盖掉
+            if (enemy.HasComponent<HitRecoveryComponent>() || enemy.HasComponent<KnockbackComponent>())
+            {
+                continue; 
+            }
 
             var ePos = enemy.GetComponent<PositionComponent>();
             var vel = enemy.GetComponent<VelocityComponent>();
@@ -31,6 +38,7 @@ public class EnemyTrackingSystem : SystemBase
             if (dist > 0.1f)
             {
                 float speed = stats.MoveSpeed;
+                // 应用减速组件的影响
                 if (enemy.HasComponent<SlowEffectComponent>())
                     speed *= (1f - enemy.GetComponent<SlowEffectComponent>().SlowRatio);
 
