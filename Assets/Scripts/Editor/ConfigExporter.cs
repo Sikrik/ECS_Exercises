@@ -21,6 +21,7 @@ public class ConfigExporter
 
         foreach (var field in fields)
         {
+            if (field.FieldType.IsGenericType) continue;
             string name = field.Name;
             object value = field.GetValue(config);
             sb.AppendLine($"{name},{value},"); // 写入 Key 和 Value

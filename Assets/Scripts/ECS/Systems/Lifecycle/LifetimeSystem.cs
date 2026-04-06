@@ -20,10 +20,10 @@ public class LifetimeSystem : SystemBase
             var lifetime = entity.GetComponent<LifetimeComponent>();
             
             // 1. 扣除剩余时间
-            lifetime.RemainingTime -= deltaTime;
+            lifetime.Duration -= deltaTime;
             
             // 2. 如果寿命结束，销毁实体
-            if (lifetime.RemainingTime <= 0)
+            if (lifetime.Duration <= 0)
             {
                 // 调用 ECSManager 的统一销毁接口
                 // 该接口会根据 ViewComponent 中的 Prefab 引用自动调用 PoolManager.Despawn

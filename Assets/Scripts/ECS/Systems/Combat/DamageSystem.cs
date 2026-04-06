@@ -29,7 +29,7 @@ public class DamageSystem : SystemBase
                     {
                         evt.Target.AddComponent(new InvincibleComponent 
                         { 
-                            RemainingTime = ECSManager.Instance.Config.PlayerInvincibleDuration 
+                            Duration = ECSManager.Instance.Config.PlayerInvincibleDuration 
                         });
                         Debug.Log($"玩家受击！当前血量: {health.CurrentHealth}");
                     }

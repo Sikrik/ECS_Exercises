@@ -1,18 +1,18 @@
 ﻿public class InvincibleComponent : Component 
 {
-    public float RemainingTime;
+    public float Duration;
 }
 
 public class SlowEffectComponent : Component 
 {
     public float SlowRatio;
-    public float RemainingDuration;
-    public SlowEffectComponent(float r, float d) { SlowRatio = r; RemainingDuration = d; }
+    public float Duration;
+    public SlowEffectComponent(float r, float d) { SlowRatio = r; Duration = d; }
 }
 
 public class LifetimeComponent : Component 
 {
-    public float RemainingTime; // 子弹、特效等的生存计时
+    public float Duration; // 子弹、特效等的生存计时
 }
 
 public class AIStateComponent : Component { public float CurrentCooldown; }

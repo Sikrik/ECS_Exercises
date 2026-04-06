@@ -14,28 +14,11 @@ public class GameConfig
     public float CollisionPushDistance = 0.2f; 
     public float CollisionBounceForce = 5.0f;
 
-    [Header("Bullet Settings")]
-    public float BulletSpeed;
-    public float BulletDamage;
-    public float BulletLifeTime;
-    public float ShootInterval;
-
-    [Header("Special Bullet Settings")]
-    public float SlowBulletShootInterval;
-    public float SlowRatio;
-    public float SlowDuration;
-    public float ChainLightningShootInterval;
-    public int ChainTargets;
-    public float ChainRange;
-    public float ChainDamage;
-    public float AOEBulletShootInterval;
-    public float AOERadius;
-    public float AOEDamage;
-    public Dictionary<string, EnemyData> EnemyRecipes = new Dictionary<string, EnemyData>();
-    public Dictionary<string, BulletData> BulletRecipes = new Dictionary<string, BulletData>();
-
     [Header("Spawn Settings")]
     public float InitialSpawnInterval;
-    public int EnemyKillScore;
-    
+
+    // 核心数据字典：用于存储从 CSV 加载的具体配方
+    [Header("Data Recipes")]
+    public Dictionary<string, EnemyData> EnemyRecipes = new Dictionary<string, EnemyData>();
+    public Dictionary<string, BulletData> BulletRecipes = new Dictionary<string, BulletData>();
 }

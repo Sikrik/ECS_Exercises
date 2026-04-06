@@ -12,6 +12,10 @@ public class UIManager : MonoBehaviour
     public GameObject GameOverPanel;  // 游戏结束面板 (Panel)
     public TextMeshProUGUI FinalScoreText; // 最终得分显示 (TMP)
 
+    // 👇 新增缓存变量：用于脏标记检测，避免每帧重复拼接字符串或刷新组件
+    private int _lastScore = -1;
+    private float _lastHealthRatio = -1f;
+
     void Awake()
     {
         // 单例模式，确保全局唯一
@@ -24,7 +28,7 @@ public class UIManager : MonoBehaviour
 
     void Update()
     {
-        // 每帧同步血量和得分
+        // 每帧检查血量和得分是否需要同步
         UpdateHealthUI();
         UpdateScoreUI();
     }
@@ -35,16 +39,18 @@ public class UIManager : MonoBehaviour
     void UpdateHealthUI()
     {
         // 安全检查：确保玩家实体存在且拥有血量组件
-        if (ECSManager.Instance?.PlayerEntity == null) return;
+        if (ECSManager.Instance?.PlayerEntity == null || !ECSManager.Instance.PlayerEntity.IsAlive) return;
         if (!ECSManager.Instance.PlayerEntity.HasComponent<HealthComponent>()) return;
         
         var health = ECSManager.Instance.PlayerEntity.GetComponent<HealthComponent>();
         
-        // 计算血量百分比 (0 到 1)，赋值给滑块
-        if (HealthSlider != null)
+        // 计算血量百分比 (0 到 1)
+        float ratio = health.MaxHealth > 0 ? health.CurrentHealth / health.MaxHealth : 0;
+        
+        // 👇 脏标记检测：如果比例有变化才更新滑块（加入 0.001 容差防止浮点数精度误差频繁触发）
+        if (HealthSlider != null && Mathf.Abs(_lastHealthRatio - ratio) > 0.001f)
         {
-            // 防止除零错误，确保 MaxHealth 正常
-            float ratio = health.MaxHealth > 0 ? health.CurrentHealth / health.MaxHealth : 0;
+            _lastHealthRatio = ratio;
             HealthSlider.value = ratio;
         }
     }
@@ -54,8 +60,12 @@ public class UIManager : MonoBehaviour
     /// </summary>
     void UpdateScoreUI()
     {
-        if (ScoreText != null)
-            ScoreText.text = $"得分: {ECSManager.Instance.Score}";
+        // 👇 脏标记检测：只有当分数真的发生变化时，才执行耗费性能的 $"" 字符串拼接
+        if (ScoreText != null && _lastScore != ECSManager.Instance.Score)
+        {
+            _lastScore = ECSManager.Instance.Score;
+            ScoreText.text = $"得分: {_lastScore}";
+        }
     }
 
     /// <summary>

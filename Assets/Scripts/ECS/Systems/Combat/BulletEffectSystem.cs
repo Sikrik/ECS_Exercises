@@ -34,12 +34,12 @@ public class BulletEffectSystem : SystemBase
                 if (target.HasComponent<SlowEffectComponent>())
                 {
                     // 如果目标已有减速效果，则刷新持续时间
-                    target.GetComponent<SlowEffectComponent>().RemainingDuration = bSlow.RemainingDuration;
+                    target.GetComponent<SlowEffectComponent>().Duration = bSlow.Duration;
                 }
                 else
                 {
                     // 否则添加减速组件并生成视觉特效
-                    target.AddComponent(new SlowEffectComponent(bSlow.SlowRatio, bSlow.RemainingDuration));
+                    target.AddComponent(new SlowEffectComponent(bSlow.SlowRatio, bSlow.Duration));
                     if (PoolManager.Instance.SlowVFXPrefab != null)
                     {
                         GameObject vfxGo = PoolManager.Instance.Spawn(PoolManager.Instance.SlowVFXPrefab, Vector3.zero, Quaternion.identity);
@@ -75,7 +75,7 @@ public class BulletEffectSystem : SystemBase
             GameObject vfxGo = pool.Spawn(pool.ExplosionVFXPrefab, new Vector3(x, y, 0), Quaternion.identity);
             Entity vfxEntity = ecs.CreateEntity();
             vfxEntity.AddComponent(new ViewComponent(vfxGo, pool.ExplosionVFXPrefab));
-            vfxEntity.AddComponent(new LifetimeComponent { RemainingTime = 1.0f });
+            vfxEntity.AddComponent(new LifetimeComponent { Duration = 1.0f });
         }
 
         // 查找范围内敌人并扣除血量
@@ -143,7 +143,7 @@ public class BulletEffectSystem : SystemBase
                     Entity vfxEntity = ecs.CreateEntity();
                     vfxEntity.AddComponent(new LightningVFXComponent(lastPos, nextPos));
                     vfxEntity.AddComponent(new ViewComponent(vfxGo, pool.LightningChainVFX));
-                    vfxEntity.AddComponent(new LifetimeComponent { RemainingTime = 0.2f });
+                    vfxEntity.AddComponent(new LifetimeComponent { Duration = 0.2f });
                 }
 
                 current = next;

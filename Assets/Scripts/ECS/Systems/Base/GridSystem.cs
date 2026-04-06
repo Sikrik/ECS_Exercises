@@ -5,6 +5,9 @@ public class GridSystem : SystemBase
 {
     public float CellSize;
     public Dictionary<Vector2Int, List<Entity>> Grid = new Dictionary<Vector2Int, List<Entity>>();
+    
+    // 👇 新增：内部 List 对象池，用于复用网格分配的列表
+    private Stack<List<Entity>> _listPool = new Stack<List<Entity>>();
 
     public GridSystem(float cellSize, List<Entity> entities) : base(entities)
     {
@@ -13,14 +16,28 @@ public class GridSystem : SystemBase
 
     public override void Update(float deltaTime)
     {
+        // 1. 回收上一帧产生的所有 List 到池子里
+        foreach (var list in Grid.Values)
+        {
+            list.Clear();
+            _listPool.Push(list);
+        }
         Grid.Clear();
+
+        // 2. 重新填充本帧的网格
         var enemies = GetEntitiesWith<EnemyTag, PositionComponent>();
         foreach (var e in enemies)
         {
             if (!e.IsAlive) continue;
+            
             var pos = e.GetComponent<PositionComponent>();
             var key = GetKey(pos.X, pos.Y);
-            if (!Grid.ContainsKey(key)) Grid[key] = new List<Entity>();
+            
+            if (!Grid.ContainsKey(key)) 
+            {
+                // 从池子里拿，只有当池子空了才 fallback 到 new
+                Grid[key] = _listPool.Count > 0 ? _listPool.Pop() : new List<Entity>();
+            }
             Grid[key].Add(e);
         }
     }
@@ -36,7 +53,6 @@ public class GridSystem : SystemBase
         List<Entity> nearby = new List<Entity>();
         Vector2Int center = GetKey(x, y);
         
-        // 优化：根据传入的 radius 动态扩大搜索范围
         for (int i = -radius; i <= radius; i++) {
             for (int j = -radius; j <= radius; j++) {
                 if (Grid.TryGetValue(center + new Vector2Int(i, j), out var list)) 

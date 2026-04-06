@@ -1,70 +1,47 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// 减速效果系统：负责维持减速状态、更新计时器以及处理冰冻视觉效果
-/// </summary>
 public class SlowEffectSystem : SystemBase
 {
-    // 定义冰蓝色常量
-    private readonly Color IceBlue = new Color(0.4f, 0.7f, 1.0f, 1.0f);
+    // 提取统一的冰蓝色缓存，避免每帧重复 new Color()
+    private readonly Color _slowColor = new Color(0.5f, 0.8f, 1f, 1f); 
 
     public SlowEffectSystem(List<Entity> entities) : base(entities) { }
 
     public override void Update(float deltaTime)
     {
-        // 筛选出所有被减速且拥有视图的实体
-        var entities = GetEntitiesWith<SlowEffectComponent, ViewComponent>();
+        // 抓取带有减速组件、表现组件和基础颜色组件的实体
+        var entities = GetEntitiesWith<SlowEffectComponent, ViewComponent, BaseColorComponent>();
 
-        foreach (var entity in entities)
+        // 👇 优化点 1：倒序遍历，防止移除组件时引发集合跳位
+        for (int i = entities.Count - 1; i >= 0; i--)
         {
+            var entity = entities[i];
             var slow = entity.GetComponent<SlowEffectComponent>();
             var view = entity.GetComponent<ViewComponent>();
+            var baseColor = entity.GetComponent<BaseColorComponent>();
 
-            // 安全获取 SpriteRenderer
-            SpriteRenderer sr = null;
-            if (view.GameObject != null)
-            {
-                view.GameObject.TryGetComponent(out sr);
-            }
+            // 1. 扣减减速时间
+            slow.Duration -= deltaTime;
 
-            if (sr != null)
+            // 2. 状态更新与视觉表现
+            if (slow.Duration > 0)
             {
-                // --- 核心逻辑：记录基础颜色 (懒加载) ---
-                if (!entity.HasComponent<BaseColorComponent>())
+                // 👇 优化点 2：直接使用烘焙阶段缓存好的 SpriteRenderer，干掉 GetComponent！
+                if (view.SpriteRenderer != null)
                 {
-                    entity.AddComponent(new BaseColorComponent(sr.color));
+                    view.SpriteRenderer.color = _slowColor;
+                }
+            }
+            else
+            {
+                // 3. 时间结束：恢复原状
+                if (view.SpriteRenderer != null)
+                {
+                    view.SpriteRenderer.color = baseColor.Color;
                 }
                 
-                // 只要减速未结束，维持冰蓝色
-                sr.color = IceBlue;
-            }
-
-            // --- 关键修正：使用 RemainingDuration 而不是 Timer ---
-            slow.RemainingDuration -= deltaTime;
-
-            // 效果结束后的清理工作
-            if (slow.RemainingDuration <= 0)
-            {
-                // 从 BaseColorComponent 恢复原始颜色
-                if (sr != null && entity.HasComponent<BaseColorComponent>())
-                {
-                    sr.color = entity.GetComponent<BaseColorComponent>().Value;
-                }
-
-                // 清理关联的冰冻特效对象
-                if (entity.HasComponent<AttachedVFXComponent>())
-                {
-                    var vfxComp = entity.GetComponent<AttachedVFXComponent>();
-                    if (vfxComp.EffectObject != null)
-                    {
-                        // 使用对象池回收特效
-                        PoolManager.Instance.Despawn(PoolManager.Instance.SlowVFXPrefab, vfxComp.EffectObject);
-                    }
-                    entity.RemoveComponent<AttachedVFXComponent>();
-                }
-
-                // 移除减速组件
+                // 移除减速组件，怪物恢复原本速度，下一帧不再进入此循环
                 entity.RemoveComponent<SlowEffectComponent>();
             }
         }

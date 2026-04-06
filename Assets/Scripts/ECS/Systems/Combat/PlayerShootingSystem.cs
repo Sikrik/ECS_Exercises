@@ -58,7 +58,7 @@ public class PlayerShootingSystem : SystemBase
         
         // 👇 核心替换：使用专属子弹配方里的通用参数
         bullet.AddComponent(new VelocityComponent(dir.x * recipe.Speed, dir.y * recipe.Speed));
-        bullet.AddComponent(new LifetimeComponent { RemainingTime = recipe.LifeTime });
+        bullet.AddComponent(new LifetimeComponent { Duration= recipe.LifeTime });
         bullet.AddComponent(new DamageComponent(recipe.Damage));
         
         bullet.AddComponent(new ViewComponent(bulletGo, prefab));

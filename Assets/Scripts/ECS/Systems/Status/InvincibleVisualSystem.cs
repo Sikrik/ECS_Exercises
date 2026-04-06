@@ -7,53 +7,45 @@ public class InvincibleVisualSystem : SystemBase
 
     public override void Update(float deltaTime)
     {
-        var invincibleEntities = GetEntitiesWith<InvincibleComponent>();
+        // 抓取所有处于无敌状态的实体
+        var entities = GetEntitiesWith<InvincibleComponent, ViewComponent, BaseColorComponent>();
 
-        foreach (var entity in invincibleEntities)
+        for (int i = entities.Count - 1; i >= 0; i--)
         {
+            var entity = entities[i];
             var invincible = entity.GetComponent<InvincibleComponent>();
-
-            // --- 核心修复 1：必须先进行倒计时，确保无敌状态能正常结束 ---
-            invincible.RemainingTime -= deltaTime;
-            if (invincible.RemainingTime <= 0)
-            {
-                entity.RemoveComponent<InvincibleComponent>();
-                ResetVisual(entity); // 恢复本色
-                continue;
-            }
-
-            // 视觉反馈逻辑
-            if (entity.HasComponent<ViewComponent>())
-            {
-                var view = entity.GetComponent<ViewComponent>();
-                if (view.GameObject != null)
-                {
-                    // 使用 GetComponentInChildren 兼容子物体渲染器
-                    var sr = view.GameObject.GetComponentInChildren<SpriteRenderer>();
-                    if (sr != null)
-                    {
-                        float alpha = Mathf.PingPong(Time.time * 15, 1.0f);
-                        Color c = sr.color;
-                        sr.color = new Color(c.r, c.g, c.b, alpha);
-                    }
-                }
-            }
-        }
-    }
-
-    private void ResetVisual(Entity entity)
-    {
-        if (entity.HasComponent<ViewComponent>())
-        {
             var view = entity.GetComponent<ViewComponent>();
-            if (view.GameObject != null)
+            var baseColor = entity.GetComponent<BaseColorComponent>();
+
+            // 1. 扣减无敌时间
+            invincible.Duration -= deltaTime;
+
+            if (invincible.Duration> 0)
             {
-                var sr = view.GameObject.GetComponentInChildren<SpriteRenderer>();
-                if (sr != null)
+                // 2. 播放无敌闪烁特效 (通过 Time.time 实现平滑透明度渐变)
+                if (view.SpriteRenderer != null)
                 {
-                    Color c = sr.color;
-                    sr.color = new Color(c.r, c.g, c.b, 1.0f);
+                    // 使用 Mathf.PingPong 让 alpha 在 0.5 到 1 之间快速循环
+                    float alpha = Mathf.PingPong(Time.time * 15f, 1f) * 0.5f + 0.5f; 
+                    
+                    // 基于基础颜色创建闪烁颜色，只改变透明度
+                    Color flashColor = baseColor.Color;
+                    flashColor.a = alpha;
+                    
+                    // 👇 直接赋值给缓存的渲染器
+                    view.SpriteRenderer.color = flashColor;
                 }
+            }
+            else
+            {
+                // 3. 无敌结束，恢复基础颜色 (完全不透明)
+                if (view.SpriteRenderer != null)
+                {
+                    view.SpriteRenderer.color = baseColor.Color;
+                }
+                
+                // 移除无敌组件，让实体重新变得可受击
+                entity.RemoveComponent<InvincibleComponent>();
             }
         }
     }

@@ -22,6 +22,9 @@ public class ECSManager : MonoBehaviour
     private List<Entity> _entities = new List<Entity>();
     private List<SystemBase> _systems = new List<SystemBase>();
     
+    // 👇 新增：逻辑实体对象池，彻底消灭 new Entity() 产生的垃圾
+    private Stack<Entity> _entityPool = new Stack<Entity>();
+    
     // 映射表：用于从 Unity 的 GameObject 快速找回 ECS Entity
     private Dictionary<int, Entity> _gameObjectToEntity = new Dictionary<int, Entity>();
 
@@ -35,8 +38,6 @@ public class ECSManager : MonoBehaviour
     void Awake()
     {
         Instance = this;
-        // --- 核心改动：调用独立的加载器 ---
-        // 调用合并后的加载器
         Config = ConfigLoader.Load();
     }
 
@@ -44,12 +45,11 @@ public class ECSManager : MonoBehaviour
     {
         PlayerEntity = PlayerFactory.Create(PlayerPrefab, Config);
         _systems = SystemBootstrap.CreateDefaultSystems(_entities, out var grid);
-        Grid = grid; // 缓存网格引用供工厂使用
+        Grid = grid; 
     }
 
     void Update()
     {
-        // 每帧开始前清理查询缓存
         foreach (var list in QueryCache.Values)
         {
             ReturnListToPool(list);
@@ -57,46 +57,37 @@ public class ECSManager : MonoBehaviour
         QueryCache.Clear();
 
         float deltaTime = Time.deltaTime;
-        // 驱动所有系统按顺序执行
         for (int i = 0; i < _systems.Count; i++)
         {
             _systems[i].Update(deltaTime);
         }
     }
-    // 在 ECSManager.cs 类中添加以下方法
 
     /// <summary>
-    /// 真正的物理移除：从实体列表中彻底删除
+    /// 获取实体（池化获取）
     /// </summary>
-    public void RemoveEntityInternal(Entity e)
+    public Entity CreateEntity()
     {
-        if (_entities.Contains(e))
-        {
-            _entities.Remove(e);
-        }
+        // 如果池子里有，就拿出来复用；如果池子空了（比如游戏刚开始），才 new 一个新的
+        Entity e = _entityPool.Count > 0 ? _entityPool.Pop() : new Entity();
+        e.IsAlive = true;
+        _entities.Add(e);
+        return e;
     }
 
     /// <summary>
-    /// 注销 GameObject 与 Entity 的映射关系
+    /// 常规销毁流程（表现层与逻辑层同步回收）
     /// </summary>
-    public void UnregisterView(GameObject go)
-    {
-        if (go != null)
-        {
-            _gameObjectToEntity.Remove(go.GetInstanceID());
-        }
-    }
-    
-
     public void DestroyEntity(Entity e)
     {
-        // --- 核心修复：物理和视觉层必须同步清理 ---
+        if (!e.IsAlive) return; // 防御：防止同一帧内被多次销毁
+
+        // --- 视觉层清理 ---
         if (e.HasComponent<ViewComponent>())
         {
             var view = e.GetComponent<ViewComponent>();
             if (view.GameObject != null)
             {
-                // 如果有碰撞体，也需要从映射表中移除
                 var col = view.GameObject.GetComponentInChildren<Collider2D>();
                 if (col != null) _gameObjectToEntity.Remove(col.gameObject.GetInstanceID());
                 else _gameObjectToEntity.Remove(view.GameObject.GetInstanceID());
@@ -106,16 +97,38 @@ public class ECSManager : MonoBehaviour
             }
         }
     
+        // --- 逻辑层清理与回收 ---
         e.IsAlive = false;
+        e.ClearComponents(); // 【重要】清空上辈子的组件数据，防止脏数据污染
         _entities.Remove(e);
+        _entityPool.Push(e); // 放入对象池
     }
-    
 
-    public Entity CreateEntity()
+    /// <summary>
+    /// 真正的物理移除：从实体列表中彻底删除
+    /// </summary>
+    public void RemoveEntityInternal(Entity e)
     {
-        Entity e = new Entity();
-        _entities.Add(e);
-        return e;
+        if (_entities.Contains(e))
+        {
+            e.IsAlive = false;
+            e.ClearComponents();
+            _entities.Remove(e);
+            
+            // 防御机制：防止它已经在池子里了还被重复 Push 报错
+            if (!_entityPool.Contains(e))
+            {
+                _entityPool.Push(e);
+            }
+        }
+    }
+
+    public void UnregisterView(GameObject go)
+    {
+        if (go != null)
+        {
+            _gameObjectToEntity.Remove(go.GetInstanceID());
+        }
     }
 
     public void RegisterEntityView(GameObject g, Entity e) => _gameObjectToEntity[g.GetInstanceID()] = e;

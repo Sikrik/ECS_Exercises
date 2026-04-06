@@ -3,8 +3,6 @@ using System.Collections.Generic;
 
 public class Entity
 {
-    // 正确写法：去掉 set 前面的 public 或 internal
-    // 这样 get 和 set 都会默认跟随属性的 public 级别
     public bool IsAlive { get; set; } = true;
     
     private Dictionary<Type, Component> _components = new Dictionary<Type, Component>();
@@ -31,5 +29,11 @@ public class Entity
     public void RemoveComponent<T>() where T : Component
     {
         _components.Remove(typeof(T));
+    }
+
+    // 👇 就是缺了下面这个方法！它是用来给对象池回收时一键清空组件的
+    public void ClearComponents()
+    {
+        _components.Clear();
     }
 }
