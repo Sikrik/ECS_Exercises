@@ -15,6 +15,7 @@ public class BulletCollisionSystem : SystemBase
 
     public override void Update(float deltaTime) 
     {
+        Physics2D.SyncTransforms();
         // 筛选拥有 轨迹追踪、自动烘焙后的半径组件 和 物理组件 的子弹
         var bullets = GetEntitiesWith<BulletTag, PositionComponent, TraceComponent, CollisionComponent, PhysicsColliderComponent>();
 

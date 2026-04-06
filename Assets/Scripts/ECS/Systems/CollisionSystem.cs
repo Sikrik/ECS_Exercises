@@ -40,6 +40,8 @@ public class CollisionSystem : SystemBase
                 HandlePhysicsBounce(player, enemy, pPhys.Collider, enemyCollider);
             }
         }
+       
+        if (hitCount > 0) Debug.Log($"检测到碰撞！数量: {hitCount}");
     }
 
     private void HandlePhysicsBounce(Entity player, Entity enemy, Collider2D pCol, Collider2D eCol)

@@ -42,6 +42,7 @@ public class ECSManager : MonoBehaviour
 
     void Update()
     {
+        Physics2D.SyncTransforms();
         // 1. 每帧开始前清理查询缓存
         foreach (var list in QueryCache.Values) ReturnListToPool(list);
         QueryCache.Clear();
@@ -118,26 +119,36 @@ public class ECSManager : MonoBehaviour
         Grid = new GridSystem(2.0f, _entities); 
         _systems.Add(Grid); 
 
-        _systems.Add(new PhysicsBakingSystem(_entities)); 
+        // 1. 输入与 AI
         _systems.Add(new PlayerInputSystem(_entities));
         _systems.Add(new EnemyAISystem(_entities));
+
+        // 2. 生产实体的系统（放在烘焙之前）
         _systems.Add(new EnemySpawnSystem(_entities));
         _systems.Add(new PlayerShootingSystem(_entities, Grid));
+
+        // 3. 核心修复：在这里执行烘焙，确保本帧生成的子弹/怪物立即获得 Collider 引用
+        _systems.Add(new PhysicsBakingSystem(_entities)); 
+
+        // 4. 位移计算
         _systems.Add(new MovementSystem(_entities));
     
+        // 5. 核心修复：计算完位移后，立即同步 Transform 坐标到 Unity GameObject
+        // 否则碰撞系统检测的是 GameObject 上一帧的老位置
+        _systems.Add(new ViewSyncSystem(_entities));
+
+        // 6. 执行碰撞检测（此时 GameObject 已在正确位置，且已有 Collider 组件）
         _systems.Add(new CollisionSystem(_entities));     
         _systems.Add(new BulletCollisionSystem(_entities, Grid)); 
         _systems.Add(new BulletEffectSystem(_entities));
     
-        // --- 补全视觉处理系统 ---
-        _systems.Add(new LightningRenderSystem(_entities)); // 处理闪电链绘制
-        _systems.Add(new VFXSystem(_entities));             // 处理冰冻等特效跟随
-    
+        // 其他视觉与清理系统
+        _systems.Add(new LightningRenderSystem(_entities));
+        _systems.Add(new VFXSystem(_entities));
         _systems.Add(new SlowEffectSystem(_entities));
         _systems.Add(new LifetimeSystem(_entities));
         _systems.Add(new HealthSystem(_entities));
         _systems.Add(new InvincibleVisualSystem(_entities));
-        _systems.Add(new ViewSyncSystem(_entities));
     }
 
     private void CreatePlayer()
