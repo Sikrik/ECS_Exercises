@@ -7,38 +7,36 @@ public class PhysicsBakingSystem : SystemBase
 
     public override void Update(float deltaTime)
     {
-        var entities = GetEntitiesWith<ViewComponent, NeedsBakingTag>();
+        // 筛选出所有刚生成、等待烘焙物理组件的实体
+        var pending = GetEntitiesWith<NeedsBakingTag, ViewComponent>();
 
-        foreach (var entity in entities)
+        foreach (var entity in pending)
         {
             var view = entity.GetComponent<ViewComponent>();
-            if (view.GameObject == null) continue;
-
-            var col = view.GameObject.GetComponent<Collider2D>();
-            if (col != null)
+            if (view.GameObject != null)
             {
-                col.isTrigger = true; 
-                entity.AddComponent(new PhysicsColliderComponent(col));
-                
-                // --- 核心修复：自动烘焙半径数据 ---
-                // 如果预制体上有圆形碰撞体，提取其考虑缩放后的真实半径
-                if (col is CircleCollider2D circle)
+                // --- BUG 修复：支持子物体碰撞体 ---
+                var col = view.GameObject.GetComponentInChildren<Collider2D>();
+                if (col != null)
                 {
-                    float worldRadius = circle.radius * Mathf.Max(view.GameObject.transform.lossyScale.x, view.GameObject.transform.lossyScale.y);
-                    entity.AddComponent(new CollisionComponent(worldRadius));
+                    // 挂载物理组件供 PhysicsDetectionSystem 使用
+                    entity.AddComponent(new PhysicsColliderComponent(col));
+                    
+                    // --- BUG 修复：建立双向映射 ---
+                    // 必须注册，物理系统才能在发生碰撞时找回实体
+                    ECSManager.Instance.RegisterEntityView(view.GameObject, entity);
+                    
+                    // 针对子弹等高速物体，自动计算逻辑半径
+                    if (entity.HasComponent<BulletTag>())
+                    {
+                        float radius = 0.2f; // 默认值
+                        if (col is CircleCollider2D circle) radius = circle.radius * view.GameObject.transform.localScale.x;
+                        entity.AddComponent(new CollisionComponent(radius));
+                    }
                 }
-                // 如果是方块或其他形状，也可以计算一个近似半径，或在此扩展 BoxCast 逻辑
-                
-                ECSManager.Instance.RegisterEntityView(view.GameObject, entity);
             }
 
-            if (view.Prefab != null && view.Prefab.TryGetComponent<SpriteRenderer>(out var prefabSr))
-            {
-                if (view.GameObject.TryGetComponent<SpriteRenderer>(out var instanceSr))
-                    instanceSr.color = prefabSr.color;
-                entity.AddComponent(new BaseColorComponent(prefabSr.color));
-            }
-
+            // 移除标记，表示烘焙完成
             entity.RemoveComponent<NeedsBakingTag>();
         }
     }
