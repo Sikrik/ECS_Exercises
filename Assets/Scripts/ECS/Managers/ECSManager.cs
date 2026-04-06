@@ -1,9 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Globalization;
 using UnityEngine;
-using UnityEngine.SceneManagement; // 必须引用，用于实现重启功能
+using UnityEngine.SceneManagement;
 
+/// <summary>
+/// ECS 核心管理器：负责环境初始化、配置加载、系统调度及实体生命周期管理
+/// </summary>
 public class ECSManager : MonoBehaviour
 {
     public static ECSManager Instance;
@@ -13,12 +17,12 @@ public class ECSManager : MonoBehaviour
     public GameObject PlayerPrefab;
 
     [Header("全局状态")]
-    public int Score = 0; // 全局得分
+    public int Score = 0; 
 
     private List<Entity> _entities = new List<Entity>();
     private List<SystemBase> _systems = new List<SystemBase>();
     
-    // 仿 DOTS 核心：GameObject 实例 ID 到 Entity 的快速映射表
+    // GameObject 实例 ID 到 Entity 的快速映射表（供物理检测回查）
     private Dictionary<int, Entity> _gameObjectToEntity = new Dictionary<int, Entity>();
 
     public Entity PlayerEntity { get; private set; }
@@ -31,23 +35,27 @@ public class ECSManager : MonoBehaviour
     void Awake()
     {
         Instance = this;
-        LoadConfig(); // 加载 JSON 配置
+        // 1. 优先加载 Excel 导出的 CSV 配置
+        LoadConfig(); 
     }
 
     void Start()
     {
+        // 2. 创建玩家并初始化系统链
         CreatePlayer();
         InitSystems();
     }
 
     void Update()
     {
-        Physics2D.SyncTransforms();
-        // 1. 每帧开始前清理查询缓存
+        // 每帧开始前清理查询缓存
         foreach (var list in QueryCache.Values) ReturnListToPool(list);
         QueryCache.Clear();
+
+        // 强制同步上一帧的物理变换
         Physics2D.SyncTransforms();
-        // 2. 依次运行所有系统
+
+        // 3. 驱动所有系统运行
         float deltaTime = Time.deltaTime;
         for (int i = 0; i < _systems.Count; i++)
         {
@@ -56,7 +64,7 @@ public class ECSManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 从 Resources 加载游戏配置
+    /// 从 Resources 加载 CSV 游戏配置，利用反射自动匹配字段
     /// </summary>
     private void LoadConfig()
     {
@@ -65,90 +73,92 @@ public class ECSManager : MonoBehaviour
         if (csvText != null)
         {
             Config = new GameConfig();
-            // 建议：先按行分割，再清理每行的 \r
             string[] lines = csvText.text.Split('\n');
-        
             FieldInfo[] fields = typeof(GameConfig).GetFields(BindingFlags.Public | BindingFlags.Instance);
 
-            // 从 i = 1 开始，明确跳过第一行表头 "Key,Value,Description"
+            // 跳过第一行表头
             for (int i = 1; i < lines.Length; i++) 
             {
-                string line = lines[i].Trim(); // 清理行尾换行符和空格
+                string line = lines[i].Trim(); 
                 if (string.IsNullOrEmpty(line)) continue;
 
                 string[] columns = line.Split(',');
                 if (columns.Length < 2) continue;
 
                 string key = columns[0].Trim();
-            
-                // 核心修复：处理可能存在的不可见 BOM 字符 (有些 Excel 导出的 UTF-8 会带这个)
-                if (i == 1 && key.Length > 0 && key[0] == '\uFEFF') 
-                    key = key.Substring(1);
+                // 处理 UTF-8 BOM 不可见字符
+                if (i == 1 && key.Length > 0 && key[0] == '\uFEFF') key = key.Substring(1);
 
                 string valueStr = columns[1].Trim();
 
                 foreach (var field in fields)
                 {
-                    // 使用 OrdinalIgnoreCase 忽略大小写差异更安全
                     if (field.Name.Equals(key, StringComparison.OrdinalIgnoreCase))
                     {
                         try
                         {
-                            // 核心修复：使用 InvariantCulture 确保 0.2 这种浮点数在任何系统语言下都能正确解析
-                            object convertedValue = Convert.ChangeType(valueStr, field.FieldType, System.Globalization.CultureInfo.InvariantCulture);
+                            // 使用 InvariantCulture 确保跨平台小数点解析正确
+                            object convertedValue = Convert.ChangeType(valueStr, field.FieldType, CultureInfo.InvariantCulture);
                             field.SetValue(Config, convertedValue);
                         }
                         catch (Exception ex)
                         {
-                            Debug.LogWarning($"字段 {key} 转换失败: {ex.Message}");
+                            Debug.LogWarning($"配置字段 {key} 转换失败: {ex.Message}");
                         }
                         break;
                     }
                 }
             }
-            Debug.Log($"CSV 配置加载完成。玩家血量: {Config.PlayerMaxHealth}, 移动速度: {Config.PlayerMoveSpeed}");
+            Debug.Log($"CSV 配置加载成功。玩家血量: {Config.PlayerMaxHealth}");
+        }
+        else
+        {
+            Debug.LogError("未找到 Resources/game_config.csv，请检查文件！");
+            Config = new GameConfig();
         }
     }
 
     /// <summary>
-    /// 初始化并排序所有系统
+    /// 初始化系统链：严格控制更新顺序以保证物理同步与逻辑解耦
     /// </summary>
     private void InitSystems()
     {
         _systems.Clear();
+
+        // --- A. 基础环境与输入 ---
         Grid = new GridSystem(2.0f, _entities); 
         _systems.Add(Grid); 
-
-        // 1. 输入与 AI
         _systems.Add(new PlayerInputSystem(_entities));
         _systems.Add(new EnemyAISystem(_entities));
 
-        // 2. 生产实体的系统（放在烘焙之前）
+        // --- B. 实体创建与物理烘焙 ---
         _systems.Add(new EnemySpawnSystem(_entities));
         _systems.Add(new PlayerShootingSystem(_entities, Grid));
-
-        // 3. 核心修复：在这里执行烘焙，确保本帧生成的子弹/怪物立即获得 Collider 引用
+        // 在生成之后立即烘焙，确保新实体本帧可参与碰撞
         _systems.Add(new PhysicsBakingSystem(_entities)); 
 
-        // 4. 位移计算
+        // --- C. 位移与空间同步 ---
         _systems.Add(new MovementSystem(_entities));
-    
-        // 5. 核心修复：计算完位移后，立即同步 Transform 坐标到 Unity GameObject
-        // 否则碰撞系统检测的是 GameObject 上一帧的老位置
+        // 碰撞前必须同步坐标到 GameObject
         _systems.Add(new ViewSyncSystem(_entities));
 
-        // 6. 执行碰撞检测（此时 GameObject 已在正确位置，且已有 Collider 组件）
-        _systems.Add(new CollisionSystem(_entities));     
-        _systems.Add(new BulletCollisionSystem(_entities, Grid)); 
-        _systems.Add(new BulletEffectSystem(_entities));
-    
-        // 其他视觉与清理系统
+        // --- D. 通用碰撞与事件处理 (解耦核心) ---
+        _systems.Add(new PhysicsDetectionSystem(_entities)); // 仅产生 CollisionEventComponent
+        _systems.Add(new DamageSystem(_entities));           // 处理伤害逻辑
+        _systems.Add(new BulletEffectSystem(_entities));     // 处理特殊子弹效果
+        
+        // --- E. 状态维持与生命周期 ---
+        _systems.Add(new SlowEffectSystem(_entities));
+        _systems.Add(new HealthSystem(_entities));           // 检查死亡
+        _systems.Add(new LifetimeSystem(_entities));         // 自动销毁限时物体
+        
+        // --- F. 视觉反馈与清理 ---
         _systems.Add(new LightningRenderSystem(_entities));
         _systems.Add(new VFXSystem(_entities));
-        _systems.Add(new SlowEffectSystem(_entities));
-        _systems.Add(new LifetimeSystem(_entities));
-        _systems.Add(new HealthSystem(_entities));
         _systems.Add(new InvincibleVisualSystem(_entities));
+        
+        // 每帧最后清理掉瞬时的事件组件
+        _systems.Add(new EventCleanupSystem(_entities)); 
     }
 
     private void CreatePlayer()
@@ -162,23 +172,15 @@ public class ECSManager : MonoBehaviour
         PlayerEntity.AddComponent(new VelocityComponent(0, 0)); 
         PlayerEntity.AddComponent(new HealthComponent(Config.PlayerMaxHealth));
         PlayerEntity.AddComponent(new ViewComponent(go, PlayerPrefab));
-        
-        // 标记需要物理烘焙
-        PlayerEntity.AddComponent(new NeedsBakingTag());
+        PlayerEntity.AddComponent(new NeedsBakingTag()); // 等待 BakingSystem 初始化物理
     }
 
-    /// <summary>
-    /// 重启游戏逻辑
-    /// </summary>
     public void RestartGame()
     {
         Time.timeScale = 1;
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name); //
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
-    /// <summary>
-    /// 创建实体并加入全局列表
-    /// </summary>
     public Entity CreateEntity()
     {
         Entity entity = new Entity();
@@ -186,18 +188,12 @@ public class ECSManager : MonoBehaviour
         return entity;
     }
 
-    /// <summary>
-    /// 注册 GameObject ID 到 Entity 的映射（供物理查询使用）
-    /// </summary>
     public void RegisterEntityView(GameObject go, Entity entity)
     {
         if (go == null) return;
         _gameObjectToEntity[go.GetInstanceID()] = entity;
     }
 
-    /// <summary>
-    /// 根据碰撞到的 GameObject 找回 Entity
-    /// </summary>
     public Entity GetEntityFromGameObject(GameObject go)
     {
         if (go != null && _gameObjectToEntity.TryGetValue(go.GetInstanceID(), out var entity))
@@ -205,9 +201,6 @@ public class ECSManager : MonoBehaviour
         return null;
     }
 
-    /// <summary>
-    /// 统一销毁接口：同步清理物理映射和对象池
-    /// </summary>
     public void DestroyEntity(Entity entity)
     {
         if (entity.HasComponent<ViewComponent>())
@@ -216,7 +209,6 @@ public class ECSManager : MonoBehaviour
             if (view.GameObject != null)
             {
                 _gameObjectToEntity.Remove(view.GameObject.GetInstanceID());
-                
                 if (view.Prefab != null)
                     PoolManager.Instance.Despawn(view.Prefab, view.GameObject);
                 else
@@ -227,7 +219,7 @@ public class ECSManager : MonoBehaviour
         _entities.Remove(entity);
     }
 
-    // --- 性能优化：列表池化 ---
+    // 性能优化：列表池化管理
     public List<Entity> GetListFromPool() => _listPool.Count > 0 ? _listPool.Pop() : new List<Entity>();
     public void ReturnListToPool(List<Entity> list) { list.Clear(); _listPool.Push(list); }
 }
