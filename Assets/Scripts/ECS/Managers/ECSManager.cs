@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.SceneManagement; // 必须引用，用于实现重启功能
 
@@ -58,14 +59,54 @@ public class ECSManager : MonoBehaviour
     /// </summary>
     private void LoadConfig()
     {
-        TextAsset configText = Resources.Load<TextAsset>("game_config");
-        if (configText != null)
+        TextAsset csvText = Resources.Load<TextAsset>("game_config");
+    
+        if (csvText != null)
         {
-            Config = JsonUtility.FromJson<GameConfig>(configText.text);
-            Debug.Log("加载了配置");
+            Config = new GameConfig();
+            // 建议：先按行分割，再清理每行的 \r
+            string[] lines = csvText.text.Split('\n');
+        
+            FieldInfo[] fields = typeof(GameConfig).GetFields(BindingFlags.Public | BindingFlags.Instance);
+
+            // 从 i = 1 开始，明确跳过第一行表头 "Key,Value,Description"
+            for (int i = 1; i < lines.Length; i++) 
+            {
+                string line = lines[i].Trim(); // 清理行尾换行符和空格
+                if (string.IsNullOrEmpty(line)) continue;
+
+                string[] columns = line.Split(',');
+                if (columns.Length < 2) continue;
+
+                string key = columns[0].Trim();
+            
+                // 核心修复：处理可能存在的不可见 BOM 字符 (有些 Excel 导出的 UTF-8 会带这个)
+                if (i == 1 && key.Length > 0 && key[0] == '\uFEFF') 
+                    key = key.Substring(1);
+
+                string valueStr = columns[1].Trim();
+
+                foreach (var field in fields)
+                {
+                    // 使用 OrdinalIgnoreCase 忽略大小写差异更安全
+                    if (field.Name.Equals(key, StringComparison.OrdinalIgnoreCase))
+                    {
+                        try
+                        {
+                            // 核心修复：使用 InvariantCulture 确保 0.2 这种浮点数在任何系统语言下都能正确解析
+                            object convertedValue = Convert.ChangeType(valueStr, field.FieldType, System.Globalization.CultureInfo.InvariantCulture);
+                            field.SetValue(Config, convertedValue);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.LogWarning($"字段 {key} 转换失败: {ex.Message}");
+                        }
+                        break;
+                    }
+                }
+            }
+            Debug.Log($"CSV 配置加载完成。玩家血量: {Config.PlayerMaxHealth}, 移动速度: {Config.PlayerMoveSpeed}");
         }
-        else
-            Config = new GameConfig(); // 容错处理
     }
 
     /// <summary>
