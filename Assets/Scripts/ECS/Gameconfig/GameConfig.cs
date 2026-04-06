@@ -32,20 +32,6 @@ public class GameConfig
     public float AOERadius;
     public float AOEDamage;
     public Dictionary<string, EnemyData> EnemyRecipes = new Dictionary<string, EnemyData>();
-    [Header("Enemy Base Settings")]
-    public float EnemyMaxHealth;
-    public float EnemyMoveSpeed;
-    public int EnemyDamage;
-    public float EnemyAttackCooldown;
-    public float EnemyHitRecoveryDuration; 
-
-    [Header("Fast Enemy Settings")] 
-    public float FastEnemyMaxHealth;
-    public float FastEnemySpeed;
-
-    [Header("Tank Enemy Settings")] 
-    public float TankEnemyMaxHealth;
-    public float TankEnemySpeed;
 
     [Header("Spawn Settings")]
     public float InitialSpawnInterval;

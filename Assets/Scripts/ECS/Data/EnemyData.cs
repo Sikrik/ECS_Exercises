@@ -1,11 +1,9 @@
-﻿using System;
-
-[Serializable]
-public class EnemyData
-{
-    public string Id;          // 对应 CSV 的第一列
+﻿[System.Serializable]
+public class EnemyData {
+    public string Id;
     public float Health;
     public float Speed;
     public int Damage;
-    public string[] Traits;    // 组件清单，例如 ["Bouncy", "Ranged"]
+    public float HitRecoveryDuration; // 新增：从 CSV 读取硬直时间
+    public string[] Traits;
 }

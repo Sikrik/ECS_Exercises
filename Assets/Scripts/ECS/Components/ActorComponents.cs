@@ -9,18 +9,13 @@ public class BulletStatsComponent : Component
 }
 
 
-
-/// <summary>
-/// 敌人基础属性：存储不会轻易改变的数值
-/// </summary>
-public class EnemyStatsComponent : Component
-{
+public class EnemyStatsComponent : Component {
     public EnemyType Type;
     public float MoveSpeed;
     public int Damage;
     public float AttackCooldown;
+    public float HitRecoveryDuration; // 新增：存储实体的运行时硬直数值
 }
-
 
 
 

@@ -40,22 +40,21 @@ public static class ConfigLoader
         }
     }
 
-    private static void ParseEnemyRecipes(GameConfig config, TextAsset csv)
-    {
+    private static void ParseEnemyRecipes(GameConfig config, TextAsset csv) {
         string[] lines = csv.text.Split('\n');
-        for (int i = 1; i < lines.Length; i++) // 跳过表头
-        {
+        for (int i = 1; i < lines.Length; i++) {
             string line = lines[i].Trim();
             if (string.IsNullOrEmpty(line)) continue;
             string[] cols = line.Split(',');
-            if (cols.Length < 5) continue;
-
+        
+            // 假设 CSV 格式：ID, Health, Speed, Damage, HitRecovery, Traits
             EnemyData data = new EnemyData {
                 Id = cols[0].Trim(),
                 Health = float.Parse(cols[1]),
                 Speed = float.Parse(cols[2]),
                 Damage = int.Parse(cols[3]),
-                Traits = cols[4].Split('|') // 用 | 分隔特性
+                HitRecoveryDuration = float.Parse(cols[4]), // 解析新增列
+                Traits = cols[5].Split('|')
             };
             config.EnemyRecipes[data.Id] = data;
         }
