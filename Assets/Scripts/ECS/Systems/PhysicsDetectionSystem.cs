@@ -5,28 +5,29 @@ public class PhysicsDetectionSystem : SystemBase
 {
     private Collider2D[] _overlapResults = new Collider2D[10];
     private RaycastHit2D[] _castResults = new RaycastHit2D[5];
-    private ContactFilter2D _enemyFilter;
 
-    public PhysicsDetectionSystem(List<Entity> entities) : base(entities)
-    {
-        _enemyFilter = new ContactFilter2D();
-        _enemyFilter.SetLayerMask(LayerMask.GetMask("Enemy")); // 后续可改为从组件读取 Mask
-        _enemyFilter.useTriggers = true;
-    }
+    public PhysicsDetectionSystem(List<Entity> entities) : base(entities) { }
 
     public override void Update(float deltaTime)
     {
+        // 强制同步位移后的 Transform
         Physics2D.SyncTransforms();
         
-        // 筛选所有带物理组件的实体（包括玩家和子弹）
-        var physicsEntities = GetEntitiesWith<PhysicsColliderComponent, PositionComponent>();
+        // 筛选：带物理组件 且 带碰撞过滤器 的实体 (玩家、怪物、子弹现在都带这个)
+        var physicsEntities = GetEntitiesWith<PhysicsColliderComponent, PositionComponent, CollisionFilterComponent>();
 
         foreach (var entity in physicsEntities)
         {
             var pPhys = entity.GetComponent<PhysicsColliderComponent>();
+            var filter = entity.GetComponent<CollisionFilterComponent>();
             if (pPhys.Collider == null) continue;
 
-            // 1. 高速物体检测 (如子弹，使用射线/圆柱投射防止穿透)
+            // 构建 Unity 物理过滤器
+            ContactFilter2D contactFilter = new ContactFilter2D();
+            contactFilter.SetLayerMask(filter.LayerMask);
+            contactFilter.useTriggers = true;
+
+            // 1. 高速物体检测 (子弹专用，防止穿墙)
             if (entity.HasComponent<TraceComponent>() && entity.HasComponent<CollisionComponent>())
             {
                 var pos = entity.GetComponent<PositionComponent>();
@@ -38,18 +39,17 @@ public class PhysicsDetectionSystem : SystemBase
                 Vector2 dir = end - start;
                 float dist = dir.magnitude;
 
-                if (dist > 0.001f && Physics2D.CircleCast(start, col.Radius, dir.normalized, _enemyFilter, _castResults, dist) > 0)
+                if (dist > 0.001f && Physics2D.CircleCast(start, col.Radius, dir.normalized, contactFilter, _castResults, dist) > 0)
                 {
                     CreateEvent(entity, _castResults[0].collider.gameObject, _castResults[0].normal);
                 }
             }
-            // 2. 普通物体检测 (如玩家，使用重叠检测)
+            // 2. 普通物体检测 (玩家、怪物重叠检测)
             else
             {
-                int hitCount = pPhys.Collider.OverlapCollider(_enemyFilter, _overlapResults);
+                int hitCount = pPhys.Collider.OverlapCollider(contactFilter, _overlapResults);
                 for (int i = 0; i < hitCount; i++)
                 {
-                    // 计算法线以便后续反弹使用
                     ColliderDistance2D distInfo = pPhys.Collider.Distance(_overlapResults[i]);
                     if (distInfo.isOverlapped)
                     {
@@ -65,7 +65,7 @@ public class PhysicsDetectionSystem : SystemBase
         Entity target = ECSManager.Instance.GetEntityFromGameObject(targetGo);
         if (target != null && target.IsAlive)
         {
-            // 发现碰撞，只记录事件，不处理逻辑
+            // 发现碰撞，挂载事件组件
             source.AddComponent(new CollisionEventComponent(source, target, normal));
         }
     }

@@ -29,6 +29,7 @@ public class PlayerShootingSystem : SystemBase
         if (player == null || !player.IsAlive) return;
 
         var pPos = player.GetComponent<PositionComponent>();
+        // 利用网格系统查找最近敌人
         Entity target = FindNearestInGrid(pPos.X, pPos.Y);
         if (target == null) return;
 
@@ -47,11 +48,14 @@ public class PlayerShootingSystem : SystemBase
         bullet.AddComponent(new LifetimeComponent { RemainingTime = config.BulletLifeTime });
         bullet.AddComponent(new ViewComponent(bulletGo, prefab));
         
-        // --- 核心修复：不再手动加 CollisionComponent，交给烘焙系统 ---
+        // 标记需要物理烘焙
         bullet.AddComponent(new NeedsBakingTag()); 
         bullet.AddComponent(new TraceComponent(pPos.X, pPos.Y));
 
-        // 根据子弹类型分发效果（保持不变）
+        // --- 核心重构：告诉物理系统，子弹要撞谁 ---
+        bullet.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Enemy")));
+
+        // 分发子弹特定的组件
         switch (CurrentBulletType)
         {
             case BulletType.Normal:

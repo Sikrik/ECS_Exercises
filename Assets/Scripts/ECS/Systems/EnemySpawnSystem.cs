@@ -10,12 +10,7 @@ public class EnemySpawnSystem : SystemBase
     {
         var config = ECSManager.Instance.Config;
         _timer += deltaTime;
-
-        if (_timer >= config.InitialSpawnInterval)
-        {
-            _timer = 0;
-            SpawnEnemy(config);
-        }
+        if (_timer >= config.InitialSpawnInterval) { _timer = 0; SpawnEnemy(config); }
     }
 
     private void SpawnEnemy(GameConfig config)
@@ -23,7 +18,6 @@ public class EnemySpawnSystem : SystemBase
         var pool = PoolManager.Instance;
         var ecs = ECSManager.Instance;
         
-        // 1. 随机选择敌人类型并从池子获取对象
         EnemyType type = (EnemyType)Random.Range(0, 3);
         GameObject prefab = pool.GetEnemyPrefab(type);
         if (prefab == null) return;
@@ -31,36 +25,24 @@ public class EnemySpawnSystem : SystemBase
         Vector3 spawnPos = new Vector3(Random.Range(-12, 12), Random.Range(-7, 7), 0);
         GameObject go = pool.Spawn(prefab, spawnPos, Quaternion.identity);
         
-        // 2. 创建 ECS 实体并挂载基础组件
         Entity enemy = ecs.CreateEntity();
         enemy.AddComponent(new EnemyTag());
         enemy.AddComponent(new PositionComponent(spawnPos.x, spawnPos.y, 0));
         enemy.AddComponent(new VelocityComponent(0, 0));
         enemy.AddComponent(new ViewComponent(go, prefab));
-
-        // --- 核心逻辑：触发自动化物理烘焙 ---
         enemy.AddComponent(new NeedsBakingTag()); 
         enemy.AddComponent(new BouncyTag());
 
-        // 3. 根据类型设置属性数据（修复无法解析符号的关键点）
-        float health = type switch {
-            EnemyType.Fast => config.FastEnemyMaxHealth,
-            EnemyType.Tank => config.TankEnemyMaxHealth,
-            _ => config.EnemyMaxHealth
-        };
+        // 核心：设置怪物要撞谁 (Player层)
+        enemy.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Player")));
+        
+        // 核心：给怪物增加伤害组件，否则通用 DamageSystem 不会处理它
+        enemy.AddComponent(new DamageComponent(config.EnemyDamage));
 
-        float speed = type switch {
-            EnemyType.Fast => config.FastEnemySpeed,
-            EnemyType.Tank => config.TankEnemySpeed,
-            _ => config.EnemyMoveSpeed
-        };
+        float health = type == EnemyType.Fast ? config.FastEnemyMaxHealth : (type == EnemyType.Tank ? config.TankEnemyMaxHealth : config.EnemyMaxHealth);
+        float speed = type == EnemyType.Fast ? config.FastEnemySpeed : (type == EnemyType.Tank ? config.TankEnemySpeed : config.EnemyMoveSpeed);
 
         enemy.AddComponent(new HealthComponent(health));
-        enemy.AddComponent(new EnemyStatsComponent { 
-            Type = type, 
-            MoveSpeed = speed, 
-            Damage = config.EnemyDamage,
-            AttackCooldown = config.EnemyAttackCooldown
-        });
+        enemy.AddComponent(new EnemyStatsComponent { Type = type, MoveSpeed = speed, Damage = config.EnemyDamage });
     }
 }
