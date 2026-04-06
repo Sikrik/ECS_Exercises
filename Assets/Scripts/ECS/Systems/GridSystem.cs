@@ -8,7 +8,7 @@ public class GridSystem : SystemBase
 
     public GridSystem(float cellSize, List<Entity> entities) : base(entities)
     {
-        CellSize = cellSize; // 修正：直接赋值给公有的 CellSize 字段
+        CellSize = cellSize;
     }
 
     public override void Update(float deltaTime)
@@ -27,13 +27,20 @@ public class GridSystem : SystemBase
 
     public Vector2Int GetKey(float x, float y) => new Vector2Int(Mathf.FloorToInt(x / CellSize), Mathf.FloorToInt(y / CellSize));
 
-    public List<Entity> GetNearbyEnemies(float x, float y)
+    /// <summary>
+    /// 获取指定坐标附近的敌人
+    /// </summary>
+    /// <param name="radius">搜索范围深度。1表示3x3格子，2表示5x5格子，以此类推</param>
+    public List<Entity> GetNearbyEnemies(float x, float y, int radius = 1)
     {
         List<Entity> nearby = new List<Entity>();
         Vector2Int center = GetKey(x, y);
-        for (int i = -1; i <= 1; i++) {
-            for (int j = -1; j <= 1; j++) {
-                if (Grid.TryGetValue(center + new Vector2Int(i, j), out var list)) nearby.AddRange(list);
+        
+        // 优化：根据传入的 radius 动态扩大搜索范围
+        for (int i = -radius; i <= radius; i++) {
+            for (int j = -radius; j <= radius; j++) {
+                if (Grid.TryGetValue(center + new Vector2Int(i, j), out var list)) 
+                    nearby.AddRange(list);
             }
         }
         return nearby;

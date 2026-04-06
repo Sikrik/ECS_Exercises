@@ -17,27 +17,32 @@ public class PlayerShootingSystem : SystemBase
         _shootTimer += deltaTime;
         if (_shootTimer >= interval)
         {
-            _shootTimer = 0;
-            Shoot(config);
+            // 核心修复：只有成功射击后才清空计时器
+            // 这样如果范围内没敌人，计时器会保持在就绪状态，一旦有敌人进入射程立即开火
+            if (Shoot(config)) 
+            {
+                _shootTimer = 0;
+            }
         }
     }
 
-    private void Shoot(GameConfig config)
+    private bool Shoot(GameConfig config)
     {
         var ecs = ECSManager.Instance;
         var player = ecs.PlayerEntity;
-        if (player == null || !player.IsAlive) return;
+        if (player == null || !player.IsAlive) return false;
 
         var pPos = player.GetComponent<PositionComponent>();
-        // 利用网格系统查找最近敌人
-        Entity target = FindNearestInGrid(pPos.X, pPos.Y);
-        if (target == null) return;
+        
+        // 核心修复：扩大网格搜索深度（从 1 改为 3），确保能打到屏幕边缘的敌人
+        Entity target = FindNearestInGrid(pPos.X, pPos.Y, 3); 
+        if (target == null) return false;
 
         var tPos = target.GetComponent<PositionComponent>();
         Vector2 dir = new Vector2(tPos.X - pPos.X, tPos.Y - pPos.Y).normalized;
 
         GameObject prefab = PoolManager.Instance.GetBulletPrefab(CurrentBulletType);
-        if (prefab == null) return;
+        if (prefab == null) return false;
 
         GameObject bulletGo = PoolManager.Instance.Spawn(prefab, new Vector3(pPos.X, pPos.Y, 0), Quaternion.identity);
 
@@ -48,14 +53,11 @@ public class PlayerShootingSystem : SystemBase
         bullet.AddComponent(new LifetimeComponent { RemainingTime = config.BulletLifeTime });
         bullet.AddComponent(new ViewComponent(bulletGo, prefab));
         
-        // 标记需要物理烘焙
         bullet.AddComponent(new NeedsBakingTag()); 
         bullet.AddComponent(new TraceComponent(pPos.X, pPos.Y));
-
-        // --- 核心重构：告诉物理系统，子弹要撞谁 ---
         bullet.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Enemy")));
 
-        // 分发子弹特定的组件
+        // 分发子弹效果
         switch (CurrentBulletType)
         {
             case BulletType.Normal:
@@ -72,12 +74,15 @@ public class PlayerShootingSystem : SystemBase
                 bullet.AddComponent(new AOEComponent(config.AOERadius, config.AOEDamage));
                 break;
         }
+
+        return true;
     }
 
-    private Entity FindNearestInGrid(float x, float y)
+    private Entity FindNearestInGrid(float x, float y, int radius)
     {
         if (_grid == null) return null;
-        var enemies = _grid.GetNearbyEnemies(x, y);
+        // 使用带半径参数的索敌方法
+        var enemies = _grid.GetNearbyEnemies(x, y, radius); 
         Entity nearest = null;
         float minDistSq = float.MaxValue;
         foreach (var e in enemies)
