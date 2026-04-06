@@ -12,23 +12,26 @@ public class PhysicsBakingSystem : SystemBase
         foreach (var entity in pending)
         {
             var view = entity.GetComponent<ViewComponent>();
-            if (view.GameObject != null)
+            if (view.GameObject == null) continue;
+
+            // 核心修复：使用 GetComponentInChildren 兼容子物体碰撞体
+            var col = view.GameObject.GetComponentInChildren<Collider2D>();
+            if (col != null)
             {
-                var col = view.GameObject.GetComponentInChildren<Collider2D>();
-                if (col != null)
+                col.isTrigger = true; 
+                entity.AddComponent(new PhysicsColliderComponent(col));
+            
+                // 核心修复：注册【碰撞体所在的那个物体】，确保物理检测能找回实体
+                ECSManager.Instance.RegisterEntityView(col.gameObject, entity);
+            
+                // 计算逻辑半径 (如果是圆形)
+                if (col is CircleCollider2D circle)
                 {
-                    entity.AddComponent(new PhysicsColliderComponent(col));
-                    // --- 核心修复 3：注册碰撞体所在的物体，确保能反向查找到实体 ---
-                    ECSManager.Instance.RegisterEntityView(col.gameObject, entity);
-                
-                    if (entity.HasComponent<BulletTag>())
-                    {
-                        float r = 0.2f;
-                        if (col is CircleCollider2D circle) r = circle.radius * view.GameObject.transform.lossyScale.x;
-                        entity.AddComponent(new CollisionComponent(r));
-                    }
+                    float worldRadius = circle.radius * Mathf.Max(view.GameObject.transform.lossyScale.x, view.GameObject.transform.lossyScale.y);
+                    entity.AddComponent(new CollisionComponent(worldRadius));
                 }
             }
+        
             entity.RemoveComponent<NeedsBakingTag>();
         }
     }

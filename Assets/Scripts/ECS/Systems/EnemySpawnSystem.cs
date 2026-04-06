@@ -46,8 +46,6 @@ public class EnemySpawnSystem : SystemBase
         {
             enemy.AddComponent(new BouncyTag());
         }
-
-        // --- BUG 修复：补全碰撞与伤害逻辑 ---
         // 设置怪物要撞谁（Player层）
         enemy.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Player")));
         // 必须挂载伤害组件，否则玩家不会掉血
