@@ -12,19 +12,29 @@ public class PlayerShootingSystem : SystemBase
     public override void Update(float deltaTime)
     {
         var config = ECSManager.Instance.Config;
-        float interval = GetInterval(config);
         
-        _shootTimer += deltaTime;
-        if (_shootTimer >= interval)
+        // 1. 直接从配置字典中抓取当前子弹的配方数据
+        string bulletId = CurrentBulletType.ToString();
+        if (!config.BulletRecipes.TryGetValue(bulletId, out var bulletData)) 
         {
-            if (Shoot(config)) // 只有成功找到敌人并射击才重置计时器
+            Debug.LogError($"未找到子弹配置: {bulletId}");
+            return;
+        }
+
+        _shootTimer += deltaTime;
+        
+        // 2. 直接读取配表里的 ShootInterval
+        if (_shootTimer >= bulletData.ShootInterval)
+        {
+            // 3. 把当前子弹的具体配方 (bulletData) 传给开火逻辑
+            if (Shoot(bulletData)) // 只有成功找到敌人并射击才重置计时器
             {
                 _shootTimer = 0;
             }
         }
     }
 
-    private bool Shoot(GameConfig config)
+    private bool Shoot(BulletData recipe)
     {
         var ecs = ECSManager.Instance;
         var player = ecs.PlayerEntity;
@@ -45,26 +55,30 @@ public class PlayerShootingSystem : SystemBase
         Entity bullet = ecs.CreateEntity();
         bullet.AddComponent(new BulletTag());
         bullet.AddComponent(new PositionComponent(pPos.X, pPos.Y, 0));
-        bullet.AddComponent(new VelocityComponent(dir.x * config.BulletSpeed, dir.y * config.BulletSpeed));
-        bullet.AddComponent(new LifetimeComponent { RemainingTime = config.BulletLifeTime });
+        
+        // 👇 核心替换：使用专属子弹配方里的通用参数
+        bullet.AddComponent(new VelocityComponent(dir.x * recipe.Speed, dir.y * recipe.Speed));
+        bullet.AddComponent(new LifetimeComponent { RemainingTime = recipe.LifeTime });
+        bullet.AddComponent(new DamageComponent(recipe.Damage));
+        
         bullet.AddComponent(new ViewComponent(bulletGo, prefab));
         bullet.AddComponent(new NeedsBakingTag()); 
         bullet.AddComponent(new TraceComponent(pPos.X, pPos.Y));
         bullet.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Enemy")));
 
-        // --- 核心修复：所有子弹都必须有基础伤害组件，否则 DamageSystem 会忽略碰撞 ---
-        bullet.AddComponent(new DamageComponent(config.BulletDamage));
-
+        // 👇 核心替换：根据特殊子弹挂载特效组件，使用配表里的特殊参数
         switch (CurrentBulletType)
         {
             case BulletType.Slow:
-                bullet.AddComponent(new SlowEffectComponent(config.SlowRatio, config.SlowDuration));
+                bullet.AddComponent(new SlowEffectComponent(recipe.SlowRatio, recipe.SlowDuration));
                 break;
             case BulletType.ChainLightning:
-                bullet.AddComponent(new ChainComponent(config.ChainTargets, config.ChainRange, config.ChainDamage));
+                // 闪电链的伤害在这里统一使用配表里的基础 Damage 字段
+                bullet.AddComponent(new ChainComponent(recipe.ChainTargets, recipe.ChainRange, recipe.Damage));
                 break;
             case BulletType.AOE:
-                bullet.AddComponent(new AOEComponent(config.AOERadius, config.AOEDamage));
+                // 爆炸范围伤害也统一使用配表里的基础 Damage 字段
+                bullet.AddComponent(new AOEComponent(recipe.AOERadius, recipe.Damage));
                 break;
         }
 
@@ -86,11 +100,4 @@ public class PlayerShootingSystem : SystemBase
         }
         return nearest;
     }
-
-    private float GetInterval(GameConfig config) => CurrentBulletType switch {
-        BulletType.Slow => config.SlowBulletShootInterval,
-        BulletType.ChainLightning => config.ChainLightningShootInterval,
-        BulletType.AOE => config.AOEBulletShootInterval,
-        _ => config.ShootInterval
-    };
 }

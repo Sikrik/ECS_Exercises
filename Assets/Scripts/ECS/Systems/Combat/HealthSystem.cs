@@ -7,7 +7,6 @@ public class HealthSystem : SystemBase
 
     public override void Update(float deltaTime)
     {
-        // 筛选拥有血量和视图的实体
         var entities = GetEntitiesWith<HealthComponent, ViewComponent>();
         
         for (int i = entities.Count - 1; i >= 0; i--)
@@ -15,24 +14,27 @@ public class HealthSystem : SystemBase
             var entity = entities[i];
             var health = entity.GetComponent<HealthComponent>();
             
-            // 核心逻辑：检测死亡
             if (health.CurrentHealth <= 0)
             {
-                // 1. 如果是敌人死亡：增加得分
-                if (entity.HasComponent<EnemyTag>())
+                // 【修改点】抛出加分事件，而不是直接改分数
+                if (entity.HasComponent<EnemyTag>() && entity.HasComponent<EnemyStatsComponent>())
                 {
-                    ECSManager.Instance.Score += ECSManager.Instance.Config.EnemyDeathScore;
+                    var stats = entity.GetComponent<EnemyStatsComponent>();
+                    
+                    // 创建一个纯粹的“事件实体”在世界中广播
+                    Entity eventEntity = ECSManager.Instance.CreateEntity();
+                    eventEntity.AddComponent(new ScoreEventComponent(stats.EnemyDeathScore));
                 }
                 
-                // 2. 如果是玩家死亡：暂停游戏并显示 UI
+                // 玩家死亡逻辑保持不变...
                 if (entity.HasComponent<PlayerTag>())
                 {
                     Debug.Log("游戏结束！");
-                    Time.timeScale = 0; // 暂停所有物理和逻辑更新
-                    UIManager.Instance.ShowGameOver(); // 弹出 UI
+                    Time.timeScale = 0; 
+                    UIManager.Instance.ShowGameOver(); 
                 }
                 
-                // 3. 统一通过 ECSManager 销毁实体数据及视觉物体
+                // HealthSystem 只负责生命周期终结
                 ECSManager.Instance.DestroyEntity(entity);
             }
         }

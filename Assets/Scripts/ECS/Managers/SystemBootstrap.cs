@@ -44,7 +44,8 @@ public static class SystemBootstrap
 
         // --- 7. 清理 ---
         systems.Add(new EventCleanupSystem(entities));
-
+        
+        systems.Add(new ScoreSystem(entities)); // 新增：接管分数结算
         return systems;
     }
 }

@@ -32,6 +32,7 @@ public class GameConfig
     public float AOERadius;
     public float AOEDamage;
     public Dictionary<string, EnemyData> EnemyRecipes = new Dictionary<string, EnemyData>();
+    public Dictionary<string, BulletData> BulletRecipes = new Dictionary<string, BulletData>();
 
     [Header("Spawn Settings")]
     public float InitialSpawnInterval;

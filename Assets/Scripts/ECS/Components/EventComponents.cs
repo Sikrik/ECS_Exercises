@@ -38,3 +38,12 @@ public class CollisionEventComponent : Component
         Source = src; Target = target; Normal = normal;
     }
 }
+
+/// <summary>
+/// 加分事件组件
+/// </summary>
+public class ScoreEventComponent : Component
+{
+    public int Amount;
+    public ScoreEventComponent(int amount) => Amount = amount;
+}
