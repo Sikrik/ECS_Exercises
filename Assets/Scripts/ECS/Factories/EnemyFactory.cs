@@ -37,7 +37,8 @@ public static class EnemyFactory
         { 
             Type = type,
             BaseMoveSpeed = recipe.Speed, // 优化：存储基础速度以便后续效果恢复
-            HitRecoveryDuration = recipe.HitRecoveryDuration // 存储从配置读取的硬直数值
+            HitRecoveryDuration = recipe.HitRecoveryDuration, // 存储从配置读取的硬直数值
+            MoveSpeed = recipe.Speed
         });
 
         // 5. 特性装载：根据配置中的 Traits 字符串动态挂载组件 (如 Bouncy, Ranged)

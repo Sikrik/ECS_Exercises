@@ -6,4 +6,5 @@ public class EnemyData {
     public int Damage;
     public float HitRecoveryDuration; // 新增：从 CSV 读取硬直时间
     public string[] Traits;
+    public int EnemyDeathScore;
 }

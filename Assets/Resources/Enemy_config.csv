@@ -1,5 +1,5 @@
-﻿ID,Health,Speed,Damage,HitRecovery,Traits
-Normal,40,2.5,15,0.4,Bouncy
-Fast,20,4.5,15,0.2,Bouncy
-Tank,150,1.2,20,0.8,
-Ranged,30,2.0,10,0.4,Ranged
+﻿ID,Health,Speed,Damage,HitRecovery,EnemyDeathScore,Traits
+Normal,40,2.5,15,0.4,10,Bouncy
+Fast,20,4.5,15,0.2,8,Bouncy
+Tank,150,1.2,20,0.8,20,
+Ranged,30,2.0,10,0.4,25,Ranged

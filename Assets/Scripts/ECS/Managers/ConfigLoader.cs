@@ -60,6 +60,7 @@ public static class ConfigLoader
                 Damage = int.Parse(cols[3].Trim(), CultureInfo.InvariantCulture),
                 // 新增：解析第 5 列硬直数据
                 HitRecoveryDuration = float.Parse(cols[4].Trim(), CultureInfo.InvariantCulture),
+                EnemyDeathScore = int .Parse(cols[5].Trim(), CultureInfo.InvariantCulture),
                 // 变更：特性清单移至第 6 列 (Index 5)
                 Traits = string.IsNullOrWhiteSpace(cols[5]) ? 
                     new string[0] : 

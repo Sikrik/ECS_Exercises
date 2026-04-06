@@ -21,7 +21,7 @@ public class HealthSystem : SystemBase
                 // 1. 如果是敌人死亡：增加得分
                 if (entity.HasComponent<EnemyTag>())
                 {
-                    ECSManager.Instance.Score += ECSManager.Instance.Config.EnemyKillScore;
+                    ECSManager.Instance.Score += ECSManager.Instance.Config.EnemyDeathScore;
                 }
                 
                 // 2. 如果是玩家死亡：暂停游戏并显示 UI
