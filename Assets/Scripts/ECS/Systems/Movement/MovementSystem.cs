@@ -47,5 +47,6 @@ public class MovementSystem : SystemBase
                 0.1f
             );
         }
+        ReturnListToPool(entities);
     }
 }

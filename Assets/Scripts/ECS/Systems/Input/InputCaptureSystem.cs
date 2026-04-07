@@ -31,5 +31,6 @@ public class InputCaptureSystem : SystemBase
         else if (Input.GetKeyDown(KeyCode.Alpha2)) PlayerShootingSystem.CurrentBulletType = BulletType.Slow;
         else if (Input.GetKeyDown(KeyCode.Alpha3)) PlayerShootingSystem.CurrentBulletType = BulletType.ChainLightning;
         else if (Input.GetKeyDown(KeyCode.Alpha4)) PlayerShootingSystem.CurrentBulletType = BulletType.AOE;
+        
     }
 }

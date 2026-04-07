@@ -23,7 +23,7 @@ public class BulletEffectSystem : SystemBase
             // 如果目标已死亡或不存在，仅销毁子弹并跳过效果处理
             if (target == null || !target.IsAlive) 
             {
-                ecs.DestroyEntity(bullet);
+                bullet.AddComponent(new PendingDestroyComponent());
                 continue;
             }
 
@@ -57,7 +57,7 @@ public class BulletEffectSystem : SystemBase
                 ProcessChain(target, pos, bullet.GetComponent<ChainComponent>());
 
             // 4. 关键：子弹命中后统一销毁，防止穿透或重复触发碰撞
-            ecs.DestroyEntity(bullet);
+            bullet.AddComponent(new PendingDestroyComponent());
         }
     }
 

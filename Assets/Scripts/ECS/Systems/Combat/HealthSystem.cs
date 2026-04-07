@@ -39,8 +39,8 @@ public class HealthSystem : SystemBase
                     entity.AddComponent(new PendingDestroyComponent());
                 }
                 
-                // HealthSystem 只负责生命周期终结
-                ECSManager.Instance.DestroyEntity(entity);
+                
+                entity.AddComponent(new PendingDestroyComponent());
             }
         }
     }

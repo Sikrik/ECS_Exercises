@@ -22,5 +22,6 @@ public class PlayerControlSystem : SystemBase
             vel.VX = dir.x * config.PlayerMoveSpeed;
             vel.VY = dir.y * config.PlayerMoveSpeed;
         }
+        ReturnListToPool(entities);
     }
 }

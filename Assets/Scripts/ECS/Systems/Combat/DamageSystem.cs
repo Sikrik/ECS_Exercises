@@ -29,9 +29,17 @@ public class DamageSystem : SystemBase
                     {
                         // 1. 扣血
                         health.CurrentHealth -= dmg.Value;
-
-                        // 2. 使用对象池抛出受伤事件，实现 0 GC！
-                        evt.Target.AddComponent(EventPool.GetDamageEvent(dmg.Value));
+                        var existingDmgEvt = evt.Target.GetComponent<DamageTakenEventComponent>();
+                        if (existingDmgEvt != null)
+                        {
+                            // 如果这一帧已经受过伤了，直接把伤害数值累加进去
+                            existingDmgEvt.DamageAmount += dmg.Value; 
+                        }
+                        else
+                        {
+                            // 如果这是这一帧的第一次受伤，从池子里拿新事件
+                            evt.Target.AddComponent(EventPool.GetDamageEvent(dmg.Value));
+                        }
                     }
                 }
             }

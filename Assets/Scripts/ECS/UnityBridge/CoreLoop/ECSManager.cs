@@ -76,44 +76,6 @@ public class ECSManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 常规销毁流程（表现层与逻辑层同步回收）
-    /// </summary>
-    public void DestroyEntity(Entity e)
-    {
-        if (!e.IsAlive) return; // 防御：防止同一帧内被多次销毁
-
-        // --- 视觉层清理 ---
-        if (e.HasComponent<ViewComponent>())
-        {
-            var view = e.GetComponent<ViewComponent>();
-            if (view.GameObject != null)
-            {
-                var col = view.GameObject.GetComponentInChildren<Collider2D>();
-                if (col != null) _gameObjectToEntity.Remove(col.gameObject.GetInstanceID());
-                else _gameObjectToEntity.Remove(view.GameObject.GetInstanceID());
-
-                if (view.Prefab != null) PoolManager.Instance.Despawn(view.Prefab, view.GameObject);
-                else Destroy(view.GameObject);
-            }
-        }
-        if (e.HasComponent<AttachedVFXComponent>())
-        {
-            var vfx = e.GetComponent<AttachedVFXComponent>();
-            if (vfx.EffectObject != null)
-            {
-                // 如果你的特效加入了 PoolManager，这里可以换成 PoolManager.Instance.Despawn
-                Destroy(vfx.EffectObject); 
-            }
-        }
-    
-        // --- 逻辑层清理与回收 ---
-        e.IsAlive = false;
-        e.ClearComponents(); // 【重要】清空上辈子的组件数据，防止脏数据污染
-        _entities.Remove(e);
-        _entityPool.Push(e); // 放入对象池
-    }
-
-    /// <summary>
     /// 真正的物理移除：从实体列表中彻底删除
     /// </summary>
     public void RemoveEntityInternal(Entity e)

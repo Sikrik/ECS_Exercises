@@ -25,7 +25,7 @@ public class LightningRenderSystem : SystemBase
             vfx.Timer += deltaTime;
             if (vfx.Timer >= vfx.Duration) 
             { 
-                ecs.DestroyEntity(entity); 
+                entity.AddComponent(new PendingDestroyComponent());
                 continue; 
             }
 

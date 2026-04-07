@@ -21,5 +21,6 @@ public class ViewSyncSystem : SystemBase
                 view.GameObject.transform.position = new Vector3(pos.X, pos.Y, pos.Z);
             }
         }
+        ReturnListToPool(entities);
     }
 }

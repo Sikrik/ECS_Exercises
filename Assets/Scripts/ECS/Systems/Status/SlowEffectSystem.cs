@@ -56,5 +56,6 @@ public class SlowEffectSystem : SystemBase
                 entity.RemoveComponent<SlowEffectComponent>();
             }
         }
+        ReturnListToPool(entities);
     }
 }

@@ -27,12 +27,14 @@ public class LifetimeSystem : SystemBase
             {
                 // 调用 ECSManager 的统一销毁接口
                 // 该接口会根据 ViewComponent 中的 Prefab 引用自动调用 PoolManager.Despawn
-                ECSManager.Instance.DestroyEntity(entity);
+                entity.AddComponent(new PendingDestroyComponent());
                 if (!entity.HasComponent<PendingDestroyComponent>())
                 {
                     entity.AddComponent(new PendingDestroyComponent());
                 }
             }
+           
         }
+        ReturnListToPool(entities);
     }
 }

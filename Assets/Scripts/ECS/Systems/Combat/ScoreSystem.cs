@@ -17,7 +17,7 @@ public class ScoreSystem : SystemBase
             var scoreEvt = scoreEvents[i].GetComponent<ScoreEventComponent>();
             ECSManager.Instance.Score += scoreEvt.Amount;
             scoreChanged = true;
-            ECSManager.Instance.DestroyEntity(scoreEvents[i]);
+            scoreEvents[i].AddComponent(new PendingDestroyComponent());
         }
 
         // 👇 只有分数真的增加时，才向全世界广播：分数变啦！
