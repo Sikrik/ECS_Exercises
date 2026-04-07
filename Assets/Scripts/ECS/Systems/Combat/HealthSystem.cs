@@ -21,7 +21,7 @@ public class HealthSystem : SystemBase
                 {
                     var stats = entity.GetComponent<EnemyStatsComponent>();
                     // 挂载计分组件，ScoreSystem 处理后，EntityCleanupSystem 会统一回收该实体
-                    entity.AddComponent(new ScoreEventComponent(stats.EnemyDeathScore));
+                    entity.AddComponent(new ScoreEventComponent(stats.Config.EnemyDeathScore));
                 }
                 
                 if (entity.HasComponent<PlayerTag>())

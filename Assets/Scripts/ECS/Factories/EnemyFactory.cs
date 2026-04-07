@@ -33,12 +33,13 @@ public static class EnemyFactory
         enemy.AddComponent(new DamageComponent(recipe.Damage));
         enemy.AddComponent(new StatusSummaryComponent()); 
 
+        enemy.AddComponent(new SpeedComponent(recipe.Speed)); // 初始化基础速度
+
         // 【重构核心】：不再拷贝 Speed, Score 等，直接存入 recipe 引用
         enemy.AddComponent(new EnemyStatsComponent 
         { 
             Type = type,
             Config = recipe, // 直接持有配置引用
-            CurrentMoveSpeed = recipe.Speed // 仅初始化当前动态速度
         });
 
         // 5. 特性装载 (Traits)

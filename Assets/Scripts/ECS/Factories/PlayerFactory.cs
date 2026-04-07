@@ -14,6 +14,8 @@ public static class PlayerFactory
         Entity player = ecs.CreateEntity();
         player.AddComponent(new PlayerTag());
         player.AddComponent(new PositionComponent(0, 0, 0));
+        // PlayerFactory.cs
+        player.AddComponent(new SpeedComponent(config.PlayerMoveSpeed)); // 玩家也有了自己的速度组件
         player.AddComponent(new VelocityComponent(0, 0)); 
         player.AddComponent(new HealthComponent(config.PlayerMaxHealth));
         player.AddComponent(new ViewComponent(go, prefab));

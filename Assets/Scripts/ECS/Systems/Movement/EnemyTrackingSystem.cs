@@ -55,7 +55,7 @@ public class EnemyTrackingSystem : SystemBase
             if (dist > 0.1f)
             {
                 // 结合基础速度与由 StatusGatherSystem 计算出的减速倍率
-                float finalSpeed = stats.Config.Speed * summary.SpeedMultiplier;
+                float finalSpeed = enemy.GetComponent<SpeedComponent>().CurrentSpeed;
                 vel.VX = (dx / dist) * finalSpeed;
                 vel.VY = (dy / dist) * finalSpeed;
             }

@@ -24,3 +24,16 @@ public class MoveInputComponent : Component
     public float Y;
     public MoveInputComponent(float x, float y) { X = x; Y = y; }
 }
+// Assets/Scripts/ECS/Components/MovementComponents.cs
+
+public class SpeedComponent : Component 
+{
+    public float BaseSpeed;    // 基础速度（来自配置）
+    public float CurrentSpeed; // 当前速度（计算减速后的实时数值）
+
+    public SpeedComponent(float speed) 
+    { 
+        BaseSpeed = speed; 
+        CurrentSpeed = speed; 
+    }
+}

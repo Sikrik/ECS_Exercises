@@ -17,10 +17,12 @@ public class PlayerControlSystem : SystemBase
         {
             var input = entity.GetComponent<MoveInputComponent>();
             var vel = entity.GetComponent<VelocityComponent>();
-            
+            // PlayerControlSystem.cs
+// 现在的代码不再依赖 config.PlayerMoveSpeed，而是看自己的组件
             Vector2 dir = new Vector2(input.X, input.Y).normalized;
-            vel.VX = dir.x * config.PlayerMoveSpeed;
-            vel.VY = dir.y * config.PlayerMoveSpeed;
+            var speed = entity.GetComponent<SpeedComponent>();
+            vel.VX = dir.x * speed.CurrentSpeed;
+            vel.VY = dir.y * speed.CurrentSpeed;
         }
         ReturnListToPool(entities);
     }

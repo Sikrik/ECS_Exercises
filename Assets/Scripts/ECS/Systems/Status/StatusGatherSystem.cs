@@ -3,30 +3,29 @@ public class StatusGatherSystem : SystemBase
 {
     public StatusGatherSystem(List<Entity> entities) : base(entities) { }
 
+    // Assets/Scripts/ECS/Systems/Status/StatusGatherSystem.cs
+
     public override void Update(float deltaTime)
     {
-        // 找到所有带有汇总组件的实体
-        var entities = GetEntitiesWith<StatusSummaryComponent>();
-        
+        var entities = GetEntitiesWith<StatusSummaryComponent, SpeedComponent>();
+    
         foreach (var e in entities)
         {
             var summary = e.GetComponent<StatusSummaryComponent>();
-            
-            // 1. 每帧重置为初始状态
-            summary.CanMove = true;
+            var speed = e.GetComponent<SpeedComponent>();
+        
+            // 1. 重置乘法器
             summary.SpeedMultiplier = 1f;
 
-            // 2. 检查硬控：如果有硬直或击退，标记为无法移动
-            if (e.HasComponent<HitRecoveryComponent>() || e.HasComponent<KnockbackComponent>())
-            {
-                summary.CanMove = false;
-            }
-
-            // 3. 检查软控：如果有减速，计算最终速度倍率
+            // 2. 检查减速效果
             if (e.HasComponent<SlowEffectComponent>())
             {
                 summary.SpeedMultiplier *= (1f - e.GetComponent<SlowEffectComponent>().SlowRatio);
             }
+
+            // 3. 最终计算：将结果写入 SpeedComponent
+            // 这样后续的移动系统只需要读 CurrentSpeed，不需要知道有没有被减速
+            speed.CurrentSpeed = speed.BaseSpeed * summary.SpeedMultiplier;
         }
     }
 }
