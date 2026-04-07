@@ -47,3 +47,12 @@ public class ScoreEventComponent : Component
     public int Amount;
     public ScoreEventComponent(int amount) => Amount = amount;
 }
+
+/// <summary>
+/// 目标受到伤害后的瞬时事件组件
+/// </summary>
+public class DamageTakenEventComponent : Component
+{
+    public float DamageAmount;
+    public DamageTakenEventComponent(float amt) => DamageAmount = amt;
+}

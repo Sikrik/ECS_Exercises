@@ -31,3 +31,34 @@ public class StateTimerSystem : SystemBase
         // 3. 处理减速效果计时（原本在 SlowEffectSystem，现在也可以合并到这里）
     }
 }
+
+public class StatusGatherSystem : SystemBase
+{
+    public StatusGatherSystem(List<Entity> entities) : base(entities) { }
+
+    public override void Update(float deltaTime)
+    {
+        var entities = GetEntitiesWith<StatusSummaryComponent>();
+        
+        foreach (var e in entities)
+        {
+            var summary = e.GetComponent<StatusSummaryComponent>();
+            
+            // 1. 每帧初始体重置
+            summary.CanMove = true;
+            summary.SpeedMultiplier = 1f;
+
+            // 2. 任何硬控都会导致无法移动
+            if (e.HasComponent<HitRecoveryComponent>() || e.HasComponent<KnockbackComponent>()) // 未来加冰冻、眩晕直接写在这里
+            {
+                summary.CanMove = false;
+            }
+
+            // 3. 软控（减速）乘区叠加
+            if (e.HasComponent<SlowEffectComponent>())
+            {
+                summary.SpeedMultiplier *= (1f - e.GetComponent<SlowEffectComponent>().SlowRatio);
+            }
+        }
+    }
+}
