@@ -10,18 +10,3 @@ public class DestroyTag : Component { }
 
 // IdentityComponents.cs 增加一行
 public class RangedTag : Component { }
-
-
-public class RangedAttackSystem : SystemBase
-{
-    public RangedAttackSystem(List<Entity> entities) : base(entities) { }
-    public override void Update(float deltaTime)
-    {
-        // 高内聚：该系统只处理带有 RangedTag 的实体
-        var entities = GetEntitiesWith<RangedTag, PositionComponent>();
-        foreach (var e in entities)
-        {
-            // 执行远程射击逻辑...
-        }
-    }
-}

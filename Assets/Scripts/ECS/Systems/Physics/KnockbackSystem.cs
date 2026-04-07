@@ -39,5 +39,27 @@ public class KnockbackSystem : SystemBase {
                 }
             }
         }
+        var knockbacks = GetEntitiesWith<KnockbackComponent, VelocityComponent>();
+        for (int i = knockbacks.Count - 1; i >= 0; i--)
+        {
+            var entity = knockbacks[i];
+            var kb = entity.GetComponent<KnockbackComponent>();
+            
+            // 扣减时间
+            kb.Timer -= deltaTime;
+            
+            if (kb.Timer > 0)
+            {
+                // 应用击退速度（强行覆盖正常速度）
+                var vel = entity.GetComponent<VelocityComponent>();
+                vel.VX = kb.DirX * kb.Speed;
+                vel.VY = kb.DirY * kb.Speed;
+            }
+            else
+            {
+                // 击退结束，移除组件。下一帧 StatusGatherSystem 会重新允许它寻路
+                entity.RemoveComponent<KnockbackComponent>();
+            }
+        }
     }
 }

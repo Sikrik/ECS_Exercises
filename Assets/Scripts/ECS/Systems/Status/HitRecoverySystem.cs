@@ -30,7 +30,7 @@ public class HitRecoverySystem : SystemBase
                 if (view.SpriteRenderer != null)
                 {
                     // 使用 PingPong 制作高频的受击闪烁效果，让打击感更脆
-                    float lerp = Mathf.PingPong(Time.time * 50f, 1f);
+                    float lerp = Mathf.PingPong(Time.time * 10f, 1f);
                     view.SpriteRenderer.color = Color.Lerp(Color.white, new Color(1f, 0.5f, 0.5f), lerp);
                 }
             }
