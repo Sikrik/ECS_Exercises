@@ -33,6 +33,11 @@ public class HealthSystem : SystemBase
                     Time.timeScale = 0; 
                     EventManager.Broadcast(new GameOverEvent());
                 }
+                // 👇 终极解耦：不再调用 DestroyEntity，而是贴上“待销毁”标签！
+                if (!entity.HasComponent<PendingDestroyComponent>())
+                {
+                    entity.AddComponent(new PendingDestroyComponent());
+                }
                 
                 // HealthSystem 只负责生命周期终结
                 ECSManager.Instance.DestroyEntity(entity);

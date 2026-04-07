@@ -1,7 +1,8 @@
 ﻿using System.Collections.Generic;
 
 /// <summary>
-/// 事件清理系统：负责在每帧结束时移除所有瞬时的事件组件，防止逻辑重复触发。
+/// 事件清理系统：负责在帧末统一销毁所有的瞬时事件组件。
+/// 【终极优化版】：配合 EventPool 实现事件组件的循环利用，达成核心战斗 0 GC。
 /// </summary>
 public class EventCleanupSystem : SystemBase
 {
@@ -9,27 +10,44 @@ public class EventCleanupSystem : SystemBase
 
     public override void Update(float deltaTime)
     {
-        // 1. 清理通用碰撞事件
-        // 我们需要找到所有还挂载着 CollisionEventComponent 的实体
+        // ==========================================
+        // 1. 清理并回收【碰撞事件】
+        // ==========================================
         var collisionEvents = GetEntitiesWith<CollisionEventComponent>();
         
-        // 必须使用倒序遍历或临时记录，因为移除组件会改变查询结果缓存
         for (int i = collisionEvents.Count - 1; i >= 0; i--)
         {
-            collisionEvents[i].RemoveComponent<CollisionEventComponent>();
+            var entity = collisionEvents[i];
+            var evt = entity.GetComponent<CollisionEventComponent>();
+            
+            // 从实体上移除组件（撕下标签）
+            entity.RemoveComponent<CollisionEventComponent>(); 
+            
+            // 将组件对象还给对象池（洗干净放回池子待下次使用）
+            EventPool.Return(evt); 
         }
+        
+        // 养成好习惯：查询完毕后，将借来的 List 还给 ECSManager
+        ReturnListToPool(collisionEvents); 
+
+        // ==========================================
+        // 2. 清理并回收【受伤瞬时事件】
+        // ==========================================
         var damageEvents = GetEntitiesWith<DamageTakenEventComponent>();
+        
         for (int i = damageEvents.Count - 1; i >= 0; i--)
         {
-            damageEvents[i].RemoveComponent<DamageTakenEventComponent>();
+            var entity = damageEvents[i];
+            var evt = entity.GetComponent<DamageTakenEventComponent>();
+            
+            // 从实体上移除组件（撕下标签）
+            entity.RemoveComponent<DamageTakenEventComponent>(); 
+            
+            // 将组件对象还给对象池（洗干净放回池子待下次使用）
+            EventPool.Return(evt); 
         }
-        // 2. 如果后续有其他瞬时事件（如 ExpCollectEventComponent），也在这里统一清理
-        /*
-        var expEvents = GetEntitiesWith<ExpCollectEventComponent>();
-        for (int i = expEvents.Count - 1; i >= 0; i--)
-        {
-            expEvents[i].RemoveComponent<ExpCollectEventComponent>();
-        }
-        */
+        
+        // 养成好习惯：查询完毕后，将借来的 List 还给 ECSManager
+        ReturnListToPool(damageEvents); 
     }
 }

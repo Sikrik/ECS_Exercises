@@ -40,6 +40,17 @@ public class SlowEffectSystem : SystemBase
                 {
                     view.SpriteRenderer.color = baseColor.Color;
                 }
+                if (entity.HasComponent<AttachedVFXComponent>())
+                {
+                    var vfx = entity.GetComponent<AttachedVFXComponent>();
+                    if (vfx.EffectObject != null)
+                    {
+                        // SystemBase 不是 MonoBehaviour，所以需要加 UnityEngine.Object 前缀
+                        UnityEngine.Object.Destroy(vfx.EffectObject); 
+                    }
+                    // 别忘了把组件也撕掉，保持数据干净
+                    entity.RemoveComponent<AttachedVFXComponent>(); 
+                }
                 
                 // 移除减速组件，怪物恢复原本速度，下一帧不再进入此循环
                 entity.RemoveComponent<SlowEffectComponent>();

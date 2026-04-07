@@ -96,6 +96,15 @@ public class ECSManager : MonoBehaviour
                 else Destroy(view.GameObject);
             }
         }
+        if (e.HasComponent<AttachedVFXComponent>())
+        {
+            var vfx = e.GetComponent<AttachedVFXComponent>();
+            if (vfx.EffectObject != null)
+            {
+                // 如果你的特效加入了 PoolManager，这里可以换成 PoolManager.Instance.Despawn
+                Destroy(vfx.EffectObject); 
+            }
+        }
     
         // --- 逻辑层清理与回收 ---
         e.IsAlive = false;

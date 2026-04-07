@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
-using UnityEngine;
 
+/// <summary>
+/// 伤害计算系统：只负责扣血与抛出受伤事件
+/// </summary>
 public class DamageSystem : SystemBase
 {
     public DamageSystem(List<Entity> entities) : base(entities) { }
@@ -12,21 +14,29 @@ public class DamageSystem : SystemBase
         for (int i = attackers.Count - 1; i >= 0; i--)
         {
             var attacker = attackers[i];
+            
+            // 👇 优化：单次查找
             var evt = attacker.GetComponent<CollisionEventComponent>();
             var dmg = attacker.GetComponent<DamageComponent>();
 
-            if (evt.Target != null && evt.Target.IsAlive && evt.Target.HasComponent<HealthComponent>())
+            if (evt.Target != null && evt.Target.IsAlive)
             {
-                if (!evt.Target.HasComponent<InvincibleComponent>())
+                var health = evt.Target.GetComponent<HealthComponent>();
+                if (health != null) // 👇 优化：替代 HasComponent<HealthComponent>()
                 {
-                    // 1. 纯粹的扣血逻辑
-                    var health = evt.Target.GetComponent<HealthComponent>();
-                    health.CurrentHealth -= dmg.Value;
+                    var invincible = evt.Target.GetComponent<InvincibleComponent>();
+                    if (invincible == null) // 👇 优化：替代 !HasComponent<InvincibleComponent>()
+                    {
+                        // 1. 扣血
+                        health.CurrentHealth -= dmg.Value;
 
-                    // 2. 贴上“受伤事件”标签，甩手不管！
-                    evt.Target.AddComponent(new DamageTakenEventComponent(dmg.Value));
+                        // 2. 使用对象池抛出受伤事件，实现 0 GC！
+                        evt.Target.AddComponent(EventPool.GetDamageEvent(dmg.Value));
+                    }
                 }
             }
         }
+        
+        ReturnListToPool(attackers); // 养成好习惯，用完把 List 还给 ECSManager
     }
 }

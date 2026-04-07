@@ -30,3 +30,7 @@ public class StatusSummaryComponent : Component
     public bool CanMove = true;
     public float SpeedMultiplier = 1f;
 }
+/// <summary>
+/// 待销毁标记：被贴上此标签的实体，将在帧末被统一回收。
+/// </summary>
+public class PendingDestroyComponent : Component { }
