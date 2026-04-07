@@ -16,32 +16,28 @@ public class HealthSystem : SystemBase
             
             if (health.CurrentHealth <= 0)
             {
-                // 【修改点】抛出加分事件，而不是直接改分数
+                // 【修复点】直接给当前实体加分，不要创建 new Entity()
                 if (entity.HasComponent<EnemyTag>() && entity.HasComponent<EnemyStatsComponent>())
                 {
                     var stats = entity.GetComponent<EnemyStatsComponent>();
-                    
-                    // 创建一个纯粹的“事件实体”在世界中广播
-                    Entity eventEntity = ECSManager.Instance.CreateEntity();
-                    eventEntity.AddComponent(new ScoreEventComponent(stats.EnemyDeathScore));
+                    // 挂载计分组件，ScoreSystem 处理后，EntityCleanupSystem 会统一回收该实体
+                    entity.AddComponent(new ScoreEventComponent(stats.EnemyDeathScore));
                 }
                 
-                // 玩家死亡逻辑保持不变...
                 if (entity.HasComponent<PlayerTag>())
                 {
                     Debug.Log("游戏结束！");
                     Time.timeScale = 0; 
                     EventManager.Broadcast(new GameOverEvent());
                 }
-                // 👇 终极解耦：不再调用 DestroyEntity，而是贴上“待销毁”标签！
+
+                // 统一贴上待销毁标签
                 if (!entity.HasComponent<PendingDestroyComponent>())
                 {
                     entity.AddComponent(new PendingDestroyComponent());
                 }
-                
-                
-                entity.AddComponent(new PendingDestroyComponent());
             }
         }
+        ReturnListToPool(entities);
     }
 }

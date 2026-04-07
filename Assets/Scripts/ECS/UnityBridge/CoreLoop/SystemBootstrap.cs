@@ -55,9 +55,7 @@ public static class SystemBootstrap
 
         // --- 7. 收尾清理层 ---
         systems.Add(new EventCleanupSystem(entities));    // 帧末：清理瞬时事件 (如碰撞事件、受伤事件)
-
-        // 注意：如果在你的工程中有回收实体的专属系统，它必须作为全场的最后一个压轴出场
-        // systems.Add(new EntityCleanupSystem(entities)); 
+        systems.Add(new EntityCleanupSystem(entities));   // 【必须】压轴出场，彻底回收实体
 
         return systems;
     }

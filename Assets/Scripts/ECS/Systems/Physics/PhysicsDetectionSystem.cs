@@ -16,6 +16,10 @@ public class PhysicsDetectionSystem : SystemBase
         for (int i = physicsEntities.Count - 1; i >= 0; i--)
         {
             var entity = physicsEntities[i];
+            
+            // 【修复点】如果实体已经标记销毁，跳过碰撞检测
+            if (entity.HasComponent<PendingDestroyComponent>()) continue;
+
             var pPhys = entity.GetComponent<PhysicsColliderComponent>();
             var filter = entity.GetComponent<CollisionFilterComponent>();
             if (pPhys.Collider == null) continue;
@@ -27,8 +31,7 @@ public class PhysicsDetectionSystem : SystemBase
             var trace = entity.GetComponent<TraceComponent>();
             var col = entity.GetComponent<CollisionComponent>();
 
-            // 1. 高速物体检测 (子弹专用)
-            if (trace != null && col != null)
+            if (trace != null && col != null) // 高速子弹检测
             {
                 var pos = entity.GetComponent<PositionComponent>();
                 Vector2 start = new Vector2(trace.PreviousX, trace.PreviousY);
@@ -41,7 +44,6 @@ public class PhysicsDetectionSystem : SystemBase
                     int hitCount = Physics2D.CircleCast(start, col.Radius, dir.normalized, contactFilter, _castResults, dist);
                     for (int j = 0; j < hitCount; j++)
                     {
-                        // 🚨 核心修复：绝对不能打中自己的碰撞体！
                         if (_castResults[j].collider != pPhys.Collider)
                         {
                             CreateEvent(entity, _castResults[j].collider.gameObject, _castResults[j].normal);
@@ -50,13 +52,11 @@ public class PhysicsDetectionSystem : SystemBase
                     }
                 }
             }
-            // 2. 普通物体检测 (玩家、怪物)
-            else
+            else // 普通物体检测
             {
                 int hitCount = pPhys.Collider.OverlapCollider(contactFilter, _overlapResults);
                 for (int j = 0; j < hitCount; j++)
                 {
-                    // 🚨 防御性编程：排除自己
                     if (_overlapResults[j] != pPhys.Collider)
                     {
                         ColliderDistance2D distInfo = pPhys.Collider.Distance(_overlapResults[j]);
@@ -68,14 +68,16 @@ public class PhysicsDetectionSystem : SystemBase
                 }
             }
         }
-        
         ReturnListToPool(physicsEntities);
     }
 
     private void CreateEvent(Entity source, GameObject targetGo, Vector2 normal)
     {
+        // 双重检查：确保源实体和目标实体都处于存活状态且未标记销毁
+        if (source.HasComponent<PendingDestroyComponent>()) return;
+
         Entity target = ECSManager.Instance.GetEntityFromGameObject(targetGo);
-        if (target != null && target.IsAlive)
+        if (target != null && target.IsAlive && !target.HasComponent<PendingDestroyComponent>())
         {
             source.AddComponent(EventPool.GetCollisionEvent(source, target, normal));
         }
