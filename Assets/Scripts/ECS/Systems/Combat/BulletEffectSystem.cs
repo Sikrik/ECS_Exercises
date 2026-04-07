@@ -2,8 +2,8 @@
 using UnityEngine;
 
 /// <summary>
-/// 子弹特效系统：负责处理命中的后续物理扩散逻辑（AOE、闪电链、减速）
-/// 优化点：不再直接扣血，统一发放 DamageTakenEvent 事件
+/// 子弹特效系统：处理子弹命中后的扩散逻辑（AOE、闪电链、减速等）
+/// 重构点：统一从子弹实体的 DamageComponent 获取伤害源，实现“数据单一真理源”
 /// </summary>
 public class BulletEffectSystem : SystemBase
 {
@@ -11,31 +11,37 @@ public class BulletEffectSystem : SystemBase
 
     public override void Update(float deltaTime)
     {
-        // 抓取本帧发生了碰撞的子弹
-        var hitBullets = GetEntitiesWith<CollisionEventComponent, BulletTag>();
+        // 筛选拥有碰撞事件、子弹标记和伤害组件的实体
+        var hitBullets = GetEntitiesWith<CollisionEventComponent, BulletTag, DamageComponent>();
 
         for (int i = hitBullets.Count - 1; i >= 0; i--)
         {
             var bullet = hitBullets[i];
             var evt = bullet.GetComponent<CollisionEventComponent>();
+            var dmg = bullet.GetComponent<DamageComponent>(); // 获取统一个伤害组件
             var pos = bullet.GetComponent<PositionComponent>();
             var target = evt.Target;
 
-            // 阵营校验：仅对存活的敌人触发效果
             if (target == null || !target.IsAlive || !target.HasComponent<EnemyTag>()) continue;
 
-            // 1. 处理减速效果挂载 (仅逻辑与表现，不涉及数值计算)
+            // 1. 处理减速效果 (挂载 SlowEffectComponent)
             HandleSlowEffect(bullet, target);
 
-            // 2. 处理爆炸范围伤害 (AOE) -> 发射伤害意图
+            // 2. 处理爆炸范围伤害 (AOE)
             var aoe = bullet.GetComponent<AOEComponent>();
-            if (aoe != null) ProcessAOE(pos.X, pos.Y, aoe);
+            if (aoe != null) 
+            {
+                ProcessAOE(pos.X, pos.Y, aoe.Radius, dmg.Value);
+            }
 
-            // 3. 处理连锁闪电 -> 递归寻找目标并持续发射伤害意图
+            // 3. 处理连锁闪电
             var chain = bullet.GetComponent<ChainComponent>();
-            if (chain != null) ProcessChain(target, pos, chain);
+            if (chain != null) 
+            {
+                ProcessChain(target, pos, chain, dmg.Value);
+            }
 
-            // 4. 标记销毁
+            // 4. 任务完成，标记子弹销毁
             if (!bullet.HasComponent<PendingDestroyComponent>())
                 bullet.AddComponent(new PendingDestroyComponent());
         }
@@ -51,7 +57,7 @@ public class BulletEffectSystem : SystemBase
         var tSlow = target.GetComponent<SlowEffectComponent>();
         if (tSlow != null)
         {
-            tSlow.Duration = bSlow.Duration; // 刷新持续时间
+            tSlow.Duration = bSlow.Duration; // 刷新时间
         }
         else
         {
@@ -64,10 +70,10 @@ public class BulletEffectSystem : SystemBase
         }
     }
 
-    private void ProcessAOE(float x, float y, AOEComponent aoe)
+    private void ProcessAOE(float x, float y, float radius, float damageValue)
     {
         var enemies = ECSManager.Instance.Grid.GetNearbyEnemies(x, y);
-        float rSq = aoe.Radius * aoe.Radius;
+        float rSq = radius * radius;
     
         foreach (var e in enemies)
         {
@@ -78,12 +84,12 @@ public class BulletEffectSystem : SystemBase
         
             if (d2 <= rSq)
             {
-                ApplyDamageEvent(e, aoe.Damage); // 仅产生伤害意图
+                ApplyDamageEvent(e, damageValue); 
             }
         }
     }
 
-    private void ProcessChain(Entity startTarget, PositionComponent hitPos, ChainComponent config)
+    private void ProcessChain(Entity startTarget, PositionComponent hitPos, ChainComponent config, float damageValue)
     {
         List<Entity> hitHistory = new List<Entity> { startTarget };
         Entity current = startTarget;
@@ -108,9 +114,8 @@ public class BulletEffectSystem : SystemBase
             if (next != null)
             {
                 hitHistory.Add(next);
-                ApplyDamageEvent(next, config.Damage); // 仅产生伤害意图
+                ApplyDamageEvent(next, damageValue);
 
-                // 表现层：生成闪电链 VFX
                 if (PoolManager.Instance.LightningChainVFX != null)
                 {
                     var nPos = next.GetComponent<PositionComponent>();
@@ -135,11 +140,11 @@ public class BulletEffectSystem : SystemBase
         var existingEvt = target.GetComponent<DamageTakenEventComponent>();
         if (existingEvt != null)
         {
-            existingEvt.DamageAmount += damage; // 累加伤害意图
+            existingEvt.DamageAmount += damage;
         }
         else
         {
-            target.AddComponent(EventPool.GetDamageEvent(damage)); // 从池中获取事件组件
+            target.AddComponent(EventPool.GetDamageEvent(damage));
         }
     }
 }

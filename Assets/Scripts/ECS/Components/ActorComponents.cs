@@ -1,9 +1,19 @@
 ﻿// Assets/Scripts/ECS/Components/ActorComponents.cs
 
-public class EnemyStatsComponent : Component 
+/// <summary>
+/// 悬赏组件：存储实体死亡时提供的分数
+/// </summary>
+public class BountyComponent : Component 
 {
-    public EnemyType Type;
-    public EnemyData Config; 
+    public int Score;
+    public BountyComponent(int score) => Score = score;
+}
 
-    public int EnemyDeathScore => Config.EnemyDeathScore;
+/// <summary>
+/// 受击硬直配置组件：存储该类实体默认的硬直时间
+/// </summary>
+public class HitRecoveryStatsComponent : Component 
+{
+    public float Duration;
+    public HitRecoveryStatsComponent(float duration) => Duration = duration;
 }

@@ -2,8 +2,8 @@
 using UnityEngine;
 
 /// <summary>
-/// 怪物追踪系统：基于 StatusSummaryComponent 进行寻路决策。
-/// 优化版：简化了拦截逻辑，完全信任状态汇总管线 (StatusGatherSystem) 的结果。
+/// 怪物追踪系统：负责计算敌人的寻路速度。
+/// 优化版：完全解耦了状态逻辑，仅根据 SpeedComponent.CurrentSpeed 执行位移决策。
 /// </summary>
 public class EnemyTrackingSystem : SystemBase
 {
@@ -17,23 +17,23 @@ public class EnemyTrackingSystem : SystemBase
 
         var pPos = player.GetComponent<PositionComponent>();
         
-        // 2. 筛选出所有需要寻路的敌人及其必要组件
-        var enemies = GetEntitiesWith<EnemyTag, PositionComponent, VelocityComponent, EnemyStatsComponent, StatusSummaryComponent>();
+        // 2. 筛选所有需要寻路的敌人。
+        // 注意：这里不再需要查询 StatusSummaryComponent。
+        var enemies = GetEntitiesWith<EnemyTag, PositionComponent, VelocityComponent, SpeedComponent>();
 
         for (int i = enemies.Count - 1; i >= 0; i--)
         {
             var enemy = enemies[i];
-            var summary = enemy.GetComponent<StatusSummaryComponent>();
             var vel = enemy.GetComponent<VelocityComponent>();
+            var speed = enemy.GetComponent<SpeedComponent>();
 
             // ==========================================
-            // 3. 状态拦截优化：职责分离
+            // 3. 速度拦截逻辑
             // ==========================================
-            // 只要 StatusGatherSystem 判定不能移动（硬直/击退/冰冻），这里就停止寻路计算
-            if (!summary.CanMove)
+            // 只要 StatusGatherSystem 判定当前速度为 0（如处于硬直或击退中），此处直接跳过计算。
+            if (speed.CurrentSpeed <= 0)
             {
-                // 只有在没有“击退”等外部物理速度干扰时，才手动归零寻路速度
-                // 这样可以确保 KnockbackSystem 施加的推力不会被本系统覆盖
+                // 只有在没有“击退”等外部物理速度干扰时，才手动归零寻路产生的速度。
                 if (!enemy.HasComponent<KnockbackComponent>()) 
                 {
                     vel.VX = 0;
@@ -43,21 +43,20 @@ public class EnemyTrackingSystem : SystemBase
             }
 
             // ==========================================
-            // 4. 正常寻路计算
+            // 4. 寻路向量计算
             // ==========================================
             var ePos = enemy.GetComponent<PositionComponent>();
-            var stats = enemy.GetComponent<EnemyStatsComponent>();
 
             float dx = pPos.X - ePos.X;
             float dy = pPos.Y - ePos.Y;
             float dist = Mathf.Sqrt(dx * dx + dy * dy);
 
+            // 防止抖动：距离目标过近时停止
             if (dist > 0.1f)
             {
-                // 结合基础速度与由 StatusGatherSystem 计算出的减速倍率
-                float finalSpeed = enemy.GetComponent<SpeedComponent>().CurrentSpeed;
-                vel.VX = (dx / dist) * finalSpeed;
-                vel.VY = (dy / dist) * finalSpeed;
+                // 直接使用由状态系统计算好的最终实时速度
+                vel.VX = (dx / dist) * speed.CurrentSpeed;
+                vel.VY = (dy / dist) * speed.CurrentSpeed;
             }
             else
             {

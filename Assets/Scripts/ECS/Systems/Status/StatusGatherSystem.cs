@@ -1,31 +1,38 @@
-﻿using System.Collections.Generic;
+﻿// Assets/Scripts/ECS/Systems/Status/StatusGatherSystem.cs
+
+using System.Collections.Generic;
+
 public class StatusGatherSystem : SystemBase
 {
     public StatusGatherSystem(List<Entity> entities) : base(entities) { }
 
-    // Assets/Scripts/ECS/Systems/Status/StatusGatherSystem.cs
-
     public override void Update(float deltaTime)
     {
-        var entities = GetEntitiesWith<StatusSummaryComponent, SpeedComponent>();
-    
+        // 现在只查询拥有速度组件的实体
+        var entities = GetEntitiesWith<SpeedComponent>();
+        
         foreach (var e in entities)
         {
-            var summary = e.GetComponent<StatusSummaryComponent>();
             var speed = e.GetComponent<SpeedComponent>();
-        
-            // 1. 重置乘法器
-            summary.SpeedMultiplier = 1f;
+            
+            // 1. 默认每一帧开始时，速度恢复为基础配置值
+            float finalSpeed = speed.BaseSpeed;
 
-            // 2. 检查减速效果
-            if (e.HasComponent<SlowEffectComponent>())
+            // 2. 逻辑简化：检查“硬控”（硬直或击退）
+            // 如果处于受击硬直或正在被击退，实时速度直接归零
+            if (e.HasComponent<HitRecoveryComponent>() || e.HasComponent<KnockbackComponent>())
             {
-                summary.SpeedMultiplier *= (1f - e.GetComponent<SlowEffectComponent>().SlowRatio);
+                finalSpeed = 0;
+            }
+            // 3. 检查“软控”（减速）
+            // 如果没有硬控，再看看有没有减速效果
+            else if (e.HasComponent<SlowEffectComponent>())
+            {
+                finalSpeed *= (1f - e.GetComponent<SlowEffectComponent>().SlowRatio);
             }
 
-            // 3. 最终计算：将结果写入 SpeedComponent
-            // 这样后续的移动系统只需要读 CurrentSpeed，不需要知道有没有被减速
-            speed.CurrentSpeed = speed.BaseSpeed * summary.SpeedMultiplier;
+            // 4. 直接写入结果，后续系统只需读 CurrentSpeed 即可
+            speed.CurrentSpeed = finalSpeed;
         }
     }
 }
