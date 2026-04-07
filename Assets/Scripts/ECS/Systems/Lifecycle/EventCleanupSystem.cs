@@ -18,7 +18,11 @@ public class EventCleanupSystem : SystemBase
         {
             collisionEvents[i].RemoveComponent<CollisionEventComponent>();
         }
-
+        var damageEvents = GetEntitiesWith<DamageTakenEventComponent>();
+        for (int i = damageEvents.Count - 1; i >= 0; i--)
+        {
+            damageEvents[i].RemoveComponent<DamageTakenEventComponent>();
+        }
         // 2. 如果后续有其他瞬时事件（如 ExpCollectEventComponent），也在这里统一清理
         /*
         var expEvents = GetEntitiesWith<ExpCollectEventComponent>();

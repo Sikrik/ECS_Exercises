@@ -30,7 +30,7 @@ public class HitRecoverySystem : SystemBase
                 if (view.SpriteRenderer != null)
                 {
                     // 使用 PingPong 制作高频的受击闪烁效果，让打击感更脆
-                    float lerp = Mathf.PingPong(Time.time * 25f, 1f);
+                    float lerp = Mathf.PingPong(Time.time * 50f, 1f);
                     view.SpriteRenderer.color = Color.Lerp(Color.white, new Color(1f, 0.5f, 0.5f), lerp);
                 }
             }
@@ -44,43 +44,6 @@ public class HitRecoverySystem : SystemBase
                 
                 // 移除硬直组件。下一帧 EnemyTrackingSystem 发现它没有这个组件了，就会自动重新开始寻路！
                 entity.RemoveComponent<HitRecoveryComponent>();
-            }
-        }
-    }
-}
-
-// 新建: PlayerHitReactionSystem.cs
-public class PlayerHitReactionSystem : SystemBase
-{
-    public PlayerHitReactionSystem(List<Entity> entities) : base(entities) { }
-    public override void Update(float deltaTime)
-    {
-        // 只抓取受伤的玩家
-        var players = GetEntitiesWith<PlayerTag, DamageTakenEventComponent, HealthComponent>();
-        foreach (var p in players)
-        {
-            p.AddComponent(new InvincibleComponent { Duration = ECSManager.Instance.Config.PlayerInvincibleDuration });
-            
-            var health = p.GetComponent<HealthComponent>();
-            EventManager.Broadcast(new PlayerHealthChangedEvent { CurrentHealth = health.CurrentHealth, MaxHealth = health.MaxHealth });
-        }
-    }
-}
-
-// 新建: EnemyHitReactionSystem.cs
-public class EnemyHitReactionSystem : SystemBase
-{
-    public EnemyHitReactionSystem(List<Entity> entities) : base(entities) { }
-    public override void Update(float deltaTime)
-    {
-        // 只抓取受伤的怪物
-        var enemies = GetEntitiesWith<EnemyTag, DamageTakenEventComponent, EnemyStatsComponent>();
-        foreach (var e in enemies)
-        {
-            var stats = e.GetComponent<EnemyStatsComponent>();
-            if (stats.HitRecoveryDuration > 0 && !e.HasComponent<KnockbackComponent>())
-            {
-                e.AddComponent(new HitRecoveryComponent { Timer = stats.HitRecoveryDuration });
             }
         }
     }

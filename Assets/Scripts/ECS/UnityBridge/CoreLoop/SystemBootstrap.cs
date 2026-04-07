@@ -19,7 +19,7 @@ public static class SystemBootstrap
         systems.Add(new EnemyTrackingSystem(entities));
         // --- 3. 状态控制层 ---
         systems.Add(new PlayerControlSystem(entities));   // 意图转化为具体移动速度
-        systems.Add(new StateTimerSystem(entities));      // 独立倒计时管理
+        // systems.Add(new StateTimerSystem(entities));      // 独立倒计时管理
 
         // --- 4. 生产与物理层 ---
         systems.Add(new EnemySpawnSystem(entities));      // 刷怪逻辑
@@ -33,6 +33,8 @@ public static class SystemBootstrap
         systems.Add(new DamageSystem(entities));          // 2. 消费碰撞事件，造成直接伤害与受击硬直
         systems.Add(new KnockbackSystem(entities));       // 3. 消费碰撞事件，施加击退力
         systems.Add(new BulletEffectSystem(entities));    // 4. 消费碰撞事件，触发闪电链、爆炸、减速传递
+        systems.Add(new EnemyHitReactionSystem(entities));// 2.1 怪物受伤反应（贴硬直标签）
+        systems.Add(new PlayerHitReactionSystem(entities));// 2.2 玩家受伤反应（贴无敌标签，更新UI）
 
         // --- 6. 状态维持与表现 ---
         systems.Add(new SlowEffectSystem(entities));      // 减速时间扣减与冰蓝色渲染
