@@ -6,7 +6,7 @@ public static class EnemyFactory
     {
         var ecs = ECSManager.Instance;
         
-        // 1. 获取对应的配置配方 (从经过优化的 Enemy_config.csv 加载)
+        // 1. 获取配置配方 (EnemyData)
         string recipeId = type.ToString();
         if (!ecs.Config.EnemyRecipes.TryGetValue(recipeId, out var recipe)) 
         {
@@ -14,41 +14,41 @@ public static class EnemyFactory
             return null;
         }
 
-        // 2. 表现层：从对象池获取预制体并生成
+        // 2. 表现层：从对象池获取
         GameObject prefab = PoolManager.Instance.GetEnemyPrefab(type);
         GameObject go = PoolManager.Instance.Spawn(prefab, spawnPos, Quaternion.identity);
 
-        // 3. 逻辑层：创建实体并使用扩展方法挂载基础组件
-        // AsEnemy 挂载 EnemyTag; WithBaseView 挂载位置、速度、视图及物理烘焙标记
-        Entity enemy = ecs.CreateEntity()
-            .AsEnemy()
-            .WithBaseView(go, prefab, spawnPos);
-
-        // 4. 数值组件装载 (原子化拆分)
+        // 3. 逻辑层：创建实体并进行基础装配
+        Entity enemy = ecs.CreateEntity();
         
-        // 挂载血量组件
+        enemy.AddComponent(new EnemyTag());
+        enemy.AddComponent(new ViewComponent(go, prefab));
+        enemy.AddComponent(new PositionComponent(spawnPos.x, spawnPos.y, 0));
+        enemy.AddComponent(new VelocityComponent(0, 0));
+        enemy.AddComponent(new NeedsBakingTag());
+        enemy.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Player")));
+
+        // 4. 数值装载：直接引用配置对象
         enemy.AddComponent(new HealthComponent(recipe.Health));
-        
-        // 挂载伤害组件：让 DamageSystem 能够统一识别碰撞伤害
         enemy.AddComponent(new DamageComponent(recipe.Damage));
+        enemy.AddComponent(new StatusSummaryComponent()); 
 
-        // 挂载敌人状态组件：存储基础速度和硬直时间
+        // 【重构核心】：不再拷贝 Speed, Score 等，直接存入 recipe 引用
         enemy.AddComponent(new EnemyStatsComponent 
         { 
             Type = type,
-            BaseMoveSpeed = recipe.Speed, // 优化：存储基础速度以便后续效果恢复
-            HitRecoveryDuration = recipe.HitRecoveryDuration, // 存储从配置读取的硬直数值
-            MoveSpeed = recipe.Speed,
-            // 👇新增这一行，把配方里的分数给到实体
-            EnemyDeathScore = recipe.EnemyDeathScore
+            Config = recipe, // 直接持有配置引用
+            CurrentMoveSpeed = recipe.Speed // 仅初始化当前动态速度
         });
-        // 👇 必须添加这个组件，作为状态汇总的容器
-        enemy.AddComponent(new StatusSummaryComponent());
 
-        // 5. 特性装载：根据配置中的 Traits 字符串动态挂载组件 (如 Bouncy, Ranged)
-        foreach (var trait in recipe.Traits) 
+        // 5. 特性装载 (Traits)
+        if (recipe.Traits != null)
         {
-            ComponentRegistry.Apply(enemy, trait);
+            foreach (var trait in recipe.Traits) 
+            {
+                if (trait == "Bouncy") enemy.AddComponent(new BouncyTag());
+                else ComponentRegistry.Apply(enemy, trait);
+            }
         }
         return enemy;
     }

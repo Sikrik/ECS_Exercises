@@ -3,7 +3,12 @@ using UnityEngine;
 
 public class MovementSystem : SystemBase
 {
-    public MovementSystem(List<Entity> entities) : base(entities) { }
+    private Camera _mainCamera; // 缓存相机引用
+
+    public MovementSystem(List<Entity> entities) : base(entities) 
+    {
+        _mainCamera = Camera.main; // 初始化时仅寻找一次
+    }
 
     public override void Update(float deltaTime)
     {
@@ -14,38 +19,21 @@ public class MovementSystem : SystemBase
             var pos = entity.GetComponent<PositionComponent>();
             var vel = entity.GetComponent<VelocityComponent>();
             
-            // 1. 轨迹追踪：更新旧坐标（用于 PhysicsDetectionSystem 的射线检测防穿透）
             if (entity.HasComponent<TraceComponent>())
             {
                 var trace = entity.GetComponent<TraceComponent>();
-                trace.PreviousX = pos.X;
-                trace.PreviousY = pos.Y;
+                trace.PreviousX = pos.X; trace.PreviousY = pos.Y;
             }
             
-            // 2. 逻辑位移计算
             pos.X += vel.VX * deltaTime;
             pos.Y += vel.VY * deltaTime;
-        }
 
-        // 处理相机跟随逻辑（仅针对 Player）
-        UpdateCameraFollow();
-
-        ReturnListToPool(entities);
-    }
-
-    private void UpdateCameraFollow()
-    {
-        var players = GetEntitiesWith<PlayerTag, PositionComponent>();
-        if (players.Count > 0)
-        {
-            var pPos = players[0].GetComponent<PositionComponent>();
-            Camera camera = Camera.main;
-            if (camera != null)
+            // 相机跟随逻辑使用缓存的 _mainCamera
+            if (entity.HasComponent<PlayerTag>() && _mainCamera != null)
             {
-                Vector3 target = new Vector3(pPos.X, pPos.Y, camera.transform.position.z);
-                camera.transform.position = Vector3.Lerp(camera.transform.position, target, 0.1f);
+                Vector3 target = new Vector3(pos.X, pos.Y, _mainCamera.transform.position.z);
+                _mainCamera.transform.position = Vector3.Lerp(_mainCamera.transform.position, target, 0.1f);
             }
         }
-        ReturnListToPool(players);
     }
 }
