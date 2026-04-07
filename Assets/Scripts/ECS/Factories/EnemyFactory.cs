@@ -42,13 +42,14 @@ public static class EnemyFactory
             // 👇新增这一行，把配方里的分数给到实体
             EnemyDeathScore = recipe.EnemyDeathScore
         });
+        // 👇 必须添加这个组件，作为状态汇总的容器
+        enemy.AddComponent(new StatusSummaryComponent());
 
         // 5. 特性装载：根据配置中的 Traits 字符串动态挂载组件 (如 Bouncy, Ranged)
         foreach (var trait in recipe.Traits) 
         {
             ComponentRegistry.Apply(enemy, trait);
         }
-
         return enemy;
     }
 }

@@ -15,8 +15,8 @@ public static class SystemBootstrap
 
         // --- 2. 感知与意图层 ---
         systems.Add(new InputCaptureSystem(entities));    // 捕捉玩家输入
-        systems.Add(new EnemyTrackingSystem(entities));   // 怪物 AI 寻路决策
-
+        systems.Add(new StatusGatherSystem(entities)); 
+        systems.Add(new EnemyTrackingSystem(entities));
         // --- 3. 状态控制层 ---
         systems.Add(new PlayerControlSystem(entities));   // 意图转化为具体移动速度
         systems.Add(new StateTimerSystem(entities));      // 独立倒计时管理
