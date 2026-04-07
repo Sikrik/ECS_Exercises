@@ -88,38 +88,40 @@ public class BulletEffectSystem : SystemBase
     /// </summary>
     private void ProcessAOE(float x, float y, AOEComponent aoe)
     {
-        var pool = PoolManager.Instance;
         var ecs = ECSManager.Instance;
+        // ... (视觉特效生成逻辑保持不变)
 
-        // 生成爆炸视觉特效实体
-        if (pool.ExplosionVFXPrefab != null)
-        {
-            GameObject vfxGo = pool.Spawn(pool.ExplosionVFXPrefab, new Vector3(x, y, 0), Quaternion.identity);
-            Entity vfxEntity = ecs.CreateEntity();
-            vfxEntity.AddComponent(new ViewComponent(vfxGo, pool.ExplosionVFXPrefab));
-            vfxEntity.AddComponent(new LifetimeComponent { Duration = 1.0f }); // 1秒后统一回收
-        }
-
-        // 查找范围内敌人并造成伤害
         var enemies = ecs.Grid.GetNearbyEnemies(x, y);
         float rSq = aoe.Radius * aoe.Radius;
-        
+    
         foreach (var e in enemies)
         {
             if (!e.IsAlive || !e.HasComponent<EnemyTag>()) continue;
-            
+        
             var p = e.GetComponent<PositionComponent>();
             float d2 = (p.X - x) * (p.X - x) + (p.Y - y) * (p.Y - y);
-            
+        
             if (d2 <= rSq)
             {
-                // 👇 核心升级：使用对象池发放受伤事件，而不是直接扣血！
-                // 这样被炸到的怪物也会触发闪烁和硬直！
-                ApplyDamageViaEvent(e, aoe.Damage);
+                // 职责统一：不再直接修改 HealthComponent，而是发放“受伤事件”
+                // 具体的扣血、无敌检测、UI广播全部交给 DamageSystem 或专门的反应系统
+                ApplyDamageEvent(e, aoe.Damage);
             }
         }
     }
-
+    private void ApplyDamageEvent(Entity target, float damage)
+    {
+        // 使用对象池获取事件组件，挂载到目标身上
+        var existingEvt = target.GetComponent<DamageTakenEventComponent>();
+        if (existingEvt != null)
+        {
+            existingEvt.DamageAmount += damage;
+        }
+        else
+        {
+            target.AddComponent(EventPool.GetDamageEvent(damage));
+        }
+    }
     /// <summary>
     /// 处理连锁闪电逻辑与多段路径特效生成
     /// </summary>
