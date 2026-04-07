@@ -7,18 +7,14 @@ public class MovementSystem : SystemBase
 
     public override void Update(float deltaTime)
     {
-        // 筛选出所有能动的物体
         var entities = GetEntitiesWith<PositionComponent, VelocityComponent>();
-        var camera = Camera.main;
-        Vector3 playerPosition = Vector3.zero;
-        bool foundPlayer = false;
         
         foreach (var entity in entities)
         {
             var pos = entity.GetComponent<PositionComponent>();
             var vel = entity.GetComponent<VelocityComponent>();
             
-            // 1. 轨迹追踪优化：仅针对有 TraceComponent 的物体更新旧位置（防穿透）
+            // 1. 轨迹追踪：更新旧坐标（用于 PhysicsDetectionSystem 的射线检测防穿透）
             if (entity.HasComponent<TraceComponent>())
             {
                 var trace = entity.GetComponent<TraceComponent>();
@@ -26,27 +22,30 @@ public class MovementSystem : SystemBase
                 trace.PreviousY = pos.Y;
             }
             
-            // 2. 基础位移逻辑
+            // 2. 逻辑位移计算
             pos.X += vel.VX * deltaTime;
             pos.Y += vel.VY * deltaTime;
-            
-            // 3. 相机跟随：使用 PlayerTag 识别玩家
-            if (!foundPlayer && entity.HasComponent<PlayerTag>())
+        }
+
+        // 处理相机跟随逻辑（仅针对 Player）
+        UpdateCameraFollow();
+
+        ReturnListToPool(entities);
+    }
+
+    private void UpdateCameraFollow()
+    {
+        var players = GetEntitiesWith<PlayerTag, PositionComponent>();
+        if (players.Count > 0)
+        {
+            var pPos = players[0].GetComponent<PositionComponent>();
+            Camera camera = Camera.main;
+            if (camera != null)
             {
-                playerPosition = new Vector3(pos.X, pos.Y, camera.transform.position.z);
-                foundPlayer = true;
+                Vector3 target = new Vector3(pPos.X, pPos.Y, camera.transform.position.z);
+                camera.transform.position = Vector3.Lerp(camera.transform.position, target, 0.1f);
             }
         }
-        
-        // 平滑跟随逻辑保持不变
-        if (foundPlayer && camera != null)
-        {
-            camera.transform.position = Vector3.Lerp(
-                camera.transform.position,
-                playerPosition,
-                0.1f
-            );
-        }
-        ReturnListToPool(entities);
+        ReturnListToPool(players);
     }
 }

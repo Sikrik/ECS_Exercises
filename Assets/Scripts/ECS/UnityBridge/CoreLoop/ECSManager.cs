@@ -50,11 +50,13 @@ public class ECSManager : MonoBehaviour
 
     void Update()
     {
+        // 【新增/修改】核心 0 GC 清理逻辑
+        // 在所有系统运行前，必须把上一帧从池子里借出来的 List 全部还回去
         foreach (var list in QueryCache.Values)
         {
-            ReturnListToPool(list);
+            ReturnListToPool(list); 
         }
-        QueryCache.Clear();
+        QueryCache.Clear(); // 清空索引，确保本帧数据是全新的
 
         float deltaTime = Time.deltaTime;
         for (int i = 0; i < _systems.Count; i++)
