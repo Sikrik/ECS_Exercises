@@ -64,6 +64,8 @@ public class PlayerShootingSystem : SystemBase
         bullet.AddComponent(new ViewComponent(bulletGo, prefab));
         bullet.AddComponent(new NeedsBakingTag()); 
         bullet.AddComponent(new TraceComponent(pPos.X, pPos.Y));
+
+        bullet.AddComponent(new CollisionComponent(0.2f));
         bullet.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Enemy")));
 
         // 👇 核心替换：根据特殊子弹挂载特效组件，使用配表里的特殊参数
