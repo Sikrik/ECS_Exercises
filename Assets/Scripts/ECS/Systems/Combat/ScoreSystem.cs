@@ -9,19 +9,21 @@ public class ScoreSystem : SystemBase
 
     public override void Update(float deltaTime)
     {
-        // 抓取世界上所有的加分事件
         var scoreEvents = GetEntitiesWith<ScoreEventComponent>();
+        bool scoreChanged = false;
 
         for (int i = scoreEvents.Count - 1; i >= 0; i--)
         {
-            var eventEntity = scoreEvents[i];
-            var scoreEvt = eventEntity.GetComponent<ScoreEventComponent>();
-
-            // 统一处理分数
+            var scoreEvt = scoreEvents[i].GetComponent<ScoreEventComponent>();
             ECSManager.Instance.Score += scoreEvt.Amount;
+            scoreChanged = true;
+            ECSManager.Instance.DestroyEntity(scoreEvents[i]);
+        }
 
-            // 事件处理完毕，立刻销毁这个临时实体（阅后即焚）
-            ECSManager.Instance.DestroyEntity(eventEntity);
+        // 👇 只有分数真的增加时，才向全世界广播：分数变啦！
+        if (scoreChanged)
+        {
+            EventManager.Broadcast(new ScoreChangedEvent { NewScore = ECSManager.Instance.Score });
         }
     }
 }

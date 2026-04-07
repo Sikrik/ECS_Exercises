@@ -31,7 +31,7 @@ public class HealthSystem : SystemBase
                 {
                     Debug.Log("游戏结束！");
                     Time.timeScale = 0; 
-                    UIManager.Instance.ShowGameOver(); 
+                    EventManager.Broadcast(new GameOverEvent());
                 }
                 
                 // HealthSystem 只负责生命周期终结
