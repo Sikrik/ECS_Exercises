@@ -1,10 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// 物理碰撞检测系统
-/// 【终极优化版】：单次查找 + 对象池 0 GC + 列表回收
-/// </summary>
 public class PhysicsDetectionSystem : SystemBase
 {
     private Collider2D[] _overlapResults = new Collider2D[10];
@@ -14,61 +10,65 @@ public class PhysicsDetectionSystem : SystemBase
 
     public override void Update(float deltaTime)
     {
-        // 强制同步位移后的 Transform
         Physics2D.SyncTransforms();
-        
-        // 筛选：带物理组件 且 带碰撞过滤器的实体
         var physicsEntities = GetEntitiesWith<PhysicsColliderComponent, PositionComponent, CollisionFilterComponent>();
 
-        // 👇 优化1：推荐使用倒序遍历，养成 ECS 的好习惯
         for (int i = physicsEntities.Count - 1; i >= 0; i--)
         {
             var entity = physicsEntities[i];
-            
             var pPhys = entity.GetComponent<PhysicsColliderComponent>();
             var filter = entity.GetComponent<CollisionFilterComponent>();
             if (pPhys.Collider == null) continue;
 
-            // 构建 Unity 物理过滤器 (ContactFilter2D 是 struct 结构体，在栈上分配，不会产生 GC)
             ContactFilter2D contactFilter = new ContactFilter2D();
             contactFilter.SetLayerMask(filter.LayerMask);
             contactFilter.useTriggers = true;
 
-            // 👇 优化2：单次查找替代 HasComponent，性能翻倍
             var trace = entity.GetComponent<TraceComponent>();
             var col = entity.GetComponent<CollisionComponent>();
 
-            // 1. 高速物体检测 (子弹专用，防止穿墙)
+            // 1. 高速物体检测 (子弹专用)
             if (trace != null && col != null)
             {
                 var pos = entity.GetComponent<PositionComponent>();
-
                 Vector2 start = new Vector2(trace.PreviousX, trace.PreviousY);
                 Vector2 end = new Vector2(pos.X, pos.Y);
                 Vector2 dir = end - start;
                 float dist = dir.magnitude;
 
-                if (dist > 0.001f && Physics2D.CircleCast(start, col.Radius, dir.normalized, contactFilter, _castResults, dist) > 0)
+                if (dist > 0.001f)
                 {
-                    CreateEvent(entity, _castResults[0].collider.gameObject, _castResults[0].normal);
+                    int hitCount = Physics2D.CircleCast(start, col.Radius, dir.normalized, contactFilter, _castResults, dist);
+                    for (int j = 0; j < hitCount; j++)
+                    {
+                        // 🚨 核心修复：绝对不能打中自己的碰撞体！
+                        if (_castResults[j].collider != pPhys.Collider)
+                        {
+                            CreateEvent(entity, _castResults[j].collider.gameObject, _castResults[j].normal);
+                            break; 
+                        }
+                    }
                 }
             }
-            // 2. 普通物体检测 (玩家、怪物重叠检测)
+            // 2. 普通物体检测 (玩家、怪物)
             else
             {
                 int hitCount = pPhys.Collider.OverlapCollider(contactFilter, _overlapResults);
                 for (int j = 0; j < hitCount; j++)
                 {
-                    ColliderDistance2D distInfo = pPhys.Collider.Distance(_overlapResults[j]);
-                    if (distInfo.isOverlapped)
+                    // 🚨 防御性编程：排除自己
+                    if (_overlapResults[j] != pPhys.Collider)
                     {
-                        CreateEvent(entity, _overlapResults[j].gameObject, distInfo.normal);
+                        ColliderDistance2D distInfo = pPhys.Collider.Distance(_overlapResults[j]);
+                        if (distInfo.isOverlapped)
+                        {
+                            CreateEvent(entity, _overlapResults[j].gameObject, distInfo.normal);
+                        }
                     }
                 }
             }
         }
         
-        // 👇 优化3：养成好习惯，用完的 List 还给 ECSManager 的对象池
         ReturnListToPool(physicsEntities);
     }
 
@@ -77,7 +77,6 @@ public class PhysicsDetectionSystem : SystemBase
         Entity target = ECSManager.Instance.GetEntityFromGameObject(targetGo);
         if (target != null && target.IsAlive)
         {
-            // 👇 终极优化4：抛弃 new，使用对象池借用组件！实现完美的 0 GC！
             source.AddComponent(EventPool.GetCollisionEvent(source, target, normal));
         }
     }

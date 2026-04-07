@@ -1,8 +1,5 @@
 ﻿using System.Collections.Generic;
 
-/// <summary>
-/// 伤害计算系统：只负责扣血与抛出受伤事件
-/// </summary>
 public class DamageSystem : SystemBase
 {
     public DamageSystem(List<Entity> entities) : base(entities) { }
@@ -14,37 +11,48 @@ public class DamageSystem : SystemBase
         for (int i = attackers.Count - 1; i >= 0; i--)
         {
             var attacker = attackers[i];
-            
-            // 👇 优化：单次查找
             var evt = attacker.GetComponent<CollisionEventComponent>();
             var dmg = attacker.GetComponent<DamageComponent>();
 
             if (evt.Target != null && evt.Target.IsAlive)
             {
-                var health = evt.Target.GetComponent<HealthComponent>();
-                if (health != null) // 👇 优化：替代 HasComponent<HealthComponent>()
+                // 🚨 核心修复：重新引入 ECS 层面的阵营校验，彻底杜绝友军伤害！
+                bool isAttackerBullet = attacker.HasComponent<BulletTag>();
+                bool isAttackerEnemy = attacker.HasComponent<EnemyTag>();
+
+                bool isTargetPlayer = evt.Target.HasComponent<PlayerTag>();
+                bool isTargetEnemy = evt.Target.HasComponent<EnemyTag>();
+
+                // 规则：只有满足【子弹打敌人】或【敌人打玩家】的条件，才允许造成伤害
+                bool canDamage = (isAttackerBullet && isTargetEnemy) || (isAttackerEnemy && isTargetPlayer);
+
+                if (canDamage)
                 {
-                    var invincible = evt.Target.GetComponent<InvincibleComponent>();
-                    if (invincible == null) // 👇 优化：替代 !HasComponent<InvincibleComponent>()
+                    var health = evt.Target.GetComponent<HealthComponent>();
+                    if (health != null)
                     {
-                        // 1. 扣血
-                        health.CurrentHealth -= dmg.Value;
-                        var existingDmgEvt = evt.Target.GetComponent<DamageTakenEventComponent>();
-                        if (existingDmgEvt != null)
+                        var invincible = evt.Target.GetComponent<InvincibleComponent>();
+                        if (invincible == null)
                         {
-                            // 如果这一帧已经受过伤了，直接把伤害数值累加进去
-                            existingDmgEvt.DamageAmount += dmg.Value; 
-                        }
-                        else
-                        {
-                            // 如果这是这一帧的第一次受伤，从池子里拿新事件
-                            evt.Target.AddComponent(EventPool.GetDamageEvent(dmg.Value));
+                            // 1. 扣血
+                            health.CurrentHealth -= dmg.Value;
+
+                            // 2. 累加或抛出受伤事件
+                            var existingDmgEvt = evt.Target.GetComponent<DamageTakenEventComponent>();
+                            if (existingDmgEvt != null)
+                            {
+                                existingDmgEvt.DamageAmount += dmg.Value;
+                            }
+                            else
+                            {
+                                evt.Target.AddComponent(EventPool.GetDamageEvent(dmg.Value));
+                            }
                         }
                     }
                 }
             }
         }
         
-        ReturnListToPool(attackers); // 养成好习惯，用完把 List 还给 ECSManager
+        ReturnListToPool(attackers); 
     }
 }

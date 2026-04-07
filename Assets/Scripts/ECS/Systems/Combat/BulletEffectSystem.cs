@@ -2,7 +2,8 @@
 using UnityEngine;
 
 /// <summary>
-/// 子弹特效系统：负责处理子弹命中后的特殊逻辑（如爆炸、闪电链、减速）并销毁子弹。
+/// 子弹特效系统：负责处理子弹命中后的特殊逻辑（如爆炸AOE、闪电链、减速）并销毁子弹。
+/// 【完整融合版】：保留了所有武器特效特性，并完美接入了 0 GC 对象池和统一受击反馈管线。
 /// </summary>
 public class BulletEffectSystem : SystemBase
 {
@@ -10,31 +11,34 @@ public class BulletEffectSystem : SystemBase
 
     public override void Update(float deltaTime)
     {
-        // 筛选：发生了碰撞 且 确定身份是子弹 的实体
+        // 抓取本帧发生了碰撞的子弹 (使用 BulletComponent 或 BulletTag 取决于你的定义，这里统一)
         var hitBullets = GetEntitiesWith<CollisionEventComponent, BulletTag>();
-        var ecs = ECSManager.Instance;
 
-        foreach (var bullet in hitBullets)
+        // 倒序遍历，安全稳定
+        for (int i = hitBullets.Count - 1; i >= 0; i--)
         {
+            var bullet = hitBullets[i];
             var evt = bullet.GetComponent<CollisionEventComponent>();
             var pos = bullet.GetComponent<PositionComponent>();
             var target = evt.Target;
 
-            // 如果目标已死亡或不存在，仅销毁子弹并跳过效果处理
-            if (target == null || !target.IsAlive) 
+            // 阵营校验：如果目标已死亡，或根本不是敌人（可能是墙体或自己人），则跳过特效
+            if (target == null || !target.IsAlive || !target.HasComponent<EnemyTag>()) 
             {
-                bullet.AddComponent(new PendingDestroyComponent());
                 continue;
             }
 
-            // 1. 处理减速效果挂载
-            if (bullet.HasComponent<SlowEffectComponent>())
+            // ==========================================
+            // 1. 处理减速效果挂载 (单次查找优化)
+            // ==========================================
+            var bSlow = bullet.GetComponent<SlowEffectComponent>();
+            if (bSlow != null)
             {
-                var bSlow = bullet.GetComponent<SlowEffectComponent>();
-                if (target.HasComponent<SlowEffectComponent>())
+                var tSlow = target.GetComponent<SlowEffectComponent>();
+                if (tSlow != null)
                 {
                     // 如果目标已有减速效果，则刷新持续时间
-                    target.GetComponent<SlowEffectComponent>().Duration = bSlow.Duration;
+                    tSlow.Duration = bSlow.Duration;
                 }
                 else
                 {
@@ -48,17 +52,35 @@ public class BulletEffectSystem : SystemBase
                 }
             }
 
+            // ==========================================
             // 2. 处理爆炸范围伤害 (AOE)
-            if (bullet.HasComponent<AOEComponent>())
-                ProcessAOE(pos.X, pos.Y, bullet.GetComponent<AOEComponent>());
+            // ==========================================
+            var aoe = bullet.GetComponent<AOEComponent>();
+            if (aoe != null)
+            {
+                ProcessAOE(pos.X, pos.Y, aoe);
+            }
 
+            // ==========================================
             // 3. 处理连锁闪电
-            if (bullet.HasComponent<ChainComponent>())
-                ProcessChain(target, pos, bullet.GetComponent<ChainComponent>());
+            // ==========================================
+            var chain = bullet.GetComponent<ChainComponent>();
+            if (chain != null)
+            {
+                ProcessChain(target, pos, chain);
+            }
 
-            // 4. 关键：子弹命中后统一销毁，防止穿透或重复触发碰撞
-            bullet.AddComponent(new PendingDestroyComponent());
+            // ==========================================
+            // 4. 生命周期终结 (发放死亡判决书)
+            // ==========================================
+            if (!bullet.HasComponent<PendingDestroyComponent>())
+            {
+                bullet.AddComponent(new PendingDestroyComponent());
+            }
         }
+        
+        // 归还 List，防止内存泄漏
+        ReturnListToPool(hitBullets);
     }
 
     /// <summary>
@@ -75,21 +97,25 @@ public class BulletEffectSystem : SystemBase
             GameObject vfxGo = pool.Spawn(pool.ExplosionVFXPrefab, new Vector3(x, y, 0), Quaternion.identity);
             Entity vfxEntity = ecs.CreateEntity();
             vfxEntity.AddComponent(new ViewComponent(vfxGo, pool.ExplosionVFXPrefab));
-            vfxEntity.AddComponent(new LifetimeComponent { Duration = 1.0f });
+            vfxEntity.AddComponent(new LifetimeComponent { Duration = 1.0f }); // 1秒后统一回收
         }
 
-        // 查找范围内敌人并扣除血量
+        // 查找范围内敌人并造成伤害
         var enemies = ecs.Grid.GetNearbyEnemies(x, y);
         float rSq = aoe.Radius * aoe.Radius;
+        
         foreach (var e in enemies)
         {
             if (!e.IsAlive || !e.HasComponent<EnemyTag>()) continue;
+            
             var p = e.GetComponent<PositionComponent>();
             float d2 = (p.X - x) * (p.X - x) + (p.Y - y) * (p.Y - y);
+            
             if (d2 <= rSq)
             {
-                var health = e.GetComponent<HealthComponent>();
-                if (health != null) health.CurrentHealth -= aoe.Damage;
+                // 👇 核心升级：使用对象池发放受伤事件，而不是直接扣血！
+                // 这样被炸到的怪物也会触发闪烁和硬直！
+                ApplyDamageViaEvent(e, aoe.Damage);
             }
         }
     }
@@ -102,9 +128,7 @@ public class BulletEffectSystem : SystemBase
         var ecs = ECSManager.Instance;
         var pool = PoolManager.Instance;
         
-        // 伤害第一个目标
-        var startHealth = startTarget.GetComponent<HealthComponent>();
-        if (startHealth != null) startHealth.CurrentHealth -= config.Damage;
+        // 注意：第一个目标的直接伤害已经在 DamageSystem 里扣过了，这里只处理传递逻辑
         
         List<Entity> hitHistory = new List<Entity> { startTarget };
         Entity current = startTarget;
@@ -122,16 +146,22 @@ public class BulletEffectSystem : SystemBase
             {
                 // 跳过已命中的目标以防循环
                 if (!e.IsAlive || !e.HasComponent<EnemyTag>() || hitHistory.Contains(e)) continue;
+                
                 var ePos = e.GetComponent<PositionComponent>();
                 float d2 = (ePos.X - curPos.X) * (ePos.X - curPos.X) + (ePos.Y - curPos.Y) * (ePos.Y - curPos.Y);
-                if (d2 < minDistSq) { minDistSq = d2; next = e; }
+                if (d2 < minDistSq) 
+                { 
+                    minDistSq = d2; 
+                    next = e; 
+                }
             }
 
             if (next != null)
             {
                 hitHistory.Add(next);
-                var nextHealth = next.GetComponent<HealthComponent>();
-                if (nextHealth != null) nextHealth.CurrentHealth -= config.Damage;
+                
+                // 👇 核心升级：传导伤害也走事件管线，触发闪电打击感！
+                ApplyDamageViaEvent(next, config.Damage);
 
                 var nPos = next.GetComponent<PositionComponent>();
                 Vector3 nextPos = new Vector3(nPos.X, nPos.Y, 0);
@@ -143,13 +173,37 @@ public class BulletEffectSystem : SystemBase
                     Entity vfxEntity = ecs.CreateEntity();
                     vfxEntity.AddComponent(new LightningVFXComponent(lastPos, nextPos));
                     vfxEntity.AddComponent(new ViewComponent(vfxGo, pool.LightningChainVFX));
-                    vfxEntity.AddComponent(new LifetimeComponent { Duration = 0.2f });
+                    vfxEntity.AddComponent(new LifetimeComponent { Duration = 0.2f }); // 0.2秒后消失
                 }
 
                 current = next;
                 lastPos = nextPos;
             }
-            else break;
+            else break; // 范围内找不到下一个目标了，闪电链中断
+        }
+    }
+
+    /// <summary>
+    /// 工具方法：安全地施加伤害事件（防止同帧多段伤害事件覆盖）
+    /// </summary>
+    private void ApplyDamageViaEvent(Entity target, float damage)
+    {
+        var health = target.GetComponent<HealthComponent>();
+        if (health != null)
+        {
+            // 真实扣血
+            health.CurrentHealth -= damage;
+
+            // 叠加事件交由表现层处理
+            var existingEvt = target.GetComponent<DamageTakenEventComponent>();
+            if (existingEvt != null)
+            {
+                existingEvt.DamageAmount += damage;
+            }
+            else
+            {
+                target.AddComponent(EventPool.GetDamageEvent(damage));
+            }
         }
     }
 }
