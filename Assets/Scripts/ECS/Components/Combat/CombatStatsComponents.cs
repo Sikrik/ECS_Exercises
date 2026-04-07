@@ -1,4 +1,5 @@
-﻿// Assets/Scripts/ECS/Components/ActorComponents.cs
+﻿public class DamageComponent : Component { public float Value; public DamageComponent(float v) => Value = v; }
+// Assets/Scripts/ECS/Components/ActorComponents.cs
 
 /// <summary>
 /// 悬赏组件：存储实体死亡时提供的分数

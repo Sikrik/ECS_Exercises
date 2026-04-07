@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-public class PoolManager : MonoBehaviour
+public class GameObject_PoolManager : MonoBehaviour
 {
-    public static PoolManager Instance;
+    public static GameObject_PoolManager Instance;
 
     [Header("Bullet Prefabs")]
     public GameObject NormalBulletPrefab;

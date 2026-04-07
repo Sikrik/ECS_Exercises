@@ -62,9 +62,9 @@ public class BulletEffectSystem : SystemBase
         else
         {
             target.AddComponent(new SlowEffectComponent(bSlow.SlowRatio, bSlow.Duration));
-            if (PoolManager.Instance.SlowVFXPrefab != null)
+            if (GameObject_PoolManager.Instance.SlowVFXPrefab != null)
             {
-                GameObject vfxGo = PoolManager.Instance.Spawn(PoolManager.Instance.SlowVFXPrefab, Vector3.zero, Quaternion.identity);
+                GameObject vfxGo = GameObject_PoolManager.Instance.Spawn(GameObject_PoolManager.Instance.SlowVFXPrefab, Vector3.zero, Quaternion.identity);
                 target.AddComponent(new AttachedVFXComponent(vfxGo));
             }
         }
@@ -116,15 +116,15 @@ public class BulletEffectSystem : SystemBase
                 hitHistory.Add(next);
                 ApplyDamageEvent(next, damageValue);
 
-                if (PoolManager.Instance.LightningChainVFX != null)
+                if (GameObject_PoolManager.Instance.LightningChainVFX != null)
                 {
                     var nPos = next.GetComponent<PositionComponent>();
                     Vector3 nextPos = new Vector3(nPos.X, nPos.Y, 0);
                     
-                    GameObject vfxGo = PoolManager.Instance.Spawn(PoolManager.Instance.LightningChainVFX, Vector3.zero, Quaternion.identity);
+                    GameObject vfxGo = GameObject_PoolManager.Instance.Spawn(GameObject_PoolManager.Instance.LightningChainVFX, Vector3.zero, Quaternion.identity);
                     Entity vfxEntity = ECSManager.Instance.CreateEntity();
                     vfxEntity.AddComponent(new LightningVFXComponent(lastPos, nextPos));
-                    vfxEntity.AddComponent(new ViewComponent(vfxGo, PoolManager.Instance.LightningChainVFX));
+                    vfxEntity.AddComponent(new ViewComponent(vfxGo, GameObject_PoolManager.Instance.LightningChainVFX));
                     vfxEntity.AddComponent(new LifetimeComponent { Duration = 0.2f });
                     
                     lastPos = nextPos;

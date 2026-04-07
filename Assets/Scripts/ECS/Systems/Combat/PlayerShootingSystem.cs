@@ -50,10 +50,10 @@ public class PlayerShootingSystem : SystemBase
         var tPos = target.GetComponent<PositionComponent>();
         Vector2 dir = new Vector2(tPos.X - pPos.X, tPos.Y - pPos.Y).normalized;
 
-        GameObject prefab = PoolManager.Instance.GetBulletPrefab(CurrentBulletType);
+        GameObject prefab = GameObject_PoolManager.Instance.GetBulletPrefab(CurrentBulletType);
         if (prefab == null) return false;
 
-        GameObject bulletGo = PoolManager.Instance.Spawn(prefab, new Vector3(pPos.X, pPos.Y, 0), Quaternion.identity);
+        GameObject bulletGo = GameObject_PoolManager.Instance.Spawn(prefab, new Vector3(pPos.X, pPos.Y, 0), Quaternion.identity);
 
         Entity bullet = ecs.CreateEntity();
         bullet.AddComponent(new BulletTag());

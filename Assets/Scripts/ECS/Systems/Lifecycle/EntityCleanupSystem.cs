@@ -28,7 +28,7 @@ public class EntityCleanupSystem : SystemBase
                 
                 // 交给对象池回收，或直接销毁
                 if (view.Prefab != null) 
-                    PoolManager.Instance.Despawn(view.Prefab, view.GameObject);
+                    GameObject_PoolManager.Instance.Despawn(view.Prefab, view.GameObject);
                 else 
                     UnityEngine.Object.Destroy(view.GameObject);
             }

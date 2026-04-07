@@ -8,8 +8,8 @@ public static class EnemyFactory
         string recipeId = type.ToString();
         if (!ecs.Config.EnemyRecipes.TryGetValue(recipeId, out var recipe)) return null;
 
-        GameObject prefab = PoolManager.Instance.GetEnemyPrefab(type);
-        GameObject go = PoolManager.Instance.Spawn(prefab, spawnPos, Quaternion.identity);
+        GameObject prefab = GameObject_PoolManager.Instance.GetEnemyPrefab(type);
+        GameObject go = GameObject_PoolManager.Instance.Spawn(prefab, spawnPos, Quaternion.identity);
 
         Entity enemy = ecs.CreateEntity();
     
