@@ -37,10 +37,10 @@ public class PlayerShootingSystem : SystemBase
         }
     }
 
+    // 在 PlayerShootingSystem.cs 中修改 Shoot 方法
     private bool Shoot(BulletData recipe)
     {
-        var ecs = ECSManager.Instance;
-        var player = ecs.PlayerEntity;
+        var player = ECSManager.Instance.PlayerEntity;
         if (player == null || !player.IsAlive) return false;
 
         var pPos = player.GetComponent<PositionComponent>();
@@ -50,42 +50,8 @@ public class PlayerShootingSystem : SystemBase
         var tPos = target.GetComponent<PositionComponent>();
         Vector2 dir = new Vector2(tPos.X - pPos.X, tPos.Y - pPos.Y).normalized;
 
-        GameObject prefab = GameObject_PoolManager.Instance.GetBulletPrefab(CurrentBulletType);
-        if (prefab == null) return false;
-
-        GameObject bulletGo = GameObject_PoolManager.Instance.Spawn(prefab, new Vector3(pPos.X, pPos.Y, 0), Quaternion.identity);
-
-        Entity bullet = ecs.CreateEntity();
-        bullet.AddComponent(new BulletTag());
-        bullet.AddComponent(new PositionComponent(pPos.X, pPos.Y, 0));
-        
-        // ==========================================
-        // 核心逻辑：原子化组件装载
-        // ==========================================
-        // 无论何种类型的子弹，伤害数值只在这里存一次
-        bullet.AddComponent(new DamageComponent(recipe.Damage));
-        bullet.AddComponent(new VelocityComponent(dir.x * recipe.Speed, dir.y * recipe.Speed));
-        bullet.AddComponent(new LifetimeComponent { Duration = recipe.LifeTime });
-        
-        bullet.AddComponent(new ViewComponent(bulletGo, prefab));
-        bullet.AddComponent(new NeedsBakingTag()); 
-        bullet.AddComponent(new TraceComponent(pPos.X, pPos.Y));
-        bullet.AddComponent(new CollisionComponent(0.2f));
-        bullet.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Enemy")));
-
-        // 根据类型挂载特殊效果组件（不再传入 Damage 参数）
-        switch (CurrentBulletType)
-        {
-            case BulletType.Slow:
-                bullet.AddComponent(new SlowEffectComponent(recipe.SlowRatio, recipe.SlowDuration));
-                break;
-            case BulletType.ChainLightning:
-                bullet.AddComponent(new ChainComponent(recipe.ChainTargets, recipe.ChainRange));
-                break;
-            case BulletType.AOE:
-                bullet.AddComponent(new AOEComponent(recipe.AOERadius));
-                break;
-        }
+        // --- 使用工厂一键创建 ---
+        BulletFactory.Create(CurrentBulletType, new Vector3(pPos.X, pPos.Y, 0), dir);
 
         return true;
     }
