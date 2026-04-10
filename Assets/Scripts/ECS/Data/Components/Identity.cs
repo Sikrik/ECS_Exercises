@@ -1,8 +1,32 @@
 ﻿// RangedAttackSystem.cs 新增
 using System.Collections.Generic;
+
+/// <summary>
+/// 玩家标签组件，用于标识玩家实体
+/// </summary>
 public class PlayerTag : Component { }
+
+/// <summary>
+/// 敌人标签组件，用于标识敌方实体
+/// </summary>
 public class EnemyTag : Component { }
+
+/// <summary>
+/// 子弹标签组件，用于标识子弹实体
+/// </summary>
 public class BulletTag : Component { }
-public class BouncyTag : Component { }      // 标记实体具有弹性碰撞行为
-public class NeedsBakingTag : Component { } // 标记实体需要初始化物理数据
+
+/// <summary>
+/// 弹性碰撞标签组件，用于标记具有弹性碰撞行为的实体
+/// </summary>
+public class BouncyTag : Component { }
+
+/// <summary>
+/// 需要烘焙标签组件，用于标记需要初始化物理数据的实体
+/// </summary>
+public class NeedsBakingTag : Component { }
+
+/// <summary>
+/// 远程攻击标签组件，用于标识具有远程攻击能力的实体
+/// </summary>
 public class RangedTag : Component { }
