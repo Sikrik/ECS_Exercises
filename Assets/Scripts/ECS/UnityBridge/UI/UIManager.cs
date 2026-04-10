@@ -52,4 +52,14 @@ public class UIManager : MonoBehaviour
         if (GameOverPanel != null) GameOverPanel.SetActive(false);
         ECSManager.Instance.RestartGame();
     }
+    
+    // 1. 【新增】敌人数量的 UI 组件引用
+    public TextMeshProUGUI EnemyCountText;
+    public void UpdateEnemyCount(int count)
+        {
+            if (EnemyCountText != null) 
+            {
+                EnemyCountText.text = $"在场敌人: {count}";
+            }
+        }
 }

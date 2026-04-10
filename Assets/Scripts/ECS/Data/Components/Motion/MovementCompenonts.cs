@@ -98,3 +98,35 @@ public class PositionComponent : Component
     /// <param name="z">Z轴坐标</param>
     public PositionComponent(float x, float y, float z) { X = x; Y = y; Z = z; }
 }
+
+/// <summary>
+/// 冲刺能力组件：存储实体的冲刺配置和CD状态（玩家和敌人均可挂载）
+/// </summary>
+public class DashAbilityComponent : Component
+{
+    public float DashSpeed;     // 冲刺时的固定速度
+    public float Duration;      // 冲刺持续时间
+    public float Cooldown;      // 技能冷却时间
+    public float CurrentCD;     // 当前剩余冷却时间
+
+    public DashAbilityComponent(float speed, float duration, float cd)
+    {
+        DashSpeed = speed; Duration = duration; Cooldown = cd; CurrentCD = 0;
+    }
+}
+
+/// <summary>
+/// 冲刺状态组件：实体当前正在冲刺中
+/// </summary>
+public class DashStateComponent : Component
+{
+    public float Timer; // 剩余冲刺时间
+    public float DirX;  // 冲刺方向 X
+    public float DirY;  // 冲刺方向 Y
+}
+
+/// <summary>
+/// 冲刺意图事件：单帧组件，代表当前帧按下了冲刺键或AI决定冲刺
+/// </summary>
+public class DashInputComponent : Component { }
+

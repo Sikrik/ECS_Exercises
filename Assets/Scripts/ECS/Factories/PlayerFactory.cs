@@ -23,15 +23,21 @@ public static class PlayerFactory
         player.AddComponent(new MassComponent(100f)); 
         player.AddComponent(new BouncyTag());
         
-        // 【核心修复 1】：补充碰撞反馈组件，让玩家在主动撞击时能产生物理排斥力挤开怪物
+        // 补充碰撞反馈组件，让玩家在主动撞击时能产生物理排斥力挤开怪物
         player.AddComponent(new ImpactFeedbackComponent(bounce: true, recovery: false));
         player.AddComponent(new FactionComponent(FactionType.Player));
+        
         // 关键标记：触发后续的物理烘焙与视图注册
         player.AddComponent(new NeedsBakingTag());
         
-        // 【核心修复 3】：取消玩家主动检测怪物的权限，防止同一帧内触发双重排斥导致怪物抖动/乱飞。
-        // （掩码设为 0。如果你的游戏后续有拾取物，可以改为 LayerMask.GetMask("Item")）
+        // 取消玩家主动检测怪物的权限，防止同一帧内触发双重排斥导致怪物抖动/乱飞。
         player.AddComponent(new CollisionFilterComponent(0));
+
+        // ==========================================
+        // 【新增】：赋予玩家冲刺能力配置
+        // (DashSpeed = 18f, Duration = 0.2s, Cooldown = 1.5s)
+        // ==========================================
+        player.AddComponent(new DashAbilityComponent(18f, 0.2f, 1.5f));
 
         // 进入游戏第一帧强制刷新一次血条
         player.AddComponent(new UIHealthUpdateEvent()); 

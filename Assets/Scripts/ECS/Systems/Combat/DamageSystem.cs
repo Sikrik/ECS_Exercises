@@ -23,28 +23,26 @@ public class DamageSystem : SystemBase
             // 安全校验
             if (target == null || !target.IsAlive || source == null || !source.IsAlive) continue;
             
-            // 玩家无敌帧保护
-            if (target.HasComponent<PlayerTag>() && target.HasComponent<InvincibleComponent>())
+            // ==========================================
+            // 【修改】：全局无敌帧保护（移除玩家独占限制）
+            // 只要有无敌组件，任何人都可以免疫伤害
+            // ==========================================
+            if (target.HasComponent<InvincibleComponent>())
             {
                 continue; 
             }
 
-            // ==========================================
-            // 【核心重构】：利用阵营 (Faction) 拦截友军伤害
-            // ==========================================
+            // 利用阵营 (Faction) 拦截友军伤害
             var sourceFac = source.GetComponent<FactionComponent>();
             var targetFac = target.GetComponent<FactionComponent>();
 
             // 如果碰撞双方都有阵营，并且阵营相同，则豁免伤害！
-            // 这自动涵盖了：怪物碰怪物、玩家子弹碰玩家、未来敌人子弹碰敌人
             if (sourceFac != null && targetFac != null && sourceFac.Value == targetFac.Value)
             {
                 continue;
             }
 
-            // ==========================================
             // 纯粹的扣血与销毁逻辑
-            // ==========================================
             if (target.HasComponent<HealthComponent>() && source.HasComponent<DamageComponent>())
             {
                 var hp = target.GetComponent<HealthComponent>();

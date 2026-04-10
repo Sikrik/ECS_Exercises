@@ -39,6 +39,18 @@ public class MovementSystem : SystemBase
                 vel.VX = 0;
                 vel.VY = 0;
             }
+            // ==========================================
+            // 【新增】：冲刺状态接管速度控制权
+            // ==========================================
+            else if (entity.HasComponent<DashStateComponent>())
+            {
+                var dash = entity.GetComponent<DashStateComponent>();
+                var ability = entity.GetComponent<DashAbilityComponent>();
+                
+                // 覆盖速度：朝向冲刺方向施加固定冲刺速度
+                vel.VX = dash.DirX * ability.DashSpeed;
+                vel.VY = dash.DirY * ability.DashSpeed;
+            }
             else 
             {
                 // 普通状态：读取输入意图（可能是玩家键盘，也可能是怪物AI）

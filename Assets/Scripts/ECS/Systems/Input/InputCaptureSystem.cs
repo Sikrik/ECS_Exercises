@@ -53,9 +53,7 @@ public class InputCaptureSystem : SystemBase
         else if (Input.GetKeyDown(KeyCode.Alpha3)) PlayerShootingSystem.CurrentBulletType = BulletType.ChainLightning;
         else if (Input.GetKeyDown(KeyCode.Alpha4)) PlayerShootingSystem.CurrentBulletType = BulletType.AOE;
         
-        // ==========================================
-        // 4. 【新增】：按 Tab 键随时切换自动/手动瞄准模式
-        // ==========================================
+        // 4. 按 Tab 键随时切换自动/手动瞄准模式
         if (Input.GetKeyDown(KeyCode.Tab))
         {
             if (PlayerShootingSystem.CurrentAimStrategy is AutoAimStrategy)
@@ -67,6 +65,17 @@ public class InputCaptureSystem : SystemBase
             {
                 PlayerShootingSystem.CurrentAimStrategy = new AutoAimStrategy();
                 Debug.Log("已切换为：全自动索敌模式");
+            }
+        }
+        
+        // ==========================================
+        // 5. 【新增】：捕捉冲刺指令
+        // ==========================================
+        if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.LeftShift))
+        {
+            if (!player.HasComponent<DashInputComponent>())
+            {
+                player.AddComponent(new DashInputComponent());
             }
         }
         
