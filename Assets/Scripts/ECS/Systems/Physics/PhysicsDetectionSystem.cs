@@ -16,7 +16,6 @@ public class PhysicsDetectionSystem : SystemBase
         for (int i = physicsEntities.Count - 1; i >= 0; i--)
         {
             var entity = physicsEntities[i];
-            
             if (entity.HasComponent<PendingDestroyComponent>()) continue;
 
             var pPhys = entity.GetComponent<PhysicsColliderComponent>();
@@ -30,7 +29,8 @@ public class PhysicsDetectionSystem : SystemBase
             var trace = entity.GetComponent<TraceComponent>();
             var col = entity.GetComponent<CollisionComponent>();
 
-            if (trace != null && col != null) // 高速子弹检测
+            // 1. 高速物体（子弹）使用射线检测防穿透
+            if (trace != null && col != null) 
             {
                 var pos = entity.GetComponent<PositionComponent>();
                 Vector2 start = new Vector2(trace.PreviousX, trace.PreviousY);
@@ -51,23 +51,25 @@ public class PhysicsDetectionSystem : SystemBase
                     }
                 }
             }
-            else // 普通物体检测
+            // 2. 普通物体（玩家/敌人）使用重叠检测
+            else 
             {
                 int hitCount = pPhys.Collider.OverlapCollider(contactFilter, _overlapResults);
                 for (int j = 0; j < hitCount; j++)
                 {
                     if (_overlapResults[j] != pPhys.Collider)
                     {
+                        // 获取两个碰撞体之间的最短距离信息
                         ColliderDistance2D distInfo = pPhys.Collider.Distance(_overlapResults[j]);
                         if (distInfo.isOverlapped)
                         {
+                            // 传入正常的碰撞法线（从 B 指向 A）
                             CreateEvent(entity, _overlapResults[j].gameObject, distInfo.normal);
                         }
                     }
                 }
             }
         }
-        ReturnListToPool(physicsEntities);
     }
 
     private void CreateEvent(Entity source, GameObject targetGo, Vector2 normal)
@@ -77,11 +79,9 @@ public class PhysicsDetectionSystem : SystemBase
         Entity target = ECSManager.Instance.GetEntityFromGameObject(targetGo);
         if (target != null && target.IsAlive && !target.HasComponent<PendingDestroyComponent>())
         {
-            // 【核心修改】：创建一个独立的空实体作为事件载体
             Entity eventEntity = ECSManager.Instance.CreateEntity();
+            // 使用对象池获取事件组件
             eventEntity.AddComponent(EventPool.GetCollisionEvent(source, target, normal));
-            
-            // 确保本帧结束时，这个事件空壳能被 EntityCleanupSystem 回收掉
             eventEntity.AddComponent(new PendingDestroyComponent()); 
         }
     }
