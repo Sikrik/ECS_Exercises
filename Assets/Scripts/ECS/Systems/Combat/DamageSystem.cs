@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using UnityEngine;
 
 public class DamageSystem : SystemBase
 {
@@ -15,11 +16,8 @@ public class DamageSystem : SystemBase
             var source = evt.Source;
 
             if (target == null || !target.IsAlive) continue;
-
-            // 【核心修复】：不要让怪物在硬直（HitRecovery）期间免伤！
-            // 如果你的代码里有 if (target.HasComponent<HitRecoveryComponent>()) continue; 请果断删掉它！
             
-            // 只有玩家才享受受击无敌帧保护
+            // 玩家无敌帧保护
             if (target.HasComponent<PlayerTag>() && target.HasComponent<InvincibleComponent>())
             {
                 continue; 
@@ -31,9 +29,40 @@ public class DamageSystem : SystemBase
                 var hp = target.GetComponent<HealthComponent>();
                 var dmg = source.GetComponent<DamageComponent>();
                 
+                // 1. 直接扣除基础血量
                 hp.CurrentHealth -= dmg.Value;
 
-                // 子弹命中后给自己打上销毁标签（因为已经在 Bootstrap 排在特效后面了，不影响特效生成）
+                // ==========================================
+                // 2. 赋予第一目标特权：击退 + 硬直
+                // ==========================================
+                if (source.HasComponent<BulletTag>() && target.HasComponent<EnemyTag>())
+                {
+                    // 触发硬直事件 (EnemyHitReactionSystem 会因为这个组件施加硬直)
+                    ApplyDamageIntent(target, dmg.Value);
+
+                    // 施加瞬间的击退
+                    if (!target.HasComponent<KnockbackComponent>())
+                    {
+                        var sPos = source.GetComponent<PositionComponent>();
+                        var tPos = target.GetComponent<PositionComponent>();
+                        Vector2 pushDir = new Vector2(tPos.X - sPos.X, tPos.Y - sPos.Y);
+                        if (pushDir.sqrMagnitude < 0.0001f) pushDir = new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f));
+                        pushDir.Normalize();
+
+                        var vel = target.GetComponent<VelocityComponent>();
+                        if (vel != null) 
+                        {
+                            // 赋予物理初速度 (子弹的推力)
+                            vel.VX += pushDir.x * 6.0f; 
+                            vel.VY += pushDir.y * 6.0f;
+                        }
+                        
+                        // 挂载击退状态，剥夺 AI 控制权，0.1秒后由 KnockbackSystem 负责刹车并彻底转入硬直
+                        target.AddComponent(new KnockbackComponent { Timer = 0.1f });
+                    }
+                }
+
+                // 3. 子弹命中后给自己打上销毁标签
                 if (source.HasComponent<BulletTag>() && !source.HasComponent<PendingDestroyComponent>())
                 {
                     source.AddComponent(new PendingDestroyComponent());
@@ -41,15 +70,6 @@ public class DamageSystem : SystemBase
             }
         }
         ReturnListToPool(hitEvents);
-    }
-
-    private bool IsEnemyFaction(Entity a, Entity b)
-    {
-        bool aIsPlayerSide = a.HasComponent<PlayerTag>() || a.HasComponent<BulletTag>();
-        bool bIsEnemySide = b.HasComponent<EnemyTag>();
-        bool aIsEnemySide = a.HasComponent<EnemyTag>();
-        bool bIsPlayerSide = b.HasComponent<PlayerTag>();
-        return (aIsPlayerSide && bIsEnemySide) || (aIsEnemySide && bIsPlayerSide);
     }
 
     private void ApplyDamageIntent(Entity target, float damage)

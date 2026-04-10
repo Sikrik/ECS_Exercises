@@ -161,14 +161,16 @@ public class BulletEffectSystem : SystemBase
 
     private void ApplyDamageEvent(Entity target, float damage)
     {
-        var existingEvt = target.GetComponent<DamageTakenEventComponent>();
-        if (existingEvt != null)
+        // ==========================================
+        // 【静默伤害】核心逻辑：绕过事件分发系统
+        // ==========================================
+        // 对于闪电链和 AOE 命中的后续目标，直接操作 HP 数值，而不是挂载 DamageTakenEventComponent。
+        // 这样可以确保 EnemyHitReactionSystem 和 KnockbackSystem 不会被触发，
+        // 从而完美实现“只掉血，不触发硬直和击退”的效果。
+        var hp = target.GetComponent<HealthComponent>();
+        if (hp != null)
         {
-            existingEvt.DamageAmount += damage;
-        }
-        else
-        {
-            target.AddComponent(EventPool.GetDamageEvent(damage));
+            hp.CurrentHealth -= damage;
         }
     }
 }
