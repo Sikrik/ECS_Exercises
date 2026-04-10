@@ -21,6 +21,7 @@ public class HitRecoveryStatsComponent : Component
 /// <summary>
 /// 碰撞反弹强度组件：存储该实体在发生碰撞时产生的反弹力度数值
 /// </summary>
+// 存储该实体特有的碰撞反弹力度数值
 public class BounceForceComponent : Component 
 {
     public float Value;

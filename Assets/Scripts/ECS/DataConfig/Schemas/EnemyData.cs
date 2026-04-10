@@ -7,4 +7,6 @@ public class EnemyData {
     public float HitRecoveryDuration; // 新增：从 CSV 读取硬直时间
     public string[] Traits;
     public int EnemyDeathScore;
+    // --- 新增这个字段 ---
+    public float BounceForce;
 }

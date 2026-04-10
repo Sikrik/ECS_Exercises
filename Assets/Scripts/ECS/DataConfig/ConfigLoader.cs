@@ -74,7 +74,9 @@ public static class ConfigLoader
                 Damage = ParseInt(cols[3]),
                 HitRecoveryDuration = ParseFloat(cols[4]),
                 EnemyDeathScore = ParseInt(cols[5]),
-                Traits = string.IsNullOrWhiteSpace(cols[6]) ? new string[0] : cols[6].Trim().Split('|')
+                Traits = string.IsNullOrWhiteSpace(cols[6]) ? new string[0] : cols[6].Trim().Split('|'),
+                // --- 新增：解析第8列数据 ---
+                BounceForce = cols.Length > 7 ? ParseFloat(cols[7]) : 5.0f
             };
             config.EnemyRecipes[data.Id] = data;
         }
