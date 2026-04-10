@@ -11,6 +11,9 @@ public class RenderSyncSystem : SystemBase
         
         foreach (var e in entities)
         {
+            // 【新增：剔除优化】屏幕外的物体 SpriteRenderer 已经被关闭了，不需要再计算变色逻辑
+            if (e.HasComponent<OffScreenTag>()) continue;
+
             var view = e.GetComponent<ViewComponent>();
             var baseColor = e.GetComponent<BaseColorComponent>();
             if (view.SpriteRenderer == null) continue;
@@ -25,5 +28,7 @@ public class RenderSyncSystem : SystemBase
                 view.SpriteRenderer.color = baseColor.Color;
             }
         }
+        
+        ReturnListToPool(entities);
     }
 }

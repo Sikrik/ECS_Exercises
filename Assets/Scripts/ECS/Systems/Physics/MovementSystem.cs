@@ -29,9 +29,8 @@ public class MovementSystem : SystemBase
             // 2. 【核心重构：速度控制权仲裁】
             if (entity.HasComponent<KnockbackComponent>())
             {
-                // 最高优先级：被击退中。剥夺输入控制权，接管物理摩擦力
-                vel.VX = Mathf.Lerp(vel.VX, 0, deltaTime * 15f);
-                vel.VY = Mathf.Lerp(vel.VY, 0, deltaTime * 15f);
+                // 最高优先级：被击退中。剥夺输入控制权！
+                // 【修复】：删除了此处的 Mathf.Lerp 减速代码，统一交给 KnockbackSystem 处理，防止双重计算导致怪物疯狂分裂抖动。
             }
             else if (entity.HasComponent<HitRecoveryComponent>())
             {
@@ -40,7 +39,7 @@ public class MovementSystem : SystemBase
                 vel.VY = 0;
             }
             // ==========================================
-            // 【新增】：冲刺状态接管速度控制权
+            // 冲刺状态接管速度控制权
             // ==========================================
             else if (entity.HasComponent<DashStateComponent>())
             {

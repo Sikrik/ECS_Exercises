@@ -26,6 +26,14 @@ public class EnemyTrackingSystem : SystemBase
                 continue;
             }
 
+            // 【新增：AI 降频优化】
+            // 如果敌人在屏幕外，且当前不是第15帧的倍数，则直接跳过本帧寻路计算
+            // 敌人会保持上一次的 MoveInputComponent 方向继续移动，节省 Normalize() 带来的平方根开销
+            if (enemy.HasComponent<OffScreenTag>() && Time.frameCount % 15 != 0) 
+            {
+                continue; 
+            }
+
             var ePos = enemy.GetComponent<PositionComponent>();
             
             // 2. 计算向玩家移动的方向

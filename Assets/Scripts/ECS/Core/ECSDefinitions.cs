@@ -35,3 +35,6 @@ public class UIHealthUpdateEvent : Component { }
 
 // 游戏结束事件（单帧组件）
 public class GameOverEventComponent : Component { }
+
+// 在 ECSDefinitions.cs 或 StateComponents.cs 中添加
+public class OffScreenTag : Component { }
