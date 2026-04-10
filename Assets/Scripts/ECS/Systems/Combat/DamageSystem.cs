@@ -6,36 +6,41 @@ public class DamageSystem : SystemBase
 
     public override void Update(float deltaTime)
     {
-        // 1. 处理直接碰撞伤害 (CollisionEvent)
-        var attackers = GetEntitiesWith<CollisionEventComponent, DamageComponent>();
-        foreach (var attacker in attackers)
-        {
-            var evt = attacker.GetComponent<CollisionEventComponent>();
-            var dmg = attacker.GetComponent<DamageComponent>();
-            
-            if (evt.Target != null && IsEnemyFaction(attacker, evt.Target))
-            {
-                ApplyDamageIntent(evt.Target, dmg.Value);
-            }
-        }
-        ReturnListToPool(attackers);
+        var hitEvents = GetEntitiesWith<CollisionEventComponent>();
 
-        // 2. 统一结算所有伤害意图 (DamageTakenEvent)
-        // 无论是碰撞、AOE还是连锁闪电产生的伤害，最终都在这里处理
-        var victims = GetEntitiesWith<HealthComponent, DamageTakenEventComponent>();
-        foreach (var victim in victims)
+        foreach (var entity in hitEvents)
         {
-            var health = victim.GetComponent<HealthComponent>();
-            var damageEvt = victim.GetComponent<DamageTakenEventComponent>();
+            var evt = entity.GetComponent<CollisionEventComponent>();
+            var target = evt.Target;
+            var source = evt.Source;
+
+            if (target == null || !target.IsAlive) continue;
+
+            // 【核心修复】：不要让怪物在硬直（HitRecovery）期间免伤！
+            // 如果你的代码里有 if (target.HasComponent<HitRecoveryComponent>()) continue; 请果断删掉它！
             
-            // 只有非无敌状态才扣血
-            if (!victim.HasComponent<InvincibleComponent>())
+            // 只有玩家才享受受击无敌帧保护
+            if (target.HasComponent<PlayerTag>() && target.HasComponent<InvincibleComponent>())
             {
-                health.CurrentHealth -= damageEvt.DamageAmount;
-                // 此时不移除 DamageTakenEventComponent，留给后面的 HitReactionSystem 判断是否需要播放受击表现
+                continue; 
+            }
+
+            // 正常的扣血逻辑
+            if (target.HasComponent<HealthComponent>() && source.HasComponent<DamageComponent>())
+            {
+                var hp = target.GetComponent<HealthComponent>();
+                var dmg = source.GetComponent<DamageComponent>();
+                
+                hp.CurrentHealth -= dmg.Value;
+
+                // 子弹命中后给自己打上销毁标签（因为已经在 Bootstrap 排在特效后面了，不影响特效生成）
+                if (source.HasComponent<BulletTag>() && !source.HasComponent<PendingDestroyComponent>())
+                {
+                    source.AddComponent(new PendingDestroyComponent());
+                }
             }
         }
-        ReturnListToPool(victims);
+        ReturnListToPool(hitEvents);
     }
 
     private bool IsEnemyFaction(Entity a, Entity b)
