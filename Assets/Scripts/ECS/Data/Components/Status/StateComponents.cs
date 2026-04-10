@@ -18,3 +18,4 @@ public class LifetimeComponent : Component
 /// 使用流程：系统标记此组件 → 帧末销毁系统统一清理 → 移除实体。
 /// </summary>
 public class PendingDestroyComponent : Component { }
+

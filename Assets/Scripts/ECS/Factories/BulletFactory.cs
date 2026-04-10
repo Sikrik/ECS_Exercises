@@ -5,7 +5,9 @@
 /// </summary>
 public static class BulletFactory 
 {
-    public static Entity Create(BulletType type, Vector3 position, Vector2 direction)
+    // 【核心重构 1】：增加 FactionType 参数，默认是 Player 发射的子弹
+    // 未来添加会远程攻击的怪物时，只需传入 FactionType.Enemy 即可！
+    public static Entity Create(BulletType type, Vector3 position, Vector2 direction, FactionType sourceFaction = FactionType.Player)
     {
         var ecs = ECSManager.Instance;
         var config = ecs.Config;
@@ -22,45 +24,50 @@ public static class BulletFactory
         GameObject bulletGo = GameObject_PoolManager.Instance.Spawn(prefab, position, Quaternion.identity);
 
         Entity bullet = ecs.CreateEntity();
+        
+        // --- 基础身份与阵营 ---
         bullet.AddComponent(new BulletTag());
+        bullet.AddComponent(new FactionComponent(sourceFaction)); // 【核心重构 2】：赋予子弹所属阵营
+        
+        // --- 运动与表现 ---
         bullet.AddComponent(new PositionComponent(position.x, position.y, 0));
         bullet.AddComponent(new VelocityComponent(direction.x * recipe.Speed, direction.y * recipe.Speed));
         bullet.AddComponent(new ViewComponent(bulletGo, prefab));
         
+        // --- 伤害与寿命 ---
         bullet.AddComponent(new DamageComponent(recipe.Damage));
         bullet.AddComponent(new LifetimeComponent { Duration = recipe.LifeTime });
-        bullet.AddComponent(new CollisionComponent(0.2f));
-        bullet.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Enemy")));
         
+        // --- 物理防穿透 ---
+        bullet.AddComponent(new CollisionComponent(0.2f));
+        // 这里可以允许子弹检测所有实体，真正的免伤过滤在 DamageSystem 里通过阵营判断
+        bullet.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Enemy", "Player"))); 
         bullet.AddComponent(new NeedsBakingTag());
         bullet.AddComponent(new TraceComponent(position.x, position.y));
 
         // ==========================================
-        // 核心重构：差异化装载碰撞反馈意图 (ImpactFeedbackComponent)
+        // 【核心重构 3】：差异化装载特殊能力
+        // 彻底移除了 ImpactFeedbackComponent，因为我们遵循业务规则：子弹命中不产生物理反弹
         // ==========================================
         switch (type)
         {
             case BulletType.Normal:
-                // 方案三：普通子弹，打中后既物理击退，又造成硬直
-                bullet.AddComponent(new ImpactFeedbackComponent(bounce: true, recovery: true));
+                // 普通子弹：纯扣血，无附加状态
                 break;
                 
             case BulletType.Slow:
+                // 冰冻弹：依然挂载减速纯逻辑组件
                 bullet.AddComponent(new SlowEffectComponent(recipe.SlowRatio, recipe.SlowDuration)); 
-                // 冰冻弹：依然有物理冲击和硬直
-                bullet.AddComponent(new ImpactFeedbackComponent(bounce: true, recovery: true));
                 break;
                 
             case BulletType.ChainLightning:
+                // 闪电弹：挂载闪电链参数
                 bullet.AddComponent(new ChainComponent(recipe.ChainTargets, recipe.ChainRange));
-                // 方案特殊：闪电只有触电硬直（麻痹），没有物理击退（无质量）
-                bullet.AddComponent(new ImpactFeedbackComponent(bounce: false, recovery: true));
                 break;
                 
             case BulletType.AOE:
+                // 爆炸弹：挂载范围参数
                 bullet.AddComponent(new AOEComponent(recipe.AOERadius));
-                // 方案二：爆炸核心可能产生极强的击退，但为了防止怪物连续罚站，可能不给硬直
-                bullet.AddComponent(new ImpactFeedbackComponent(bounce: true, recovery: false));
                 break;
         }
 

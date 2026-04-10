@@ -12,97 +12,73 @@ public class ImpactResolutionSystem : SystemBase
         foreach (var entity in hitEvents)
         {
             var evt = entity.GetComponent<CollisionEventComponent>();
-            var source = evt.Source; // 碰撞发起者
-            var target = evt.Target; // 被撞者
+            var source = evt.Source; 
+            var target = evt.Target; 
 
             if (source == null || !source.IsAlive || target == null || !target.IsAlive) continue;
 
-            // 1. 获取物理配置
-            var sPos = source.GetComponent<PositionComponent>();
-            var tPos = target.GetComponent<PositionComponent>();
-            var sCol = source.GetComponent<CollisionComponent>();
-            var tCol = target.GetComponent<CollisionComponent>();
+            bool isSourcePlayer = source.HasComponent<PlayerTag>();
+            bool isTargetPlayer = target.HasComponent<PlayerTag>();
+            bool isSourceEnemy = source.HasComponent<EnemyTag>();
+            bool isTargetEnemy = target.HasComponent<EnemyTag>();
+            bool isSourceBullet = source.HasComponent<BulletTag>();
+            bool isTargetBullet = target.HasComponent<BulletTag>();
 
-            // ==========================================
-            // 核心修复：强制位置分离 (Depenetration)
-            // ==========================================
-            if (sCol != null && tCol != null)
+            // ========================================================
+            // 场景 1：玩家 vs 敌人 (谁是Source谁是Target不一定，我们统一提取)
+            // 规则：玩家不动（但会受伤，由DamageSystem处理），敌人被弹开 -> 减速 -> 硬直
+            // ========================================================
+            if ((isSourcePlayer && isTargetEnemy) || (isSourceEnemy && isTargetPlayer))
             {
-                Vector2 diff = new Vector2(tPos.X - sPos.X, tPos.Y - sPos.Y);
-                float dist = diff.magnitude;
-                float minDist = sCol.Radius + tCol.Radius;
+                Entity player = isSourcePlayer ? source : target;
+                Entity enemy = isSourceEnemy ? source : target;
 
-                // 如果两个圆形的距离小于半径之和，说明发生了穿透/重叠
-                if (dist < minDist)
+                // 防穿透：把敌人推离玩家一点点，不改变玩家坐标
+                var pPos = player.GetComponent<PositionComponent>();
+                var ePos = enemy.GetComponent<PositionComponent>();
+                Vector2 pushDir = new Vector2(ePos.X - pPos.X, ePos.Y - pPos.Y).normalized;
+                
+                // 给敌人施加物理速度以模拟弹开
+                var eVel = enemy.GetComponent<VelocityComponent>();
+                if (eVel != null)
                 {
-                    float overlapDepth = minDist - dist;
-                    Vector2 separationVec = (dist < 0.001f ? Vector2.up : diff / dist) * (overlapDepth + 0.05f);
-
-                    // 玩家通常具有更高的优先级，强制将敌人推开
-                    if (source.HasComponent<PlayerTag>())
-                    {
-                        tPos.X += separationVec.x;
-                        tPos.Y += separationVec.y;
-                    }
-                    else if (target.HasComponent<PlayerTag>())
-                    {
-                        // 如果 Target 是玩家，则反向推开 Source (敌人)
-                        sPos.X -= separationVec.x;
-                        sPos.Y -= separationVec.y;
-                    }
-                    else
-                    {
-                        // 怪物之间对半推开
-                        tPos.X += separationVec.x * 0.5f;
-                        tPos.Y += separationVec.y * 0.5f;
-                        sPos.X -= separationVec.x * 0.5f;
-                        sPos.Y -= separationVec.y * 0.5f;
-                    }
+                    float bounceForce = enemy.HasComponent<BounceForceComponent>() ? enemy.GetComponent<BounceForceComponent>().Value : 15f;
+                    eVel.VX = pushDir.x * bounceForce;
+                    eVel.VY = pushDir.y * bounceForce;
                 }
+
+                // 给敌人挂载击退状态，并在 0.2 秒滑行结束后，衔接 0.5 秒的硬直！
+                if (!enemy.HasComponent<KnockbackComponent>())
+                {
+                    enemy.AddComponent(new KnockbackComponent { 
+                        Timer = 0.2f, 
+                        HitRecoveryAfterwards = enemy.GetComponent<HitRecoveryStatsComponent>().Duration 
+                    });
+                }
+                continue; // 玩家与敌人处理完毕
             }
 
-            // 2. 获取攻击方的反馈设定
-            var feedback = source.GetComponent<ImpactFeedbackComponent>();
-            if (feedback == null) continue;
-
-            // 3. 处理弹性反弹逻辑
-            if (feedback.CauseBounce && !target.HasComponent<KnockbackComponent>())
+            // ========================================================
+            // 场景 2 & 3：子弹 vs 敌人 / 玩家
+            // 规则：无硬直无弹开，仅扣血。利用 Faction 判断是否造成伤害
+            // ========================================================
+            if (isSourceBullet || isTargetBullet)
             {
-                Vector2 pushDir = new Vector2(tPos.X - sPos.X, tPos.Y - sPos.Y);
-                if (pushDir.sqrMagnitude < 0.0001f) pushDir = Random.insideUnitCircle.normalized;
-                pushDir.Normalize();
+                Entity bullet = isSourceBullet ? source : target;
+                Entity victim = isSourceBullet ? target : source;
+                
+                var bFaction = bullet.GetComponent<FactionComponent>();
+                var vFaction = victim.GetComponent<FactionComponent>();
 
-                float finalForce = 6.0f; 
-                if (source.HasComponent<MassComponent>() && target.HasComponent<MassComponent>())
+                // 如果阵营相同（比如玩家子弹打到玩家），忽略碰撞
+                if (bFaction != null && vFaction != null && bFaction.Value == vFaction.Value)
                 {
-                    float tMass = target.GetComponent<MassComponent>().Value;
-                    float sMass = source.GetComponent<MassComponent>().Value;
-                    float pushRatio = sMass / (sMass + tMass); 
-                    float baseForce = source.HasComponent<BounceForceComponent>() ? source.GetComponent<BounceForceComponent>().Value : 5f;
-                    finalForce = baseForce * pushRatio;
+                    continue; 
                 }
 
-                var vel = target.GetComponent<VelocityComponent>();
-                if (vel != null)
-                {
-                    vel.VX += pushDir.x * finalForce;
-                    vel.VY += pushDir.y * finalForce;
-                }
-
-                // 挂载击退状态，防止输入立即覆盖物理效果
-                target.AddComponent(new KnockbackComponent { Timer = 0.15f });
-            }
-
-            // 4. 处理受击硬直逻辑
-            if (feedback.CauseHitRecovery && !target.HasComponent<HitRecoveryComponent>())
-            {
-                var stats = target.GetComponent<HitRecoveryStatsComponent>();
-                float duration = stats != null ? stats.Duration : 0.2f;
-
-                if (duration > 0)
-                {
-                    target.AddComponent(new HitRecoveryComponent { Timer = duration });
-                }
+                // 如果阵营不同，由 DamageSystem 去处理扣血，这里我们不做任何物理击退
+                // 如果未来需要某些特殊子弹（如霰弹枪）有击退，可以在这里读取子弹的特殊组件
+                continue; 
             }
         }
     }

@@ -3,6 +3,7 @@
 /// <summary>
 /// 纯粹的伤害结算系统
 /// 职责：只处理数值扣减与子弹销毁，绝不插手任何物理击退或硬直逻辑
+/// 优势：通过 Faction 阵营完美支持未来敌人发射子弹的需求
 /// </summary>
 public class DamageSystem : SystemBase
 {
@@ -10,6 +11,7 @@ public class DamageSystem : SystemBase
 
     public override void Update(float deltaTime)
     {
+        // 获取所有本帧发生的碰撞事件
         var hitEvents = GetEntitiesWith<CollisionEventComponent>();
 
         foreach (var entity in hitEvents)
@@ -18,6 +20,7 @@ public class DamageSystem : SystemBase
             var target = evt.Target;
             var source = evt.Source;
 
+            // 安全校验
             if (target == null || !target.IsAlive || source == null || !source.IsAlive) continue;
             
             // 玩家无敌帧保护
@@ -26,13 +29,22 @@ public class DamageSystem : SystemBase
                 continue; 
             }
 
-            // 【拦截同阵营伤害】：防止怪物互相走位时把自己人挤死
-            if (source.HasComponent<EnemyTag>() && target.HasComponent<EnemyTag>())
+            // ==========================================
+            // 【核心重构】：利用阵营 (Faction) 拦截友军伤害
+            // ==========================================
+            var sourceFac = source.GetComponent<FactionComponent>();
+            var targetFac = target.GetComponent<FactionComponent>();
+
+            // 如果碰撞双方都有阵营，并且阵营相同，则豁免伤害！
+            // 这自动涵盖了：怪物碰怪物、玩家子弹碰玩家、未来敌人子弹碰敌人
+            if (sourceFac != null && targetFac != null && sourceFac.Value == targetFac.Value)
             {
                 continue;
             }
 
-            // 纯粹的扣血逻辑
+            // ==========================================
+            // 纯粹的扣血与销毁逻辑
+            // ==========================================
             if (target.HasComponent<HealthComponent>() && source.HasComponent<DamageComponent>())
             {
                 var hp = target.GetComponent<HealthComponent>();
@@ -41,19 +53,21 @@ public class DamageSystem : SystemBase
                 // 1. 扣除血量
                 hp.CurrentHealth -= dmg.Value;
 
-                // 【修复点】：派发受伤事件！这里使用了你写好的 EventPool 对象池实现 0 GC
+                // 2. 派发受伤事件 (供 EnemyHitReactionSystem 或 PlayerHitReactionSystem 监听)
                 if (!target.HasComponent<DamageTakenEventComponent>())
                 {
                     target.AddComponent(EventPool.GetDamageEvent(dmg.Value));
                 }
 
-                // 2. 子弹命中后，打上销毁标签
+                // 3. 如果攻击源是子弹，命中后打上销毁标签
                 if (source.HasComponent<BulletTag>() && !source.HasComponent<PendingDestroyComponent>())
                 {
                     source.AddComponent(new PendingDestroyComponent());
                 }
             }
         }
+        
+        // 维持 0 GC
         ReturnListToPool(hitEvents);
     }
 }

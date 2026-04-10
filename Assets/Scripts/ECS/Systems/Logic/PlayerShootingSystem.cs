@@ -1,17 +1,17 @@
-﻿// ==========================================
-// 2. 重构后的玩家射击系统
-// ==========================================
-
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
+// ==========================================
+// 玩家射击系统
+// 职责：处理射击冷却、调用瞄准策略、并通过工厂生成子弹
+// ==========================================
 public class PlayerShootingSystem : SystemBase
 {
     private float _shootTimer;
     private GridSystem _grid;
     
     public static BulletType CurrentBulletType = BulletType.Normal;
-    // 【核心新增】：当前正在使用的瞄准策略（默认自动索敌）
+    // 当前正在使用的瞄准策略（默认自动索敌）
     public static IAimStrategy CurrentAimStrategy = new AutoAimStrategy(); 
     
     public PlayerShootingSystem(List<Entity> entities, GridSystem grid) : base(entities) { _grid = grid; }
@@ -20,6 +20,7 @@ public class PlayerShootingSystem : SystemBase
     {
         var config = ECSManager.Instance.Config;
         
+        // 校验子弹配方是否存在
         string bulletId = CurrentBulletType.ToString();
         if (!config.BulletRecipes.TryGetValue(bulletId, out var bulletData)) return;
 
@@ -40,7 +41,19 @@ public class PlayerShootingSystem : SystemBase
             // 如果策略返回了方向，说明满足了开火条件
             if (aimDir.HasValue)
             {
-                BulletFactory.Create(CurrentBulletType, new Vector3(pPos.X, pPos.Y, 0), aimDir.Value);
+                // ==========================================
+                // 【核心重构适配】：提取发射者的阵营信息
+                // ==========================================
+                FactionType sourceFaction = FactionType.Player; // 默认防错兜底
+                var factionComp = player.GetComponent<FactionComponent>();
+                if (factionComp != null)
+                {
+                    sourceFaction = factionComp.Value; // 动态获取（比如此时是 Player 阵营）
+                }
+
+                // 调用工厂生成子弹，并明确告知这颗子弹属于哪个阵营
+                BulletFactory.Create(CurrentBulletType, new Vector3(pPos.X, pPos.Y, 0), aimDir.Value, sourceFaction);
+                
                 _shootTimer = 0; // 重置冷却
             }
         }

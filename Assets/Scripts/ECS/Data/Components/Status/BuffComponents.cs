@@ -38,14 +38,12 @@ public class SlowEffectComponent : Component
     public SlowEffectComponent(float r, float d) { SlowRatio = r; Duration = d; }
 }
 
-/// <summary>
-/// 击退效果组件：使实体沿指定方向产生强制位移，模拟物理冲击效果。
-/// 工作原理：系统在每帧根据 DirX/DirY 方向和 Speed 速度更新实体位置，
-/// 同时递减 Timer 直到归零后移除组件。
-/// 应用场景：爆炸冲击波、近战重击、风力推动等。
+/// 击退效果组件
+/// 重构：增加了 HitRecoveryAfterwards 字段，用于在滑行结束后自动衔接硬直
 /// </summary>
 public class KnockbackComponent : Component 
 {
+    public float Timer;
     /// <summary>
     /// 击退方向 X 分量（标准化向量）
     /// </summary>
@@ -61,12 +59,8 @@ public class KnockbackComponent : Component
     /// 建议配合物理碰撞检测使用，避免穿墙。
     /// </summary>
     public float Speed;
-    
-    /// <summary>
-    /// 击退剩余时间（秒）
-    /// 每帧递减 Time.deltaTime，归零时移除此组件。
-    /// </summary>
-    public float Timer;
+    // 新增：击退滑行结束后，是否需要进入硬直？要多久？
+    public float HitRecoveryAfterwards; 
 }
 
 /// <summary>

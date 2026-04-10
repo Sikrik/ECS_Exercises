@@ -25,7 +25,7 @@ public static class PlayerFactory
         
         // 【核心修复 1】：补充碰撞反馈组件，让玩家在主动撞击时能产生物理排斥力挤开怪物
         player.AddComponent(new ImpactFeedbackComponent(bounce: true, recovery: false));
-        
+        player.AddComponent(new FactionComponent(FactionType.Player));
         // 关键标记：触发后续的物理烘焙与视图注册
         player.AddComponent(new NeedsBakingTag());
         

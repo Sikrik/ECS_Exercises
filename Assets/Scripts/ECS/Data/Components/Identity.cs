@@ -30,3 +30,13 @@ public class NeedsBakingTag : Component { }
 /// 远程攻击标签组件，用于标识具有远程攻击能力的实体
 /// </summary>
 public class RangedTag : Component { }
+
+// 新增：阵营枚举，用于未来区分伤害判定
+public enum FactionType { Player, Enemy, Neutral }
+
+// 新增：阵营组件，给所有实体打上阵营标签
+public class FactionComponent : Component 
+{
+    public FactionType Value;
+    public FactionComponent(FactionType type) => Value = type;
+}
