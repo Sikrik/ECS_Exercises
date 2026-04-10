@@ -18,29 +18,32 @@ public static class EnemyFactory
         enemy.AddComponent(new ViewComponent(go, prefab));
         enemy.AddComponent(new PositionComponent(spawnPos.x, spawnPos.y, 0));
         enemy.AddComponent(new VelocityComponent(0, 0));
-        enemy.AddComponent(new SpeedComponent(recipe.Speed)); //
-        enemy.AddComponent(new HealthComponent(recipe.Health)); //
-        enemy.AddComponent(new DamageComponent(recipe.Damage)); //
+        enemy.AddComponent(new SpeedComponent(recipe.Speed)); 
+        enemy.AddComponent(new HealthComponent(recipe.Health)); 
+        enemy.AddComponent(new DamageComponent(recipe.Damage)); 
 
-        // --- 【重构重点】原子化配置组件 ---
-        // 以后系统直接查 BountyComponent，不需要经过 EnemyStats
+        // --- 原子化配置组件 ---
         enemy.AddComponent(new BountyComponent(recipe.EnemyDeathScore)); 
         enemy.AddComponent(new HitRecoveryStatsComponent(recipe.HitRecoveryDuration));
-            // 确保从 recipe 中读取 BounceForce 并挂载组件
-        // 注意：确保你的 EnemyData 类里有 BounceForce 字段，且 ConfigLoader 已解析它
         enemy.AddComponent(new BounceForceComponent(recipe.BounceForce));
+        
+        // 👇 【核心重构：赋予肉身冲撞反馈设定】
+        // 方案二：怪物碰怪物、怪物碰玩家，只产生物理弹性排斥 (Bounce)，不会导致对方陷入受击硬直 (Recovery)
+        enemy.AddComponent(new ImpactFeedbackComponent(bounce: true, recovery: false));
+
         // --- 特性装载 ---
         enemy.AddComponent(new NeedsBakingTag());
-        // 巧妙利用血量来映射质量：坦克怪(150血)极重，敏捷怪(20血)极轻
         enemy.AddComponent(new MassComponent(recipe.Health)); 
 
-        // 【极其关键】修改层级过滤！加入 "Enemy"，让怪物之间也能互相挤开，形成包围网！
+        // 让怪物之间也能互相挤开，形成包围网
         enemy.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Player", "Enemy")));
+        
         if (recipe.Traits != null)
         {
             foreach (var trait in recipe.Traits) 
                 ComponentRegistry.Apply(enemy, trait);
         }
+        
         return enemy;
     }
 }

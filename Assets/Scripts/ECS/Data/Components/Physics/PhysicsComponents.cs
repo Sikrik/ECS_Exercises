@@ -67,3 +67,4 @@ public class MassComponent : Component
     /// <param name="v">质量值</param>
     public MassComponent(float v) => Value = v;
 }
+

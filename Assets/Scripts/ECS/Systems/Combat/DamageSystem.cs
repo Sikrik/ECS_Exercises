@@ -1,6 +1,9 @@
 ﻿using System.Collections.Generic;
-using UnityEngine;
 
+/// <summary>
+/// 纯粹的伤害结算系统
+/// 职责：只处理数值扣减与子弹销毁，绝不插手任何物理击退或硬直逻辑
+/// </summary>
 public class DamageSystem : SystemBase
 {
     public DamageSystem(List<Entity> entities) : base(entities) { }
@@ -15,7 +18,7 @@ public class DamageSystem : SystemBase
             var target = evt.Target;
             var source = evt.Source;
 
-            if (target == null || !target.IsAlive) continue;
+            if (target == null || !target.IsAlive || source == null || !source.IsAlive) continue;
             
             // 玩家无敌帧保护
             if (target.HasComponent<PlayerTag>() && target.HasComponent<InvincibleComponent>())
@@ -23,46 +26,22 @@ public class DamageSystem : SystemBase
                 continue; 
             }
 
-            // 正常的扣血逻辑
+            // 【拦截同阵营伤害】：防止怪物互相走位时把自己人挤死
+            if (source.HasComponent<EnemyTag>() && target.HasComponent<EnemyTag>())
+            {
+                continue;
+            }
+
+            // 纯粹的扣血逻辑
             if (target.HasComponent<HealthComponent>() && source.HasComponent<DamageComponent>())
             {
                 var hp = target.GetComponent<HealthComponent>();
                 var dmg = source.GetComponent<DamageComponent>();
                 
-                // 1. 直接扣除基础血量
+                // 1. 扣除血量
                 hp.CurrentHealth -= dmg.Value;
 
-                // ==========================================
-                // 2. 赋予第一目标特权：击退 + 硬直
-                // ==========================================
-                if (source.HasComponent<BulletTag>() && target.HasComponent<EnemyTag>())
-                {
-                    // 触发硬直事件 (EnemyHitReactionSystem 会因为这个组件施加硬直)
-                    ApplyDamageIntent(target, dmg.Value);
-
-                    // 施加瞬间的击退
-                    if (!target.HasComponent<KnockbackComponent>())
-                    {
-                        var sPos = source.GetComponent<PositionComponent>();
-                        var tPos = target.GetComponent<PositionComponent>();
-                        Vector2 pushDir = new Vector2(tPos.X - sPos.X, tPos.Y - sPos.Y);
-                        if (pushDir.sqrMagnitude < 0.0001f) pushDir = new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f));
-                        pushDir.Normalize();
-
-                        var vel = target.GetComponent<VelocityComponent>();
-                        if (vel != null) 
-                        {
-                            // 赋予物理初速度 (子弹的推力)
-                            vel.VX += pushDir.x * 6.0f; 
-                            vel.VY += pushDir.y * 6.0f;
-                        }
-                        
-                        // 挂载击退状态，剥夺 AI 控制权，0.1秒后由 KnockbackSystem 负责刹车并彻底转入硬直
-                        target.AddComponent(new KnockbackComponent { Timer = 0.1f });
-                    }
-                }
-
-                // 3. 子弹命中后给自己打上销毁标签
+                // 2. 子弹命中后，打上销毁标签
                 if (source.HasComponent<BulletTag>() && !source.HasComponent<PendingDestroyComponent>())
                 {
                     source.AddComponent(new PendingDestroyComponent());
@@ -70,12 +49,5 @@ public class DamageSystem : SystemBase
             }
         }
         ReturnListToPool(hitEvents);
-    }
-
-    private void ApplyDamageIntent(Entity target, float damage)
-    {
-        var existing = target.GetComponent<DamageTakenEventComponent>();
-        if (existing != null) existing.DamageAmount += damage;
-        else target.AddComponent(EventPool.GetDamageEvent(damage));
     }
 }

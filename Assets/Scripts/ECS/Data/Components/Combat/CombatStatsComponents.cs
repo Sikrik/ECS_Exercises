@@ -87,3 +87,18 @@ public class HealthComponent : Component
     /// <param name="maxHealth">最大生命值</param>
     public HealthComponent(float maxHealth) { MaxHealth = maxHealth; CurrentHealth = maxHealth; }
 }
+// 存储碰撞时对目标造成的反馈效果
+public class ImpactFeedbackComponent : Component 
+{
+    // 是否造成物理反弹（击退）
+    public bool CauseBounce;      
+    // 是否造成受击硬直
+    public bool CauseHitRecovery; 
+
+    // 初始化构造函数
+    public ImpactFeedbackComponent(bool bounce, bool recovery) 
+    {
+        CauseBounce = bounce;
+        CauseHitRecovery = recovery;
+    }
+}
