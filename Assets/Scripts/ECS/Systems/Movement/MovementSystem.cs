@@ -2,8 +2,8 @@
 using UnityEngine;
 
 /// <summary>
-/// 移动执行系统：负责最终物理坐标的累加和相机跟随
-/// 注：旧版的击退摩擦力逻辑已移除，交由 KnockbackSystem 的 Lerp 平滑接管
+/// 终极位移系统（Motor）
+/// 职责：仲裁物理与输入状态，计算最终速度，并执行位移
 /// </summary>
 public class MovementSystem : SystemBase
 {
@@ -18,7 +18,7 @@ public class MovementSystem : SystemBase
             var pos = entity.GetComponent<PositionComponent>();
             var vel = entity.GetComponent<VelocityComponent>();
             
-            // 1. 记录上一帧的坐标（非常重要：用于高速子弹的 TraceComponent 防穿透射线检测）
+            // 1. 记录上一帧坐标（防穿透检测依赖）
             var trace = entity.GetComponent<TraceComponent>();
             if (trace != null)
             {
@@ -26,24 +26,50 @@ public class MovementSystem : SystemBase
                 trace.PreviousY = pos.Y;
             }
 
-            // 2. 将本帧所有系统（输入、AI、击退等）计算出的最终速度，应用到空间坐标上
+            // 2. 【核心重构：速度控制权仲裁】
+            if (entity.HasComponent<KnockbackComponent>())
+            {
+                // 最高优先级：被击退中。剥夺输入控制权，接管物理摩擦力
+                vel.VX = Mathf.Lerp(vel.VX, 0, deltaTime * 15f);
+                vel.VY = Mathf.Lerp(vel.VY, 0, deltaTime * 15f);
+            }
+            else if (entity.HasComponent<HitRecoveryComponent>())
+            {
+                // 次高优先级：硬直中。强行刹车，不可移动
+                vel.VX = 0;
+                vel.VY = 0;
+            }
+            else 
+            {
+                // 普通状态：读取输入意图（可能是玩家键盘，也可能是怪物AI）
+                var input = entity.GetComponent<MoveInputComponent>();
+                var speed = entity.GetComponent<SpeedComponent>();
+                
+                if (input != null && speed != null)
+                {
+                    Vector2 dir = new Vector2(input.X, input.Y);
+                    if (dir.sqrMagnitude > 0.001f) dir.Normalize();
+                    
+                    vel.VX = dir.x * speed.CurrentSpeed;
+                    vel.VY = dir.y * speed.CurrentSpeed;
+                }
+            }
+
+            // 3. 执行最终位移
             pos.X += vel.VX * deltaTime;
             pos.Y += vel.VY * deltaTime;
 
-            // 3. 玩家的专属逻辑：让相机平滑地跟上玩家的最新坐标
+            // 4. 相机跟随
             if (entity.HasComponent<PlayerTag>())
             {
                 var mainCam = Camera.main;
                 if (mainCam != null)
                 {
                     Vector3 target = new Vector3(pos.X, pos.Y, mainCam.transform.position.z);
-                    // 0.1f 的 Lerp 插值能让相机跟随带有微微的阻尼感，不至于太死板
                     mainCam.transform.position = Vector3.Lerp(mainCam.transform.position, target, 0.1f);
                 }
             }
         }
-        
-        // 保持 0 GC 设计：归还临时查询列表
         ReturnListToPool(entities);
     }
 }

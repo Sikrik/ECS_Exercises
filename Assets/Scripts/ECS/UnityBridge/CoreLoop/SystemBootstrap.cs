@@ -7,53 +7,60 @@ public static class SystemBootstrap
         List<SystemBase> systems = new List<SystemBase>();
 
         grid = new GridSystem(2.0f, entities);
-        systems.Add(grid);
-        systems.Add(new InputCaptureSystem(entities));
         
-        // 1. 状态汇总
+        // ==========================================
+        // 阶段 1：数据采集与意图生成 (Inputs)
+        // ==========================================
+        systems.Add(new InputCaptureSystem(entities));
         systems.Add(new StatusGatherSystem(entities)); 
+        systems.Add(new EnemyTrackingSystem(entities)); // 玩家和AI在此刻均输出 MoveInput 
+        
+        // 【注意】：因为 MovementSystem 统一接管了 MoveInput，
+        // 这里我们可以自豪地删掉 PlayerControlSystem 了！架构解耦成功！
 
-        // 2. 物理与反馈
-        systems.Add(new PhysicsDetectionSystem(entities)); 
-        systems.Add(new KnockbackSystem(entities)); 
-
-        // 3. AI 控制
-        systems.Add(new EnemyTrackingSystem(entities));   
-        systems.Add(new PlayerControlSystem(entities));
-
-        // 4. 战斗核心逻辑
+        // ==========================================
+        // 阶段 2：生成与开火 (Spawning)
+        // ==========================================
         systems.Add(new EnemySpawnSystem(entities));
         systems.Add(new PlayerShootingSystem(entities, grid));
+
+        // ==========================================
+        // 阶段 3：坐标位移与空间刷新 (Movement & Spatial)
+        // ==========================================
+        systems.Add(new PhysicsBakingSystem(entities));
+        systems.Add(new MovementSystem(entities)); // 执行所有的意图和物理滑动，坐标在此处改变
         
-        // 【修复 Bug 1】：特效系统必须在伤害系统之前！
-        // 让子弹先爆开 AOE 并生成 VFX，然后再由 DamageSystem 结算单体伤害并销毁子弹。
-        systems.Add(new BulletEffectSystem(entities));
-        systems.Add(new DamageSystem(entities));
-        
-        systems.Add(new EnemyHitReactionSystem(entities));  
+        // 【核心修复】：将 GridSystem 移到 Movement 之后！
+        // 这样它录入的就是绝对新鲜的本帧坐标，彻底解决过时脏数据导致索敌/碰撞失败的问题
+        systems.Add(grid); 
+
+        // ==========================================
+        // 阶段 4：精准的碰撞与战斗结算 (Combat & Reactions)
+        // ==========================================
+        systems.Add(new PhysicsDetectionSystem(entities)); // 读取最新网格，进行精准碰撞
+        systems.Add(new KnockbackSystem(entities));        // 瞬间施加反弹力与状态标签
+        systems.Add(new BulletEffectSystem(entities));     // 子弹爆炸 VFX
+        systems.Add(new DamageSystem(entities));           // 扣血
+        systems.Add(new EnemyHitReactionSystem(entities)); // 死亡判定与硬直分流
         systems.Add(new PlayerHitReactionSystem(entities)); 
 
-        // 5. 坐标执行与视觉表现
-        systems.Add(new PhysicsBakingSystem(entities));
-        systems.Add(new MovementSystem(entities)); 
+        // ==========================================
+        // 阶段 5：画面同步 (Visuals)
+        // ==========================================
         systems.Add(new ViewSyncSystem(entities));
         systems.Add(new VFXSystem(entities));               
         systems.Add(new LightningRenderSystem(entities));   
         systems.Add(new InvincibleVisualSystem(entities));  
         
-        // 6. 计时与生命周期结算
-        systems.Add(new HealthSystem(entities));
-        
-        // 【修复 Bug 2】：记分系统必须放在 HealthSystem（判断死亡并发出事件）之后，清理系统之前！
-        // 这样本帧怪物死亡产生的事件，本帧立刻就能变成玩家的分数。
-        systems.Add(new ScoreSystem(entities));             
-
+        // ==========================================
+        // 阶段 6：死亡结算与清理 (Cleanup)
+        // ==========================================
+        systems.Add(new HealthSystem(entities));            // 如果死了，发出死亡事件
+        systems.Add(new ScoreSystem(entities));             // 接收事件，增加分数
         systems.Add(new HitRecoverySystem(entities)); 
         systems.Add(new SlowEffectSystem(entities));
         systems.Add(new LifetimeSystem(entities));
-
-        // 7. 清理
-        systems.Add(new EventCleanupSystem(entities));
+        systems.Add(new EventCleanupSystem(entities));      // 在管线最末端统一清理本帧事件
         systems.Add(new EntityCleanupSystem(entities));
 
         return systems;
