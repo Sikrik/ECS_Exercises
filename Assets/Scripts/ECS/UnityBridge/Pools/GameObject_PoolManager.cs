@@ -21,8 +21,8 @@ public class GameObject_PoolManager : MonoBehaviour
     public GameObject LightningChainVFX;
     public GameObject ExplosionVFXPrefab;
 
-    // 对象池字典：Key 是预制体资源，Value 是处于非激活状态的物体队列
-    private Dictionary<GameObject, Queue<GameObject>> _pools = new Dictionary<GameObject, Queue<GameObject>>();
+    // 【核心优化】：将 Queue(FIFO) 替换为 Stack(LIFO)，大幅提升 CPU 高速缓存（Cache）亲和度
+    private Dictionary<GameObject, Stack<GameObject>> _pools = new Dictionary<GameObject, Stack<GameObject>>();
 
     void Awake() => Instance = this;
 
@@ -48,17 +48,17 @@ public class GameObject_PoolManager : MonoBehaviour
     {
         if (prefab == null) return null;
 
-        if (!_pools.ContainsKey(prefab)) _pools[prefab] = new Queue<GameObject>();
+        if (!_pools.ContainsKey(prefab)) _pools[prefab] = new Stack<GameObject>();
 
-        // --- 核心修复：防御性检测，跳过已被销毁的对象 ---
+        // --- 防御性检测，跳过已被意外 Destroy 销毁的对象 ---
         while (_pools[prefab].Count > 0)
         {
-            GameObject go = _pools[prefab].Dequeue();
+            GameObject go = _pools[prefab].Pop(); // 使用 Pop 取出最新鲜的内存
             if (go != null) // 确保物体在内存中依然存在
             {
                 go.SetActive(true);
-                go.transform.position = position;
-                go.transform.rotation = rotation;
+                // 推荐使用 SetPositionAndRotation 一次性修改 Transform 提升性能
+                go.transform.SetPositionAndRotation(position, rotation);
                 return go;
             }
         }
@@ -74,9 +74,12 @@ public class GameObject_PoolManager : MonoBehaviour
     {
         if (go == null || prefab == null) return;
 
+        // 【核心防御】：防止同一个 GameObject 被其他系统重复回收导致死循环或逻辑错误
+        if (!go.activeSelf) return; 
+
         go.SetActive(false); // 仅仅隐藏，不销毁
         
-        if (!_pools.ContainsKey(prefab)) _pools[prefab] = new Queue<GameObject>();
-        _pools[prefab].Enqueue(go);
+        if (!_pools.ContainsKey(prefab)) _pools[prefab] = new Stack<GameObject>();
+        _pools[prefab].Push(go); // 使用 Push 压入栈顶
     }
 }
