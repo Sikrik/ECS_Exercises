@@ -25,6 +25,7 @@ public static class SystemBootstrap
         systems.Add(new EnemySpawnSystem(entities));
         systems.Add(new PlayerShootingSystem(entities, grid));
         systems.Add(new DamageSystem(entities));
+        systems.Add(new BulletEffectSystem(entities));
 
         // 5. 坐标执行
         systems.Add(new PhysicsBakingSystem(entities));
