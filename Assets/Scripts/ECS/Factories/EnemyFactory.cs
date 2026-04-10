@@ -26,7 +26,9 @@ public static class EnemyFactory
         // 以后系统直接查 BountyComponent，不需要经过 EnemyStats
         enemy.AddComponent(new BountyComponent(recipe.EnemyDeathScore)); 
         enemy.AddComponent(new HitRecoveryStatsComponent(recipe.HitRecoveryDuration));
-
+            // 确保从 recipe 中读取 BounceForce 并挂载组件
+        // 注意：确保你的 EnemyData 类里有 BounceForce 字段，且 ConfigLoader 已解析它
+        enemy.AddComponent(new BounceForceComponent(BounceForce));
         // --- 特性装载 ---
         enemy.AddComponent(new NeedsBakingTag());
         enemy.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Player")));

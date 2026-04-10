@@ -18,3 +18,9 @@ public class LifetimeComponent : Component
 /// 使用流程：系统标记此组件 → 帧末销毁系统统一清理 → 移除实体。
 /// </summary>
 public class PendingDestroyComponent : Component { }
+
+// 正在被物理弹开滑动（不接受寻路控制，受摩擦力影响）
+public class KnockbackTag : Component { } 
+
+// 弹开结束后的原地硬直（不接受寻路控制，速度为0）
+public class HitRecoveryTag : Component { }
