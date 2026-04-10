@@ -1,12 +1,12 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-// 纯物理反弹标签：用于区分是“撞墙弹开”还是“被武器打退”
-public class PhysicalBounceTag : Component { }
+// 【修改点 1】重命名为 State，代表这是一个被击退时的“临时状态”，而不是固有天赋
+public class PhysicalBouncingState : Component { }
 
 /// <summary>
 /// 物理击退与碰撞挤压系统
-/// 包含：玩家霸体、基于质量的动量分配、无视事件顺序的精准匹配、以及丝滑的Lerp减速刹车
+/// 包含：玩家霸体、基于质量的动量分配、无视事件顺序的精准匹配、丝滑的Lerp减速刹车，以及真实配置读取
 /// </summary>
 public class KnockbackSystem : SystemBase 
 {
@@ -41,6 +41,9 @@ public class KnockbackSystem : SystemBase
                 Entity player = aIsPlayer ? eA : eB;
                 Entity enemy = aIsEnemy ? eA : eB;
 
+                // 【修改点 2】天赋校验：如果怪物没有“弹性”特性，不发生肉体反弹，直接跳过
+                if (!enemy.HasComponent<BouncyTag>()) continue;
+
                 var pPos = player.GetComponent<PositionComponent>();
                 var ePos = enemy.GetComponent<PositionComponent>();
                 var eVel = enemy.GetComponent<VelocityComponent>();
@@ -60,8 +63,12 @@ public class KnockbackSystem : SystemBase
                 ePos.X += pushDir.x * hardPush;
                 ePos.Y += pushDir.y * hardPush;
 
-                // 2. 赋予极高的初始物理反弹速度
-                float bounceForce = 15.0f * pushRatio; 
+                // 【修改点 3】读取配置：使用 BounceForceComponent 的值，取代硬编码的 15.0f
+                float baseBounceForce = enemy.HasComponent<BounceForceComponent>() 
+                                        ? enemy.GetComponent<BounceForceComponent>().Value 
+                                        : 15.0f; // 如果漏配了给个保底值
+                                        
+                float bounceForce = baseBounceForce * pushRatio; 
                 eVel.VX += pushDir.x * bounceForce;
                 eVel.VY += pushDir.y * bounceForce;
 
@@ -69,7 +76,7 @@ public class KnockbackSystem : SystemBase
                 if (!enemy.HasComponent<KnockbackComponent>())
                 {
                     enemy.AddComponent(new KnockbackComponent { Timer = 0.15f });
-                    enemy.AddComponent(new PhysicalBounceTag());
+                    enemy.AddComponent(new PhysicalBouncingState()); // 贴上临时状态标签
                 }
             }
             // 【情况 B：怪物互挤】 -> 虫群软碰撞流动
@@ -129,15 +136,16 @@ public class KnockbackSystem : SystemBase
                 }
 
                 // 结算落地后的硬直（眩晕/罚站）
-                if (e.HasComponent<PhysicalBounceTag>())
+                // 【修改点 4】对应上面的改名，这里检查 PhysicalBouncingState
+                if (e.HasComponent<PhysicalBouncingState>())
                 {
                     // 肉体撞墙导致的弹开，落地后眩晕 0.3 秒
-                    e.RemoveComponent<PhysicalBounceTag>();
+                    e.RemoveComponent<PhysicalBouncingState>();
                     e.AddComponent(new HitRecoveryComponent { Timer = 0.3f });
                 }
                 else
                 {
-                    // 其他攻击造成的击退，读取配置时间进入硬直
+                    // 其他攻击(如子弹推力)造成的击退，读取配置时间进入硬直
                     var stats = e.GetComponent<HitRecoveryStatsComponent>();
                     float duration = stats != null ? stats.Duration : 0.2f;
                     e.AddComponent(new HitRecoveryComponent { Timer = duration });
