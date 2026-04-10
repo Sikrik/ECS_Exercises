@@ -1,12 +1,12 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-// 【新增】：打上这个标签，意味着这是一次纯物理的“肉弹战车”式反弹，落地后不需要受击罚站
+// 打上这个标签，意味着这是一次纯物理的“肉弹战车”式反弹，落地后不需要受击罚站
 public class PhysicalBounceTag : Component { }
 
 /// <summary>
 /// 物理击退与碰撞挤压系统
-/// 优化：修复了AI与物理拉扯导致的“停顿感”，实现丝滑的动量反弹
+/// 优化：修复了 Source/Target 乱序导致的漏判 Bug，确保每次碰撞必定弹开
 /// </summary>
 public class KnockbackSystem : SystemBase 
 {
@@ -22,62 +22,86 @@ public class KnockbackSystem : SystemBase
             if (entity.HasComponent<BulletTag>()) continue;
 
             var evt = entity.GetComponent<CollisionEventComponent>();
-            var target = evt.Target;
-            var source = evt.Source;
+            var eA = evt.Source;
+            var eB = evt.Target;
 
-            if (target == null || !target.IsAlive) continue;
-            if (source == null || !source.IsAlive) continue;
+            if (eA == null || !eA.IsAlive || eB == null || !eB.IsAlive) continue;
 
-            // 玩家叹息之墙，绝不动摇
-            if (target.HasComponent<PlayerTag>()) continue;
-
-            var tPos = target.GetComponent<PositionComponent>();
-            var sPos = source.GetComponent<PositionComponent>();
-            var tVel = target.GetComponent<VelocityComponent>();
-
-            Vector2 pushDir = new Vector2(tPos.X - sPos.X, tPos.Y - sPos.Y);
-            if (pushDir.sqrMagnitude < 0.0001f) pushDir = new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f));
-            pushDir.Normalize();
+            bool aIsPlayer = eA.HasComponent<PlayerTag>();
+            bool bIsPlayer = eB.HasComponent<PlayerTag>();
+            bool aIsEnemy = eA.HasComponent<EnemyTag>();
+            bool bIsEnemy = eB.HasComponent<EnemyTag>();
 
             // ==========================================
-            // 【怪物撞墙】：完美解决停顿感
+            // 【怪物撞墙】：无视事件顺序，精准提纯玩家和怪物实体
             // ==========================================
-            if (source.HasComponent<PlayerTag>() && target.HasComponent<EnemyTag>())
+            if ((aIsPlayer && bIsEnemy) || (bIsPlayer && aIsEnemy))
             {
-                float sMass = source.HasComponent<MassComponent>() ? source.GetComponent<MassComponent>().Value : 100f;
-                float tMass = target.HasComponent<MassComponent>() ? target.GetComponent<MassComponent>().Value : 50f;
-                float pushRatio = sMass / (sMass + tMass); 
+                // 精准提取
+                Entity player = aIsPlayer ? eA : eB;
+                Entity enemy = aIsEnemy ? eA : eB;
 
+                var pPos = player.GetComponent<PositionComponent>();
+                var ePos = enemy.GetComponent<PositionComponent>();
+                var eVel = enemy.GetComponent<VelocityComponent>();
+
+                // 计算反弹方向：从玩家中心指向怪物中心（把怪物往外推）
+                Vector2 pushDir = new Vector2(ePos.X - pPos.X, ePos.Y - pPos.Y);
+                if (pushDir.sqrMagnitude < 0.0001f) pushDir = new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f));
+                pushDir.Normalize();
+
+                float pMass = player.HasComponent<MassComponent>() ? player.GetComponent<MassComponent>().Value : 100f;
+                float eMass = enemy.HasComponent<MassComponent>() ? enemy.GetComponent<MassComponent>().Value : 50f;
+                float pushRatio = pMass / (pMass + eMass); 
+
+                // 1. 物理坐标强行排斥（防止重叠）
                 float hardPush = 0.1f * pushRatio;
-                tPos.X += pushDir.x * hardPush;
-                tPos.Y += pushDir.y * hardPush;
+                ePos.X += pushDir.x * hardPush;
+                ePos.Y += pushDir.y * hardPush;
 
+                // 2. 赋予瞬间爆发动量（玩家不动，只改怪物速度）
                 float bounceForce = 15.0f * pushRatio; 
-                tVel.VX += pushDir.x * bounceForce;
-                tVel.VY += pushDir.y * bounceForce;
+                eVel.VX += pushDir.x * bounceForce;
+                eVel.VY += pushDir.y * bounceForce;
 
-                // 【核心修复】：必须给怪物上一个极短的控制状态（0.15秒），用来彻底挂起AI！
-                // 这样物理初速度才能完美生效，怪物会像皮球一样瞬间弹出去
-                if (!target.HasComponent<KnockbackComponent>())
+                // 3. 挂载 0.15 秒物理滞空状态，彻底阻断 AI 寻路
+                if (!enemy.HasComponent<KnockbackComponent>())
                 {
-                    target.AddComponent(new KnockbackComponent { Timer = 0.15f });
-                    // 打上免罪金牌：告诉结算系统，0.15秒后不要给它上硬直
-                    target.AddComponent(new PhysicalBounceTag());
+                    enemy.AddComponent(new KnockbackComponent { Timer = 0.15f });
+                    enemy.AddComponent(new PhysicalBounceTag());
                 }
             }
-            // 怪物互挤：保持原本的一帧软排斥，AI覆盖刚好能形成虫群流动感
-            else if (source.HasComponent<EnemyTag>() && target.HasComponent<EnemyTag>())
+            // ==========================================
+            // 【怪物互挤】：同样无视顺序处理软碰撞
+            // ==========================================
+            else if (aIsEnemy && bIsEnemy)
             {
+                var aPos = eA.GetComponent<PositionComponent>();
+                var bPos = eB.GetComponent<PositionComponent>();
+                var aVel = eA.GetComponent<VelocityComponent>();
+                var bVel = eB.GetComponent<VelocityComponent>();
+
+                Vector2 pushDir = new Vector2(bPos.X - aPos.X, bPos.Y - aPos.Y);
+                if (pushDir.sqrMagnitude < 0.0001f) pushDir = new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f));
+                pushDir.Normalize();
+
                 float swarmPush = 0.03f;
-                tPos.X += pushDir.x * swarmPush;
-                tPos.Y += pushDir.y * swarmPush;
                 
-                tVel.VX += pushDir.x * 0.5f;
-                tVel.VY += pushDir.y * 0.5f;
+                // 将 A 往反方向推
+                aPos.X -= pushDir.x * swarmPush;
+                aPos.Y -= pushDir.y * swarmPush;
+                aVel.VX -= pushDir.x * 0.5f;
+                aVel.VY -= pushDir.y * 0.5f;
+
+                // 将 B 往正方向推
+                bPos.X += pushDir.x * swarmPush;
+                bPos.Y += pushDir.y * swarmPush;
+                bVel.VX += pushDir.x * 0.5f;
+                bVel.VY += pushDir.y * 0.5f;
             }
         }
         
-        // 2. 处理击退/反弹的结束逻辑
+        // 2. 处理反弹/击退的结束逻辑
         var slidingOnes = GetEntitiesWith<KnockbackComponent>();
         for (int i = slidingOnes.Count - 1; i >= 0; i--)
         {
@@ -89,15 +113,14 @@ public class KnockbackSystem : SystemBase
             {
                 e.RemoveComponent<KnockbackComponent>();
 
-                // 【核心修复】：根据标签分流
                 if (e.HasComponent<PhysicalBounceTag>())
                 {
-                    // 纯粹的撞墙反弹，落地瞬间撕毁标签，无缝切回AI，绝不罚站！
+                    // 纯物理反弹结束，直接恢复 AI 移动
                     e.RemoveComponent<PhysicalBounceTag>();
                 }
                 else
                 {
-                    // 被子弹或武器打出的击退，按老规矩进入受击罚站硬直
+                    // 其他攻击造成的击退，转入罚站硬直
                     var stats = e.GetComponent<HitRecoveryStatsComponent>();
                     float duration = stats != null ? stats.Duration : 0.2f;
                     e.AddComponent(new HitRecoveryComponent { Timer = duration });

@@ -1,5 +1,5 @@
 ﻿Key,Value,Description
-PlayerMaxHealth,100,玩家最大血量
+PlayerMaxHealth,1000,玩家最大血量
 PlayerMoveSpeed,6,玩家移动速度
 PlayerInvincibleDuration,1,玩家受击无敌时间
 CollisionPushDistance,0.2,碰撞挤压距离
