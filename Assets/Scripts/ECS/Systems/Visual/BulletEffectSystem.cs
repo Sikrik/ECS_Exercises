@@ -72,16 +72,40 @@ public class BulletEffectSystem : SystemBase
 
     private void ProcessAOE(float x, float y, float radius, float damageValue)
     {
+        // ==========================================
+        // 1. 生成爆炸中心视觉特效 (VFX)
+        // ==========================================
+        if (GameObject_PoolManager.Instance.ExplosionVFXPrefab != null)
+        {
+            // 从对象池生成特效 GameObject
+            GameObject vfxGo = GameObject_PoolManager.Instance.Spawn(
+                GameObject_PoolManager.Instance.ExplosionVFXPrefab, 
+                new Vector3(x, y, 0), 
+                Quaternion.identity
+            );
+
+            // 创建对应的 ECS 实体来管理其生命周期
+            Entity vfxEntity = ECSManager.Instance.CreateEntity();
+            vfxEntity.AddComponent(new ViewComponent(vfxGo, GameObject_PoolManager.Instance.ExplosionVFXPrefab));
+        
+            // 挂载寿命组件，假设爆炸特效持续 0.5 秒 (可根据实际特效长度调整)
+            // 时间到了之后 LifetimeSystem 会自动给它打上 PendingDestroyComponent 标签并回收到池子中
+            vfxEntity.AddComponent(new LifetimeComponent { Duration = 0.5f }); 
+        }
+
+        // ==========================================
+        // 2. 结算范围伤害逻辑
+        // ==========================================
         var enemies = ECSManager.Instance.Grid.GetNearbyEnemies(x, y);
         float rSq = radius * radius;
-    
+
         foreach (var e in enemies)
         {
             if (!e.IsAlive || !e.HasComponent<EnemyTag>()) continue;
-        
+    
             var p = e.GetComponent<PositionComponent>();
             float d2 = (p.X - x) * (p.X - x) + (p.Y - y) * (p.Y - y);
-        
+    
             if (d2 <= rSq)
             {
                 ApplyDamageEvent(e, damageValue); 
