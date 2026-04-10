@@ -54,7 +54,10 @@ public class PhysicsBakingSystem : SystemBase
             {
                 view.SpriteRenderer = view.GameObject.GetComponentInChildren<SpriteRenderer>();
             }
-
+            if (view.SpriteRenderer != null)
+            {
+                view.SpriteRenderer.enabled = true; 
+            }
             if (view.Prefab != null && view.SpriteRenderer != null)
             {
                 // 获取预制体的渲染器
