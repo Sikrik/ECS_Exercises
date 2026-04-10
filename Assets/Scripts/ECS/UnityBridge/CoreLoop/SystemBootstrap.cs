@@ -24,26 +24,30 @@ public static class SystemBootstrap
         // 4. 战斗核心逻辑
         systems.Add(new EnemySpawnSystem(entities));
         systems.Add(new PlayerShootingSystem(entities, grid));
-        systems.Add(new DamageSystem(entities));
-        systems.Add(new BulletEffectSystem(entities));
         
-        // 【补全漏掉的系统】：得分与受击反应
-        systems.Add(new EnemyHitReactionSystem(entities));  // 让怪物受到非击退攻击时也能产生硬直
-        systems.Add(new PlayerHitReactionSystem(entities)); // 让玩家受击能触发无敌时间
-        systems.Add(new ScoreSystem(entities));             // 让 UI 上的分数能正常增加
+        // 【修复 Bug 1】：特效系统必须在伤害系统之前！
+        // 让子弹先爆开 AOE 并生成 VFX，然后再由 DamageSystem 结算单体伤害并销毁子弹。
+        systems.Add(new BulletEffectSystem(entities));
+        systems.Add(new DamageSystem(entities));
+        
+        systems.Add(new EnemyHitReactionSystem(entities));  
+        systems.Add(new PlayerHitReactionSystem(entities)); 
 
         // 5. 坐标执行与视觉表现
         systems.Add(new PhysicsBakingSystem(entities));
         systems.Add(new MovementSystem(entities)); 
         systems.Add(new ViewSyncSystem(entities));
+        systems.Add(new VFXSystem(entities));               
+        systems.Add(new LightningRenderSystem(entities));   
+        systems.Add(new InvincibleVisualSystem(entities));  
         
-        // 【核心修复】：补全视觉特效系统
-        systems.Add(new VFXSystem(entities));               // 同步减速冰冻等附加特效的坐标
-        systems.Add(new LightningRenderSystem(entities));   // 绘制闪电链并处理淡出表现
-        systems.Add(new InvincibleVisualSystem(entities));  // 玩家无敌时的半透明闪烁表现
-        
-        // 6. 计时管理
+        // 6. 计时与生命周期结算
         systems.Add(new HealthSystem(entities));
+        
+        // 【修复 Bug 2】：记分系统必须放在 HealthSystem（判断死亡并发出事件）之后，清理系统之前！
+        // 这样本帧怪物死亡产生的事件，本帧立刻就能变成玩家的分数。
+        systems.Add(new ScoreSystem(entities));             
+
         systems.Add(new HitRecoverySystem(entities)); 
         systems.Add(new SlowEffectSystem(entities));
         systems.Add(new LifetimeSystem(entities));
