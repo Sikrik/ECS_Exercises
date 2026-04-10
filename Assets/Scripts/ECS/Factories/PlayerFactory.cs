@@ -23,13 +23,17 @@ public static class PlayerFactory
         player.AddComponent(new MassComponent(100f)); 
         player.AddComponent(new BouncyTag());
         
+        // 【核心修复 1】：补充碰撞反馈组件，让玩家在主动撞击时能产生物理排斥力挤开怪物
+        player.AddComponent(new ImpactFeedbackComponent(bounce: true, recovery: false));
+        
         // 关键标记：触发后续的物理烘焙与视图注册
         player.AddComponent(new NeedsBakingTag());
         
-        // 设置玩家物理层级过滤：只撞敌人
-        player.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Enemy")));
+        // 【核心修复 3】：取消玩家主动检测怪物的权限，防止同一帧内触发双重排斥导致怪物抖动/乱飞。
+        // （掩码设为 0。如果你的游戏后续有拾取物，可以改为 LayerMask.GetMask("Item")）
+        player.AddComponent(new CollisionFilterComponent(0));
 
-        // 【核心修改】：进入游戏第一帧强制刷新一次血条
+        // 进入游戏第一帧强制刷新一次血条
         player.AddComponent(new UIHealthUpdateEvent()); 
 
         return player;

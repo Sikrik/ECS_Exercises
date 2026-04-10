@@ -25,10 +25,24 @@ public class PhysicsBakingSystem : SystemBase
                 // 注册发生碰撞的实际物体映射，确保物理检测能找回实体
                 ECSManager.Instance.RegisterEntityView(col.gameObject, entity);
                 
-                // 如果是圆形碰撞体，计算其世界缩放后的逻辑半径
+                // 【核心修复 2】：兼容多种碰撞体类型，确保都能生成逻辑碰撞半径
+                float maxScale = Mathf.Max(view.GameObject.transform.lossyScale.x, view.GameObject.transform.lossyScale.y);
+                
                 if (col is CircleCollider2D circle)
                 {
-                    float r = circle.radius * Mathf.Max(view.GameObject.transform.lossyScale.x, view.GameObject.transform.lossyScale.y);
+                    float r = circle.radius * maxScale;
+                    entity.AddComponent(new CollisionComponent(r));
+                }
+                else if (col is BoxCollider2D box)
+                {
+                    // 近似处理：取 Box 长宽的最大值的一半作为逻辑排斥半径
+                    float r = Mathf.Max(box.size.x, box.size.y) * 0.5f * maxScale;
+                    entity.AddComponent(new CollisionComponent(r));
+                }
+                else if (col is CapsuleCollider2D capsule)
+                {
+                    // 近似处理：取胶囊体长宽的最大值的一半作为逻辑排斥半径
+                    float r = Mathf.Max(capsule.size.x, capsule.size.y) * 0.5f * maxScale;
                     entity.AddComponent(new CollisionComponent(r));
                 }
             }
@@ -44,7 +58,7 @@ public class PhysicsBakingSystem : SystemBase
 
             if (view.Prefab != null && view.SpriteRenderer != null)
             {
-                // 获取预制体的渲染器 (由于预制体不常变，这里的 GetComponent 损耗可以接受，也可以进一步考虑缓存预制体的颜色)
+                // 获取预制体的渲染器
                 var prefabSr = view.Prefab.GetComponentInChildren<SpriteRenderer>();
 
                 if (prefabSr != null)
