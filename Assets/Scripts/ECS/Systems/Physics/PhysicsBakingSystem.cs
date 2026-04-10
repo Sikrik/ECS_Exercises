@@ -9,7 +9,6 @@ public class PhysicsBakingSystem : SystemBase
     {
         // 筛选出需要烘焙的实体
         var pending = GetEntitiesWith<NeedsBakingTag, ViewComponent>();
-
         // 优化点 1：倒序遍历，防止在循环中调用 RemoveComponent 导致集合修改引发报错或跳位
         for (int i = pending.Count - 1; i >= 0; i--)
         {
@@ -70,7 +69,6 @@ public class PhysicsBakingSystem : SystemBase
                     entity.AddComponent(new BaseColorComponent(prefabSr.color));
                 }
             }
-
             // 3. 烘焙完成，移除标记，使其不再进入这个循环
             entity.RemoveComponent<NeedsBakingTag>();
         }

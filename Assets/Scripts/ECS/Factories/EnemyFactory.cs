@@ -29,7 +29,7 @@ public static class EnemyFactory
         
         // 👇 【核心重构：赋予肉身冲撞反馈设定】
         // 方案二：怪物碰怪物、怪物碰玩家，只产生物理弹性排斥 (Bounce)，不会导致对方陷入受击硬直 (Recovery)
-        enemy.AddComponent(new ImpactFeedbackComponent(bounce: true, recovery: false));
+        enemy.AddComponent(new ImpactFeedbackComponent(bounce: true, recovery: true));
 
         // --- 特性装载 ---
         enemy.AddComponent(new NeedsBakingTag());
