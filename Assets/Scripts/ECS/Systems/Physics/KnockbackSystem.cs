@@ -1,6 +1,10 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// 物理击退与碰撞挤压系统
+/// 优化：玩家免疫物理位移（叹息之墙）；怪物撞击玩家时，会根据自身重量被物理弹开，且不产生急停硬直。
+/// </summary>
 public class KnockbackSystem : SystemBase 
 {
     public KnockbackSystem(List<Entity> entities) : base(entities) { }
@@ -9,6 +13,7 @@ public class KnockbackSystem : SystemBase
     {
         var hitEvents = GetEntitiesWith<CollisionEventComponent>();
 
+        // 1. 处理碰撞瞬间的物理排斥
         foreach (var entity in hitEvents) 
         {
             // 忽略子弹穿透，纯处理肉体碰撞
@@ -16,80 +21,88 @@ public class KnockbackSystem : SystemBase
 
             var evt = entity.GetComponent<CollisionEventComponent>();
             var target = evt.Target;
-            var source = evt.Source; // 撞击者
+            var source = evt.Source;
 
-            // 确保双方都有物理实体和质量
-            if (target == null || !target.IsAlive || !target.HasComponent<MassComponent>()) continue;
-            if (source == null || !source.IsAlive || !source.HasComponent<MassComponent>()) continue;
+            if (target == null || !target.IsAlive) continue;
+            if (source == null || !source.IsAlive) continue;
+
+            // ==========================================
+            // 【玩家霸体】：玩家绝不接受任何碰撞造成的位移和推力
+            // ==========================================
+            if (target.HasComponent<PlayerTag>()) 
+            {
+                continue;
+            }
 
             var tPos = target.GetComponent<PositionComponent>();
             var sPos = source.GetComponent<PositionComponent>();
             var tVel = target.GetComponent<VelocityComponent>();
 
-            // 【手感核心1】：计算真实的排斥方向，抛弃偶尔会出 Bug 的底层 Normal
             Vector2 pushDir = new Vector2(tPos.X - sPos.X, tPos.Y - sPos.Y);
-            if (pushDir.sqrMagnitude < 0.0001f) pushDir = new Vector2(Random.Range(-1f,1f), Random.Range(-1f,1f));
+            if (pushDir.sqrMagnitude < 0.0001f) pushDir = new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f));
             pushDir.Normalize();
 
-            // 【手感核心2】：动量守恒比例（对方越重，我被推得越狠）
-            float sMass = source.GetComponent<MassComponent>().Value;
-            float tMass = target.GetComponent<MassComponent>().Value;
-            float pushRatio = sMass / (sMass + tMass); 
-
-            // 判断是否是怪物互相挤压
-            bool isEnemySwarm = source.HasComponent<EnemyTag>() && target.HasComponent<EnemyTag>();
-
-            if (isEnemySwarm)
+            // ==========================================
+            // 【怪物撞墙】：怪物撞击到玩家，根据重量被弹开
+            // ==========================================
+            if (source.HasComponent<PlayerTag>() && target.HasComponent<EnemyTag>())
             {
-                // 【软碰撞】：怪物互挤，仅产生微小的位置分离，不触发硬直打断
-                float swarmPush = 0.05f * pushRatio;
-                tPos.X += pushDir.x * swarmPush;
-                tPos.Y += pushDir.y * swarmPush;
+                // 获取双方质量（假设玩家重100）
+                float sMass = source.HasComponent<MassComponent>() ? source.GetComponent<MassComponent>().Value : 100f;
+                float tMass = target.HasComponent<MassComponent>() ? target.GetComponent<MassComponent>().Value : 50f;
+                
+                // 【核心：动量分配比例】
+                // 玩家(sMass)越重，怪物(tMass)越轻，怪物吃到的反弹推力比例就越大
+                // 例如：20kg的小怪比例是 100/120 = 0.83；150kg的坦克怪比例是 100/250 = 0.4
+                float pushRatio = sMass / (sMass + tMass); 
 
-                // 给一点点速度分离，保持虫群的流动性
-                tVel.VX += pushDir.x * 0.5f;
-                tVel.VY += pushDir.y * 0.5f;
-            }
-            else
-            {
-                // 【硬碰撞】：玩家与怪物的肉搏，打击感强
-                // 1. 位置硬修正，防止穿墙
-                float hardPush = Mathf.Clamp(0.2f * pushRatio, 0.02f, 0.2f);
+                // 1. 位置排斥（轻微防重叠）
+                float hardPush = 0.1f * pushRatio;
                 tPos.X += pushDir.x * hardPush;
                 tPos.Y += pushDir.y * hardPush;
 
-                // 2. 动量弹开
-                float bounceForce = target.HasComponent<BounceForceComponent>() ? target.GetComponent<BounceForceComponent>().Value : 8.0f;
-                float finalForce = bounceForce * pushRatio * 2f; // 放大系数，让反弹更明显
+                // 2. 赋予基于重量的物理反弹速度（弹开效果）
+                // 基础弹力 15.0f，乘以比例。轻怪会被瞬间弹飞，重怪只是微微后退
+                float bounceForce = 15.0f * pushRatio; 
                 
-                tVel.VX = pushDir.x * finalForce;
-                tVel.VY = pushDir.y * finalForce;
+                // 注意这里是 +=，叠加反弹速度
+                tVel.VX += pushDir.x * bounceForce;
+                tVel.VY += pushDir.y * bounceForce;
 
-                // 3. 施加击退状态 (打断移动和AI寻路)
-                if (!target.HasComponent<KnockbackComponent>())
-                {
-                    // 击退时间变短（0.15秒），让动作游戏的节奏更脆，不会“飞半天”
-                    target.AddComponent(new KnockbackComponent { Timer = 0.15f });
-                }
+                // 【不急停的关键】：故意不给怪物添加 KnockbackComponent！
+                // 因为没有状态组件，怪物的 AI 会一直保持运行。
+                // 这股物理弹力会在 MovementSystem 的摩擦力下迅速衰减，而怪物的 AI 会让它刚被弹开就立刻继续往上扑，
+                // 形成一种非常有弹性和肉感的“皮球撞墙”体验，完全没有急停罚站的感觉。
+            }
+            // ==========================================
+            // 【怪物互挤】：维持低强度的软碰撞（虫群流动感）
+            // ==========================================
+            else if (source.HasComponent<EnemyTag>() && target.HasComponent<EnemyTag>())
+            {
+                float swarmPush = 0.03f;
+                tPos.X += pushDir.x * swarmPush;
+                tPos.Y += pushDir.y * swarmPush;
+                
+                tVel.VX += pushDir.x * 0.5f;
+                tVel.VY += pushDir.y * 0.5f;
             }
         }
         
-        // --- 下面处理滑动结束转硬直的逻辑保持不变 ---
+        // 2. 处理可能由其他系统（如爆炸技能、武器击退）主动附加的受击硬直
         var slidingOnes = GetEntitiesWith<KnockbackComponent>();
         for (int i = slidingOnes.Count - 1; i >= 0; i--)
         {
             var e = slidingOnes[i];
             var kb = e.GetComponent<KnockbackComponent>();
             kb.Timer -= deltaTime;
+            
             if (kb.Timer <= 0)
             {
                 e.RemoveComponent<KnockbackComponent>();
-                // 转入原地硬直
+                // 靠摩擦力平滑减速，不再强制 vel=0 急停
                 var stats = e.GetComponent<HitRecoveryStatsComponent>();
-                float duration = stats != null ? stats.Duration : 0.2f; // 默认硬直也缩短
+                float duration = stats != null ? stats.Duration : 0.2f;
                 e.AddComponent(new HitRecoveryComponent { Timer = duration });
-                var vel = e.GetComponent<VelocityComponent>();
-                if (vel != null) { vel.VX = 0; vel.VY = 0; }
             }
         }
     }
