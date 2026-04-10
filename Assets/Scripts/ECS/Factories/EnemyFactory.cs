@@ -31,7 +31,11 @@ public static class EnemyFactory
         enemy.AddComponent(new BounceForceComponent(recipe.BounceForce));
         // --- 特性装载 ---
         enemy.AddComponent(new NeedsBakingTag());
-        enemy.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Player")));
+        // 巧妙利用血量来映射质量：坦克怪(150血)极重，敏捷怪(20血)极轻
+        enemy.AddComponent(new MassComponent(recipe.Health)); 
+
+        // 【极其关键】修改层级过滤！加入 "Enemy"，让怪物之间也能互相挤开，形成包围网！
+        enemy.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Player", "Enemy")));
         if (recipe.Traits != null)
         {
             foreach (var trait in recipe.Traits) 

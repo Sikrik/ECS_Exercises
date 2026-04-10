@@ -19,7 +19,10 @@ public static class PlayerFactory
         player.AddComponent(new VelocityComponent(0, 0)); 
         player.AddComponent(new HealthComponent(config.PlayerMaxHealth));
         player.AddComponent(new ViewComponent(go, prefab));
-        
+        // 赋予玩家质量 (100)
+        player.AddComponent(new MassComponent(100f)); 
+        // 补上弹性标签，让玩家也能被物理弹开
+        player.AddComponent(new BouncyTag());
         // 关键标记：触发后续的物理烘焙与视图注册
         player.AddComponent(new NeedsBakingTag());
         

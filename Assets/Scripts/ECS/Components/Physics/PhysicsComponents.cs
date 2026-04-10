@@ -18,3 +18,9 @@ public class CollisionFilterComponent : Component
     public int LayerMask; // 目标层级掩码
     public CollisionFilterComponent(int mask) => LayerMask = mask;
 }
+
+public class MassComponent : Component 
+{
+    public float Value;
+    public MassComponent(float v) => Value = v;
+}
