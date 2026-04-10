@@ -14,20 +14,23 @@ public static class PlayerFactory
         Entity player = ecs.CreateEntity();
         player.AddComponent(new PlayerTag());
         player.AddComponent(new PositionComponent(0, 0, 0));
-        // PlayerFactory.cs
-        player.AddComponent(new SpeedComponent(config.PlayerMoveSpeed)); // 玩家也有了自己的速度组件
+        player.AddComponent(new SpeedComponent(config.PlayerMoveSpeed)); 
         player.AddComponent(new VelocityComponent(0, 0)); 
         player.AddComponent(new HealthComponent(config.PlayerMaxHealth));
         player.AddComponent(new ViewComponent(go, prefab));
-        // 赋予玩家质量 (100)
+        
+        // 赋予玩家质量与弹性
         player.AddComponent(new MassComponent(100f)); 
-        // 补上弹性标签，让玩家也能被物理弹开
         player.AddComponent(new BouncyTag());
+        
         // 关键标记：触发后续的物理烘焙与视图注册
         player.AddComponent(new NeedsBakingTag());
         
         // 设置玩家物理层级过滤：只撞敌人
         player.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Enemy")));
+
+        // 【核心修改】：进入游戏第一帧强制刷新一次血条
+        player.AddComponent(new UIHealthUpdateEvent()); 
 
         return player;
     }

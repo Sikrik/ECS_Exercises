@@ -3,7 +3,6 @@ using UnityEngine;
 
 /// <summary>
 /// 子弹特效系统：处理子弹命中后的扩散逻辑（AOE、闪电链、减速等）
-/// 重构点：统一从子弹实体的 DamageComponent 获取伤害源，实现“数据单一真理源”
 /// </summary>
 public class BulletEffectSystem : SystemBase
 {
@@ -11,20 +10,24 @@ public class BulletEffectSystem : SystemBase
 
     public override void Update(float deltaTime)
     {
-        // 筛选拥有碰撞事件、子弹标记和伤害组件的实体
-        var hitBullets = GetEntitiesWith<CollisionEventComponent, BulletTag, DamageComponent>();
+        // 【核心修改】：改为查询所有独立的碰撞事件实体
+        var hitEvents = GetEntitiesWith<CollisionEventComponent>();
 
-        for (int i = hitBullets.Count - 1; i >= 0; i--)
+        for (int i = hitEvents.Count - 1; i >= 0; i--)
         {
-            var bullet = hitBullets[i];
-            var evt = bullet.GetComponent<CollisionEventComponent>();
-            var dmg = bullet.GetComponent<DamageComponent>(); // 获取统一个伤害组件
-            var pos = bullet.GetComponent<PositionComponent>();
-            var target = evt.Target;
+            var evtEntity = hitEvents[i];
+            var evt = evtEntity.GetComponent<CollisionEventComponent>();
+            var bullet = evt.Source; // 提取源头
+            var target = evt.Target; // 提取目标
 
+            // 新增安全校验：确保源头是活着的子弹，目标是活着的敌人
+            if (bullet == null || !bullet.IsAlive || !bullet.HasComponent<BulletTag>()) continue;
             if (target == null || !target.IsAlive || !target.HasComponent<EnemyTag>()) continue;
 
-            // 1. 处理减速效果 (挂载 SlowEffectComponent)
+            var dmg = bullet.GetComponent<DamageComponent>(); 
+            var pos = bullet.GetComponent<PositionComponent>();
+
+            // 1. 处理减速效果
             HandleSlowEffect(bullet, target);
 
             // 2. 处理爆炸范围伤害 (AOE)
@@ -46,7 +49,7 @@ public class BulletEffectSystem : SystemBase
                 bullet.AddComponent(new PendingDestroyComponent());
         }
         
-        ReturnListToPool(hitBullets);
+        ReturnListToPool(hitEvents);
     }
 
     private void HandleSlowEffect(Entity bullet, Entity target)
@@ -72,30 +75,19 @@ public class BulletEffectSystem : SystemBase
 
     private void ProcessAOE(float x, float y, float radius, float damageValue)
     {
-        // ==========================================
-        // 1. 生成爆炸中心视觉特效 (VFX)
-        // ==========================================
         if (GameObject_PoolManager.Instance.ExplosionVFXPrefab != null)
         {
-            // 从对象池生成特效 GameObject
             GameObject vfxGo = GameObject_PoolManager.Instance.Spawn(
                 GameObject_PoolManager.Instance.ExplosionVFXPrefab, 
                 new Vector3(x, y, 0), 
                 Quaternion.identity
             );
 
-            // 创建对应的 ECS 实体来管理其生命周期
             Entity vfxEntity = ECSManager.Instance.CreateEntity();
             vfxEntity.AddComponent(new ViewComponent(vfxGo, GameObject_PoolManager.Instance.ExplosionVFXPrefab));
-        
-            // 挂载寿命组件，假设爆炸特效持续 0.5 秒 (可根据实际特效长度调整)
-            // 时间到了之后 LifetimeSystem 会自动给它打上 PendingDestroyComponent 标签并回收到池子中
             vfxEntity.AddComponent(new LifetimeComponent { Duration = 0.5f }); 
         }
 
-        // ==========================================
-        // 2. 结算范围伤害逻辑
-        // ==========================================
         var enemies = ECSManager.Instance.Grid.GetNearbyEnemies(x, y);
         float rSq = radius * radius;
 
@@ -161,12 +153,6 @@ public class BulletEffectSystem : SystemBase
 
     private void ApplyDamageEvent(Entity target, float damage)
     {
-        // ==========================================
-        // 【静默伤害】核心逻辑：绕过事件分发系统
-        // ==========================================
-        // 对于闪电链和 AOE 命中的后续目标，直接操作 HP 数值，而不是挂载 DamageTakenEventComponent。
-        // 这样可以确保 EnemyHitReactionSystem 和 KnockbackSystem 不会被触发，
-        // 从而完美实现“只掉血，不触发硬直和击退”的效果。
         var hp = target.GetComponent<HealthComponent>();
         if (hp != null)
         {

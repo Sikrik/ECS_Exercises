@@ -37,9 +37,15 @@ public class DamageSystem : SystemBase
             {
                 var hp = target.GetComponent<HealthComponent>();
                 var dmg = source.GetComponent<DamageComponent>();
-                
+    
                 // 1. 扣除血量
                 hp.CurrentHealth -= dmg.Value;
+
+                // 【修复点】：派发受伤事件！这里使用了你写好的 EventPool 对象池实现 0 GC
+                if (!target.HasComponent<DamageTakenEventComponent>())
+                {
+                    target.AddComponent(EventPool.GetDamageEvent(dmg.Value));
+                }
 
                 // 2. 子弹命中后，打上销毁标签
                 if (source.HasComponent<BulletTag>() && !source.HasComponent<PendingDestroyComponent>())

@@ -6,6 +6,8 @@
 /// </summary>
 public class UISyncSystem : SystemBase
 {
+    private int _lastScore = -1; // 【新增】缓存上一帧的分数
+
     public UISyncSystem(List<Entity> entities) : base(entities) { }
 
     public override void Update(float deltaTime)
@@ -41,14 +43,12 @@ public class UISyncSystem : SystemBase
         }
 
         // ==========================================
-        // 3. 处理得分变化事件 (同理)
+        // 3. 【核心修改】：通过脏标记处理得分变化
         // ==========================================
-        var scoreEvents = GetEntitiesWith<ScoreEventComponent>();
-        if (scoreEvents.Count > 0)
+        if (ECSManager.Instance.Score != _lastScore)
         {
-            // ScoreSystem 处理完数值累加后，这里可以直接读取最新分数刷新 UI
-            // 注意：此时事件组件尚未被 EventCleanupSystem 清理，正是 UI 读取的最佳时机
             UIManager.Instance.UpdateScore(ECSManager.Instance.Score);
+            _lastScore = ECSManager.Instance.Score;
         }
     }
 }

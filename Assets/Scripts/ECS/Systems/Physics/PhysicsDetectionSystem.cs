@@ -17,7 +17,6 @@ public class PhysicsDetectionSystem : SystemBase
         {
             var entity = physicsEntities[i];
             
-            // 【修复点】如果实体已经标记销毁，跳过碰撞检测
             if (entity.HasComponent<PendingDestroyComponent>()) continue;
 
             var pPhys = entity.GetComponent<PhysicsColliderComponent>();
@@ -73,13 +72,17 @@ public class PhysicsDetectionSystem : SystemBase
 
     private void CreateEvent(Entity source, GameObject targetGo, Vector2 normal)
     {
-        // 双重检查：确保源实体和目标实体都处于存活状态且未标记销毁
         if (source.HasComponent<PendingDestroyComponent>()) return;
 
         Entity target = ECSManager.Instance.GetEntityFromGameObject(targetGo);
         if (target != null && target.IsAlive && !target.HasComponent<PendingDestroyComponent>())
         {
-            source.AddComponent(EventPool.GetCollisionEvent(source, target, normal));
+            // 【核心修改】：创建一个独立的空实体作为事件载体
+            Entity eventEntity = ECSManager.Instance.CreateEntity();
+            eventEntity.AddComponent(EventPool.GetCollisionEvent(source, target, normal));
+            
+            // 确保本帧结束时，这个事件空壳能被 EntityCleanupSystem 回收掉
+            eventEntity.AddComponent(new PendingDestroyComponent()); 
         }
     }
 }

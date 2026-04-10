@@ -29,32 +29,32 @@ public static class SystemBootstrap
         // ========================================================
         var simGroup = new SimulationSystemGroup(entities);
         
-        // 生成与逻辑
+        // --- 生成与逻辑 ---
         simGroup.AddSystem(new EnemySpawnSystem(entities));      
         simGroup.AddSystem(new PlayerShootingSystem(entities, grid)); 
         simGroup.AddSystem(new PhysicsBakingSystem(entities));   
         
-        // 运动与物理
+        // --- 运动与物理 (严格管线顺序：位移 -> 检测 -> 挤压 -> 空间划分) ---
         simGroup.AddSystem(new MovementSystem(entities));        
-        simGroup.AddSystem(new KnockbackSystem(entities)); // 击退滑行与虫群挤压
-        simGroup.AddSystem(grid); 
-        simGroup.AddSystem(new PhysicsDetectionSystem(entities)); 
+        simGroup.AddSystem(new PhysicsDetectionSystem(entities)); // 【核心修复】：物理检测必须在所有读取碰撞的系统之前！
+        simGroup.AddSystem(new KnockbackSystem(entities));        // 虫群挤压（依赖刚才生成的碰撞事件）
+        simGroup.AddSystem(grid);                                 // 更新空间网格（供后续 AOE 查找）
         
-        // 战斗结算
+        // --- 战斗结算 (读取物理管线生成的碰撞事件实体) ---
         simGroup.AddSystem(new ImpactResolutionSystem(entities)); // 仲裁是否被击退/硬直
         simGroup.AddSystem(new BulletEffectSystem(entities));     // 触发范围/闪电/减速意图
         simGroup.AddSystem(new DamageSystem(entities));           // 纯扣血
         simGroup.AddSystem(new EnemyHitReactionSystem(entities)); // 怪物硬直触发
         
-        // 【新增/修改的纯逻辑系统】
+        // --- 纯逻辑倒计时 ---
         simGroup.AddSystem(new PlayerHitReactionSystem(entities));// 玩家受击发 UI 事件
         simGroup.AddSystem(new SlowEffectSystem(entities));       // 减速倒计时与变色意图
         simGroup.AddSystem(new HitRecoverySystem(entities));      // 硬直倒计时
         simGroup.AddSystem(new LifetimeSystem(entities));         // 寿命倒计时
         
-        // 状态结算（移到这里，确保 UI 能在同一帧拿到最新的血量、分数和死亡状态）
-        simGroup.AddSystem(new ScoreSystem(entities));            
-        simGroup.AddSystem(new HealthSystem(entities));           
+        // --- 状态结算 ---
+        simGroup.AddSystem(new HealthSystem(entities));           // 【核心修复】：先让 HealthSystem 判定死亡并打上得分标签
+        simGroup.AddSystem(new ScoreSystem(entities));            // 紧接着 ScoreSystem 就能顺利捕获并加分
         
         rootGroups.Add(simGroup);
 
@@ -68,8 +68,8 @@ public static class SystemBootstrap
         presGroup.AddSystem(new LightningRenderSystem(entities)); // 绘制闪电链
         
         presGroup.AddSystem(new InvincibleVisualSystem(entities));// 玩家无敌闪烁
-        presGroup.AddSystem(new RenderSyncSystem(entities));      // 【新增】统一处理变色意图 (冰冻变蓝等)
-        presGroup.AddSystem(new UISyncSystem(entities));          // 【新增】统一处理 UI 面板刷新
+        presGroup.AddSystem(new RenderSyncSystem(entities));      // 统一处理变色意图 (冰冻变蓝等)
+        presGroup.AddSystem(new UISyncSystem(entities));          // 统一处理 UI 面板刷新
         rootGroups.Add(presGroup);
 
         // ========================================================
