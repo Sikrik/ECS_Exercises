@@ -1,6 +1,4 @@
-﻿
-
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -13,55 +11,49 @@ public class ECSManager : MonoBehaviour
     public int Score = 0; 
 
     private List<Entity> _entities = new List<Entity>();
-    private List<SystemBase> _systems = new List<SystemBase>();
+    
+    // 【修复 1】将 List<SystemBase> 替换为 SystemBootstrap 实例引用
+    private SystemBootstrap _bootstrap;
     
     private Dictionary<int, Entity> _gameObjectToEntity = new Dictionary<int, Entity>();
 
     public Entity PlayerEntity { get; private set; }
     public GridSystem Grid { get; private set; }
     
-    // 查询缓存与租赁追踪
     public Dictionary<System.Type, List<Entity>> QueryCache = new Dictionary<System.Type, List<Entity>>();
     private List<List<Entity>> _leasedLists = new List<List<Entity>>();
 
     void Awake()
     {
         Instance = this;
-        Config = ConfigLoader.Load(); // 加载配置数据
+        Config = ConfigLoader.Load(); 
     }
 
     void Start()
     {
-        // 初始化玩家和系统
         PlayerEntity = PlayerFactory.Create(PlayerPrefab, Config);
-        _systems = SystemBootstrap.CreateDefaultSystems(_entities, out var grid);
-        Grid = grid; 
+        
+        // 【修复 2】实例化 SystemBootstrap，并从中获取 GridSystem 引用
+        _bootstrap = new SystemBootstrap(_entities);
+        Grid = _bootstrap.Grid; 
     }
 
     void Update()
     {
-        // 【核心修复】：0 GC 清理逻辑
-        // 1. 归还所有租赁出去的列表到池子中，防止 ListPool 被抽干
         foreach (var list in _leasedLists)
         {
             ListPool.Return(list); 
         }
         _leasedLists.Clear();
-        
-        // 2. 清空本帧的查询缓存
         QueryCache.Clear();
 
-        // 执行所有系统逻辑
-        float deltaTime = Time.deltaTime;
-        for (int i = 0; i < _systems.Count; i++)
+        // 【修复 3】调用 bootstrap 内部的系统组更新
+        if (_bootstrap != null)
         {
-            _systems[i].Update(deltaTime);
+            _bootstrap.Update(Time.deltaTime);
         }
     }
 
-    /// <summary>
-    /// 从池中借用列表并登记，确保帧末自动回收
-    /// </summary>
     public List<Entity> GetListFromPool()
     {
         List<Entity> list = ListPool.Get();
@@ -80,7 +72,7 @@ public class ECSManager : MonoBehaviour
     {
         if (_entities.Remove(e))
         {
-            EntityPool.Return(e); // 归还实体到池
+            EntityPool.Return(e); 
         }
     }
 
