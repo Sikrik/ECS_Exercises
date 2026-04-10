@@ -2,18 +2,19 @@
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// UI 表现层视图 (View)
+/// 职责：只提供修改 UI 元素的公共方法，不包含任何业务逻辑、不监听任何事件、没有 Update()。
+/// </summary>
 public class UIManager : MonoBehaviour
 {
     public static UIManager Instance;
     
     [Header("UI组件引用")]
-    public Slider HealthSlider;       // 玩家血量条 (Slider)
-    public TextMeshProUGUI ScoreText;  // 实时得分显示 (TMP)
-    public GameObject GameOverPanel;  // 游戏结束面板 (Panel)
-    public TextMeshProUGUI FinalScoreText; // 最终得分显示 (TMP)
-
-    // 血量的脏标记缓存（血量目前依然使用每帧轮询更新）
-    private float _lastHealthRatio = -1f;
+    public Slider HealthSlider;       
+    public TextMeshProUGUI ScoreText;  
+    public GameObject GameOverPanel;  
+    public TextMeshProUGUI FinalScoreText; 
 
     void Awake()
     {
@@ -24,74 +25,28 @@ public class UIManager : MonoBehaviour
     }
 
     // ==========================================
-    // 事件监听注册与注销 (核心解耦部分)
-    // ==========================================
-    void OnEnable()
-    {
-        EventManager.AddListener<ScoreChangedEvent>(OnScoreChanged);
-        EventManager.AddListener<GameOverEvent>(OnGameOver);
-    }
-
-    void OnDisable()
-    {
-        EventManager.RemoveListener<ScoreChangedEvent>(OnScoreChanged);
-        EventManager.RemoveListener<GameOverEvent>(OnGameOver);
-    }
-
-    void Update()
-    {
-        // 现在的 Update 极其干净，只剩下血量的脏标记轮询
-        UpdateHealthUI();
-    }
-
-    /// <summary>
-    /// 更新玩家血量UI (脏标记模式)
-    /// </summary>
-    void UpdateHealthUI()
-    {
-        if (ECSManager.Instance?.PlayerEntity == null || !ECSManager.Instance.PlayerEntity.IsAlive) return;
-        if (!ECSManager.Instance.PlayerEntity.HasComponent<HealthComponent>()) return;
-        
-        var health = ECSManager.Instance.PlayerEntity.GetComponent<HealthComponent>();
-        float ratio = health.MaxHealth > 0 ? health.CurrentHealth / health.MaxHealth : 0;
-        
-        if (HealthSlider != null && Mathf.Abs(_lastHealthRatio - ratio) > 0.001f)
-        {
-            _lastHealthRatio = ratio;
-            HealthSlider.value = ratio;
-        }
-    }
-
-    // ==========================================
-    // 事件响应回调
+    // 纯渲染接口，供 ECS 的 UISyncSystem 调用
     // ==========================================
     
-    /// <summary>
-    /// 响应得分变化事件
-    /// </summary>
-    private void OnScoreChanged(ScoreChangedEvent evt)
+    public void UpdateHealth(float current, float max)
     {
-        if (ScoreText != null)
+        if (HealthSlider != null)
         {
-            ScoreText.text = $"得分: {evt.NewScore}";
+            HealthSlider.value = max > 0 ? current / max : 0;
         }
     }
 
-    /// <summary>
-    /// 响应游戏结束事件
-    /// </summary>
-    private void OnGameOver(GameOverEvent evt)
+    public void UpdateScore(int score)
+    {
+        if (ScoreText != null) ScoreText.text = $"得分: {score}";
+    }
+
+    public void ShowGameOver(int finalScore)
     {
         if (GameOverPanel != null) GameOverPanel.SetActive(true);
-        if (FinalScoreText != null)
-        {
-            FinalScoreText.text = $"最终得分: {ECSManager.Instance.Score}";
-        }
+        if (FinalScoreText != null) FinalScoreText.text = $"最终得分: {finalScore}";
     }
     
-    // ==========================================
-    // UI 按钮交互
-    // ==========================================
     public void OnRestartButtonClick()
     {
         if (GameOverPanel != null) GameOverPanel.SetActive(false);

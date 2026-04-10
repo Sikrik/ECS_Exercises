@@ -1,4 +1,6 @@
-﻿/// <summary>
+﻿using UnityEngine;
+
+/// <summary>
 /// 伤害组件，存储攻击造成的伤害数值
 /// </summary>
 public class DamageComponent : Component 

@@ -2,8 +2,8 @@
 using UnityEngine;
 
 /// <summary>
-/// 生命值系统：负责监控所有生物的血量状态。
-/// 重构后：通过 BountyComponent 实现通用的击杀奖励逻辑，不再依赖臃肿的 EnemyStats。
+/// 生命值系统（纯逻辑层）
+/// 职责：监控血量，判定死亡，派发奖励和游戏状态事件
 /// </summary>
 public class HealthSystem : SystemBase
 {
@@ -11,8 +11,8 @@ public class HealthSystem : SystemBase
 
     public override void Update(float deltaTime)
     {
-        // 筛选拥有血量和表现层的所有实体
-        var entities = GetEntitiesWith<HealthComponent, ViewComponent>();
+        // 不再依赖 ViewComponent
+        var entities = GetEntitiesWith<HealthComponent>();
         
         for (int i = entities.Count - 1; i >= 0; i--)
         {
@@ -22,38 +22,30 @@ public class HealthSystem : SystemBase
             // 判定死亡
             if (health.CurrentHealth <= 0)
             {
-                // ==========================================
-                // 1. 击杀奖励逻辑 (原子化解耦)
-                // ==========================================
-                // 只要实体挂载了“悬赏”组件，无论它是怪物、宝箱还是精英怪，都会产生加分事件
+                // 1. 击杀奖励逻辑 (挂载单帧加分组件)
                 if (entity.HasComponent<BountyComponent>())
                 {
                     var bounty = entity.GetComponent<BountyComponent>();
                     entity.AddComponent(new ScoreEventComponent(bounty.Score));
                 }
                 
-                // ==========================================
-                // 2. 游戏状态判定
-                // ==========================================
+                // 2. 玩家死亡：触发游戏结束
                 if (entity.HasComponent<PlayerTag>())
                 {
-                    Debug.Log("游戏结束！");
+                    Debug.Log("玩家死亡，抛出全局结束事件！");
                     Time.timeScale = 0; 
-                    EventManager.Broadcast(new GameOverEvent());
+                    
+                    // 【核心修改】：创建一个携带 GameOverEventComponent 的空白实体作为单帧事件
+                    var eventEntity = ECSManager.Instance.CreateEntity();
+                    eventEntity.AddComponent(new GameOverEventComponent());
                 }
 
-                // ==========================================
-                // 3. 标记销毁
-                // ==========================================
-                // 统一贴上待销毁标签，由帧末的 EntityCleanupSystem 统一回收表现层和逻辑对象
+                // 3. 统一标记销毁
                 if (!entity.HasComponent<PendingDestroyComponent>())
                 {
                     entity.AddComponent(new PendingDestroyComponent());
                 }
             }
         }
-        
-        // 归还列表池，维持 0 GC
-        ReturnListToPool(entities);
     }
 }

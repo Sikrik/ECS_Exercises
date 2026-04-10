@@ -20,3 +20,18 @@ public struct ScoreChangedEvent
 
 // 游戏结束事件
 public struct GameOverEvent { }
+
+// --- 新增的单帧事件与视觉意图组件 ---
+
+// 变色意图组件：逻辑层告诉表现层“我想变色”
+public class ColorTintComponent : Component 
+{
+    public Color TargetColor;
+    public ColorTintComponent(Color color) => TargetColor = color;
+}
+
+// UI 血量刷新事件（单帧组件）
+public class UIHealthUpdateEvent : Component { }
+
+// 游戏结束事件（单帧组件）
+public class GameOverEventComponent : Component { }

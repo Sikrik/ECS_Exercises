@@ -1,61 +1,57 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// 减速逻辑系统（纯逻辑层）
+/// 职责：仅处理减速时间的倒计时，并对外下发“变色意图”
+/// </summary>
 public class SlowEffectSystem : SystemBase
 {
-    // 提取统一的冰蓝色缓存，避免每帧重复 new Color()
+    // 冰蓝色意图
     private readonly Color _slowColor = new Color(0.5f, 0.8f, 1f, 1f); 
 
     public SlowEffectSystem(List<Entity> entities) : base(entities) { }
 
     public override void Update(float deltaTime)
     {
-        // 抓取带有减速组件、表现组件和基础颜色组件的实体
-        var entities = GetEntitiesWith<SlowEffectComponent, ViewComponent, BaseColorComponent>();
+        // 纯逻辑查询：只关心拥有减速组件的实体，完全不碰 ViewComponent
+        var entities = GetEntitiesWith<SlowEffectComponent>();
 
-        // 👇 优化点 1：倒序遍历，防止移除组件时引发集合跳位
         for (int i = entities.Count - 1; i >= 0; i--)
         {
             var entity = entities[i];
             var slow = entity.GetComponent<SlowEffectComponent>();
-            var view = entity.GetComponent<ViewComponent>();
-            var baseColor = entity.GetComponent<BaseColorComponent>();
 
             // 1. 扣减减速时间
             slow.Duration -= deltaTime;
 
-            // 2. 状态更新与视觉表现
             if (slow.Duration > 0)
             {
-                // 👇 优化点 2：直接使用烘焙阶段缓存好的 SpriteRenderer，干掉 GetComponent！
-                if (view.SpriteRenderer != null)
+                // 2. 状态生效中：下发视觉变色意图
+                if (!entity.HasComponent<ColorTintComponent>())
                 {
-                    view.SpriteRenderer.color = _slowColor;
+                    entity.AddComponent(new ColorTintComponent(_slowColor));
                 }
             }
             else
             {
-                // 3. 时间结束：恢复原状
-                if (view.SpriteRenderer != null)
-                {
-                    view.SpriteRenderer.color = baseColor.Color;
-                }
+                // 3. 减速结束：撤销变色意图
+                entity.RemoveComponent<ColorTintComponent>();
+
+                // 处理特效销毁
                 if (entity.HasComponent<AttachedVFXComponent>())
                 {
                     var vfx = entity.GetComponent<AttachedVFXComponent>();
                     if (vfx.EffectObject != null)
                     {
-                        // SystemBase 不是 MonoBehaviour，所以需要加 UnityEngine.Object 前缀
                         UnityEngine.Object.Destroy(vfx.EffectObject); 
                     }
-                    // 别忘了把组件也撕掉，保持数据干净
                     entity.RemoveComponent<AttachedVFXComponent>(); 
                 }
                 
-                // 移除减速组件，怪物恢复原本速度，下一帧不再进入此循环
+                // 移除减速组件，恢复正常状态
                 entity.RemoveComponent<SlowEffectComponent>();
             }
         }
-        ReturnListToPool(entities);
     }
 }
