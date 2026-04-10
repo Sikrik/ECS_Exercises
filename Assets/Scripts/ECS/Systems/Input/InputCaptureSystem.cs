@@ -26,11 +26,50 @@ public class InputCaptureSystem : SystemBase
             player.AddComponent(new MoveInputComponent(x, y));
         }
 
-        // 2. 捕捉切换子弹指令
+        // 2. 捕捉鼠标状态 (即使在自动瞄准模式下，我们也可以一直捕捉，只是策略用不用它的区别)
+        bool isShooting = Input.GetMouseButton(0); 
+        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+
+        if (player.HasComponent<ShootInputComponent>())
+        {
+            var shootInput = player.GetComponent<ShootInputComponent>();
+            shootInput.IsShooting = isShooting;
+            shootInput.TargetX = mouseWorldPos.x;
+            shootInput.TargetY = mouseWorldPos.y;
+        }
+        else
+        {
+            player.AddComponent(new ShootInputComponent 
+            { 
+                IsShooting = isShooting, 
+                TargetX = mouseWorldPos.x, 
+                TargetY = mouseWorldPos.y 
+            });
+        }
+
+        // 3. 捕捉切换子弹指令
         if (Input.GetKeyDown(KeyCode.Alpha1)) PlayerShootingSystem.CurrentBulletType = BulletType.Normal;
         else if (Input.GetKeyDown(KeyCode.Alpha2)) PlayerShootingSystem.CurrentBulletType = BulletType.Slow;
         else if (Input.GetKeyDown(KeyCode.Alpha3)) PlayerShootingSystem.CurrentBulletType = BulletType.ChainLightning;
         else if (Input.GetKeyDown(KeyCode.Alpha4)) PlayerShootingSystem.CurrentBulletType = BulletType.AOE;
         
+        // ==========================================
+        // 4. 【新增】：按 Tab 键随时切换自动/手动瞄准模式
+        // ==========================================
+        if (Input.GetKeyDown(KeyCode.Tab))
+        {
+            if (PlayerShootingSystem.CurrentAimStrategy is AutoAimStrategy)
+            {
+                PlayerShootingSystem.CurrentAimStrategy = new ManualAimStrategy();
+                Debug.Log("已切换为：鼠标手动瞄准模式");
+            }
+            else
+            {
+                PlayerShootingSystem.CurrentAimStrategy = new AutoAimStrategy();
+                Debug.Log("已切换为：全自动索敌模式");
+            }
+        }
+        
+        ReturnListToPool(players);
     }
 }
