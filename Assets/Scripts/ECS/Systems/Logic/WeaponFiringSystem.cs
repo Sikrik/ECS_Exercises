@@ -29,16 +29,12 @@ public class WeaponFiringSystem : SystemBase
             // 审核：冷却完毕才能开火
             if (weapon.CurrentCooldown <= 0f)
             {
-                // 1. 调用通用工厂生成子弹
-                // 注意：这里需要传入你的 Config，高内聚做法是通过事件或参数传入，这里演示标准调用
-                var config = ConfigLoader.Load(); // 或者从全局上下文获取
-                
-                Entity bullet = BulletFactory.Create(config, weapon.CurrentBulletType, pos.Value, intent.AimDirection, faction);
-                
-                // 可选：如果需要注册到网格
+                // 直接调用通用工厂生成子弹，剔除 config 参数！
+                Entity bullet = BulletFactory.Create(weapon.CurrentBulletType, pos.Value, intent.AimDirection, faction);
+    
                 if (_gridSystem != null) _gridSystem.AddEntity(bullet);
 
-                // 2. 重置武器冷却
+                // 重置武器冷却
                 weapon.CurrentCooldown = weapon.FireRate;
             }
 
