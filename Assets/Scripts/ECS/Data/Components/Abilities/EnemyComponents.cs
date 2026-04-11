@@ -52,15 +52,21 @@ public class PredictiveAIComponent : Component
 }
 
 // 2. 远程风筝 AI（适合射手，靠近到一定距离后停下开火，太近了会后退）
+// Assets/Scripts/ECS/Data/Components/Abilities/EnemyComponents.cs
+
 public class RangedAIComponent : Component
 {
     public float PreferredDistance; // 期望保持的射击距离
-    public float Tolerance;         // 距离容差，防止频繁前后鬼畜抖动
+    public float Tolerance;         // 距离容差
+    public float AttackRange;       // 【新增】触发蓄力的攻击射程
+    public float PrepDuration;      // 【新增】红外线蓄力时长（秒）
 
-    public RangedAIComponent(float dist = 6f, float tolerance = 1f)
+    public RangedAIComponent(float dist = 6f, float tolerance = 1f, float attackRange = 8f, float prepDuration = 1.0f)
     {
         PreferredDistance = dist;
         Tolerance = tolerance;
+        AttackRange = attackRange;
+        PrepDuration = prepDuration;
     }
 }
 
