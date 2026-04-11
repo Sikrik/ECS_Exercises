@@ -35,15 +35,21 @@ public class RangedAISystem : SystemBase
             var ePos = enemy.GetComponent<PositionComponent>();
             Vector2 toPlayer = new Vector2(pPos.X - ePos.X, pPos.Y - ePos.Y);
 
+            // ==========================================
+            // 加入动态射程偏移，怪物的开火时机更加飘忽不定
+            // ==========================================
+            float attackOffset = (Mathf.PerlinNoise(enemy.GetHashCode(), Time.time * 0.4f) * 2f - 1f) * 1.5f;
+            float dynamicAttackRange = ai.AttackRange + attackOffset;
+
             // 进入射程警戒范围
-            if (toPlayer.magnitude <= ai.AttackRange)
+            if (toPlayer.magnitude <= dynamicAttackRange)
             {
                 Vector2 aimDir = toPlayer.normalized;
 
                 // 1. 赋予蓄力状态组件 (锁定开火方向)
                 enemy.AddComponent(new ShootPrepStateComponent(ai.PrepDuration, aimDir));
                 
-                // 2. 【核心复用】：赋予预览意图组件 (长度15米，宽度0.1米，复用现有的表现层渲染细长红外线)
+                // 2. 赋予预览意图组件 (长度15米，宽度0.1米，复用现有的表现层渲染细长红外线)
                 enemy.AddComponent(new DashPreviewIntentComponent(aimDir, 15f, 0.1f));
 
                 // 3. 停止当前常规寻路移动

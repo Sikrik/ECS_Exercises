@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/Systems/GamePlay/EnemyTrackingSystem.cs
+using System.Collections.Generic;
 using UnityEngine;
 
 public class EnemyTrackingSystem : SystemBase
@@ -46,10 +47,19 @@ public class EnemyTrackingSystem : SystemBase
             Vector2 desiredDir = Vector2.zero;
 
             // ==========================================
-            // AI 策略 2：移动逻辑 (引入随机扰动与侧向平移)
+            // AI 策略 2：移动逻辑 (引入多重随机扰动与顿挫)
             // ==========================================
-            // 利用实体的 HashCode 和时间生成平滑的噪声，产生左右侧移的趋势
-            float noise = Mathf.PerlinNoise(enemy.GetHashCode() * 0.1f, Time.time * 0.5f) * 2f - 1f;
+            float time = Time.time;
+            int hash = enemy.GetHashCode();
+
+            // 1. 多重柏林噪声：基础平滑侧移 + 高频微小抖动
+            float baseNoise = Mathf.PerlinNoise(hash * 0.1f, time * 0.5f) * 2f - 1f;
+            float jitterNoise = Mathf.PerlinNoise(hash * 0.8f, time * 2.5f) * 2f - 1f;
+            float noise = Mathf.Clamp(baseNoise + jitterNoise * 0.4f, -1f, 1f);
+
+            // 2. 随机顿挫（Hesitation）：模拟怪物偶尔“走神”或“停顿观察”
+            bool isHesitating = Mathf.PerlinNoise(hash * 0.05f, time * 0.2f) > 0.88f; 
+
             Vector2 sideStepDir = Vector2.zero;
             
             if (distToTarget > 0.001f)
@@ -58,49 +68,57 @@ public class EnemyTrackingSystem : SystemBase
                 sideStepDir = new Vector2(-toTarget.y, toTarget.x).normalized * noise;
             }
 
-            if (enemy.HasComponent<RangedAIComponent>())
+            if (isHesitating)
             {
-                var ranged = enemy.GetComponent<RangedAIComponent>();
-                
-                // 动态容差：让不同个体的“撤退/前进”阈值产生差异，避免群体怪物动作过于一致或反复横跳
-                float personalTolerance = ranged.Tolerance + (Mathf.Sin(Time.time + enemy.GetHashCode()) * 0.5f);
-
-                // 距离太远，靠近
-                if (distToTarget > ranged.PreferredDistance + personalTolerance) 
-                {
-                    desiredDir = toTarget.normalized;
-                }
-                // 距离太近，后退（风筝），并加入较强的侧向平移，避免死板倒退
-                else if (distToTarget < ranged.PreferredDistance - personalTolerance) 
-                {
-                    desiredDir = (-toTarget.normalized + sideStepDir * 0.8f).normalized;
-                }
-                // 距离合适，徘徊状态（小幅度左右横移寻找输出位置）
-                else 
-                {
-                    desiredDir = sideStepDir * 0.5f; 
-                }
-
-                // 只要在射程内，就产生开火意图（具体开火频率由 WeaponFiringSystem 的 CD 控制）
-                if (distToTarget <= ranged.PreferredDistance + ranged.Tolerance + 1f)
-                {
-                    if (!enemy.HasComponent<FireIntentComponent>())
-                    {
-                        // 射击方向永远是真实的玩家方向，不受预判和移动扰动的影响
-                        Vector2 trueToPlayer = new Vector2(pPos.X - ePos.X, pPos.Y - ePos.Y);
-                        if (trueToPlayer.magnitude > 0.001f)
-                        {
-                            enemy.AddComponent(new FireIntentComponent(trueToPlayer.normalized)); 
-                        }
-                    }
-                }
+                // 顿挫状态：原地徘徊或直接缓慢侧移，增加攻击节奏的不可预测性
+                desiredDir = sideStepDir * 0.2f; 
             }
             else
             {
-                // 普通近战怪物：直接冲锋，但也混入一点点曲线扰动，让走位更灵动
-                if (distToTarget > 0.001f) 
+                if (enemy.HasComponent<RangedAIComponent>())
                 {
-                    desiredDir = (toTarget.normalized + sideStepDir * 0.3f).normalized;
+                    var ranged = enemy.GetComponent<RangedAIComponent>();
+                    
+                    // 动态容差：让不同个体的“撤退/前进”阈值产生差异，避免群体怪物动作过于一致或反复横跳
+                    float personalTolerance = ranged.Tolerance + (Mathf.Sin(time + hash) * 0.5f);
+
+                    // 距离太远，靠近
+                    if (distToTarget > ranged.PreferredDistance + personalTolerance) 
+                    {
+                        desiredDir = (toTarget.normalized + sideStepDir * 0.3f).normalized;
+                    }
+                    // 距离太近，后退（风筝），并加入较强的侧向平移，避免死板倒退
+                    else if (distToTarget < ranged.PreferredDistance - personalTolerance) 
+                    {
+                        desiredDir = (-toTarget.normalized + sideStepDir * 0.8f).normalized;
+                    }
+                    // 距离合适，徘徊状态（小幅度左右横移寻找输出位置）
+                    else 
+                    {
+                        desiredDir = sideStepDir * 0.5f; 
+                    }
+
+                    // 只要在射程内，就产生开火意图（具体开火频率由 WeaponFiringSystem 的 CD 控制）
+                    if (distToTarget <= ranged.PreferredDistance + ranged.Tolerance + 1f)
+                    {
+                        if (!enemy.HasComponent<FireIntentComponent>())
+                        {
+                            // 射击方向永远是真实的玩家方向，不受预判和移动扰动的影响
+                            Vector2 trueToPlayer = new Vector2(pPos.X - ePos.X, pPos.Y - ePos.Y);
+                            if (trueToPlayer.magnitude > 0.001f)
+                            {
+                                enemy.AddComponent(new FireIntentComponent(trueToPlayer.normalized)); 
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // 普通近战怪物：直接冲锋，但也混入较强的曲线扰动，让走位更灵动
+                    if (distToTarget > 0.001f) 
+                    {
+                        desiredDir = (toTarget.normalized + sideStepDir * 0.4f).normalized;
+                    }
                 }
             }
 

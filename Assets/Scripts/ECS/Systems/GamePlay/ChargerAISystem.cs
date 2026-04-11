@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/Systems/GamePlay/ChargerAISystem.cs
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -37,12 +38,18 @@ public class ChargerAISystem : SystemBase
             Vector2 toPlayer = new Vector2(pPos.X - ePos.X, pPos.Y - ePos.Y);
             float distance = toPlayer.magnitude;
 
+            // ==========================================
+            // 加入动态触发偏移（-1.5米 到 +1.5米），防止玩家精准背板
+            // ==========================================
+            float triggerOffset = (Mathf.PerlinNoise(enemy.GetHashCode(), Time.time * 0.5f) * 2f - 1f) * 1.5f;
+            float dynamicTriggerDist = chargerAI.TriggerDistance + triggerOffset;
+
             // 进入蓄力警戒范围
-            if (distance <= chargerAI.TriggerDistance)
+            if (distance <= dynamicTriggerDist)
             {
                 Vector2 dashDir = toPlayer.normalized;
 
-                // 【修复1】：动态计算真实的冲刺距离 = 冲刺速度 * 冲刺时间
+                // 动态计算真实的冲刺距离 = 冲刺速度 * 冲刺时间
                 float actualDashDistance = ability.DashSpeed * ability.Duration;
 
                 // 1. 赋予蓄力状态组件 (锁定方向，蓄力 0.8 秒)

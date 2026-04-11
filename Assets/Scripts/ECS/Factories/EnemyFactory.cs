@@ -34,7 +34,8 @@ public static class EnemyFactory
         enemy.AddComponent(new ViewComponent(go, prefab));
         enemy.AddComponent(new PositionComponent(spawnPos.x, spawnPos.y, 0));
         enemy.AddComponent(new VelocityComponent(0, 0));
-        enemy.AddComponent(new SpeedComponent(recipe.Speed));
+        float speedVariation = UnityEngine.Random.Range(0.85f, 1.15f);
+        enemy.AddComponent(new SpeedComponent(recipe.Speed * speedVariation));
         enemy.AddComponent(new HealthComponent(recipe.Health));
         enemy.AddComponent(new DamageComponent(recipe.Damage));
 
@@ -75,11 +76,11 @@ public static class EnemyFactory
         if (type == EnemyType.Ranged)
         {
             // 发放武器 (使用普通子弹，射击间隔 2.5 秒)
-            enemy.AddComponent(new WeaponComponent(BulletType.Normal, 2.5f));
+            enemy.AddComponent(new WeaponComponent(BulletType.Normal, 4f));
             
             // 装配远程 AI (射程 8 米，预警蓄力 1.0 秒)
             // 注意：需确保 RangedAIComponent 已修复包含 AttackRange 和 PrepDuration 字段
-            enemy.AddComponent(new RangedAIComponent(dist: 7f, tolerance: 1f, attackRange: 8f, prepDuration: 1.0f));
+            enemy.AddComponent(new RangedAIComponent(dist: 4f, tolerance: 1f, attackRange: 8f, prepDuration: 1.0f));
         }
 
         // 6. 挂载通用方向指示器（表现层箭头）
