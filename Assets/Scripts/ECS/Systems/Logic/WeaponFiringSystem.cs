@@ -29,10 +29,14 @@ public class WeaponFiringSystem : SystemBase
             // 审核：冷却完毕才能开火
             if (weapon.CurrentCooldown <= 0f)
             {
+                // 修复1：PositionComponent 没有 Value 属性，应使用 X 和 Y 组合成 Vector3
+                Vector3 spawnPos = new Vector3(pos.X, pos.Y, 0);
+
                 // 直接调用通用工厂生成子弹，剔除 config 参数！
-                Entity bullet = BulletFactory.Create(weapon.CurrentBulletType, pos.Value, intent.AimDirection, faction);
+                Entity bullet = BulletFactory.Create(weapon.CurrentBulletType, spawnPos, intent.AimDirection, faction);
     
-                if (_gridSystem != null) _gridSystem.AddEntity(bullet);
+                // 修复2：GridSystem 是每帧自动重建的，且只追踪敌人，不需要手动 AddEntity 子弹
+                // 删除了 _gridSystem.AddEntity(bullet); 
 
                 // 重置武器冷却
                 weapon.CurrentCooldown = weapon.FireRate;

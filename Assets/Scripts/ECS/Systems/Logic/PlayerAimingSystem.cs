@@ -13,22 +13,27 @@ public class PlayerAimingSystem : SystemBase
 
     public override void Update(float deltaTime)
     {
-        var players = GetEntitiesWith<PlayerTag, InputComponent, PositionComponent>();
+        // 修复1：将 InputComponent 替换为实际存在的 ShootInputComponent
+        var players = GetEntitiesWith<PlayerTag, ShootInputComponent, PositionComponent>();
 
         for (int i = players.Count - 1; i >= 0; i--)
         {
             var player = players[i];
-            var input = player.GetComponent<InputComponent>();
+            var input = player.GetComponent<ShootInputComponent>();
             var pos = player.GetComponent<PositionComponent>();
 
             // 如果玩家按下射击键，且当前没有尚未处理的开火意图
             if (input.IsShooting && !player.HasComponent<FireIntentComponent>())
             {
-                // 计算瞄准方向
-                Vector2 aimDir = _aimStrategy.GetAimDirection(player, input.MouseWorldPosition, Entities);
+                // 修复2：传入正确的参数 ECSManager.Instance.Grid，并接收 Vector2? 返回值
+                Vector2? aimDir = _aimStrategy.GetAimDirection(player, input, ECSManager.Instance.Grid);
                 
-                // 贴上单帧意图标签
-                player.AddComponent(new FireIntentComponent(aimDir));
+                // 修复3：检查是否有返回值（是否满足开火条件）
+                if (aimDir.HasValue)
+                {
+                    // 贴上单帧意图标签
+                    player.AddComponent(new FireIntentComponent(aimDir.Value));
+                }
             }
         }
         ReturnListToPool(players);
