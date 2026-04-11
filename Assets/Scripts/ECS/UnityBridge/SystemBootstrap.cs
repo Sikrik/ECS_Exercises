@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/UnityBridge/SystemBootstrap.cs
+using System.Collections.Generic;
 using UnityEngine;
 
 public class SystemBootstrap
@@ -30,7 +31,9 @@ public class SystemBootstrap
         simGroup.AddSystem(new EnemySpawnSystem(entities));       
         simGroup.AddSystem(new EnemyTrackingSystem(entities));    
         simGroup.AddSystem(new ChargerAISystem(entities));        
+        simGroup.AddSystem(new RangedAISystem(entities));      // 👇 注册：远程索敌与红外线逻辑
         simGroup.AddSystem(new DashPrepSystem(entities));         
+        simGroup.AddSystem(new ShootPrepSystem(entities));     // 👇 注册：射击蓄力结算与开火指派
         simGroup.AddSystem(new DashCooldownSystem(entities)); 
         simGroup.AddSystem(new DashActivationSystem(entities));             
         simGroup.AddSystem(new DashStateSystem(entities));         
@@ -57,7 +60,6 @@ public class SystemBootstrap
         simGroup.AddSystem(new LifetimeSystem(entities));         
         simGroup.AddSystem(new EventCleanupSystem(entities));     
         simGroup.AddSystem(new EntityCleanupSystem(entities));    
-        simGroup.AddSystem(new RangedAISystem(entities)); // 👇 新增：注册远程怪 AI 系统
         _systemGroups.Add(simGroup);
 
         // ==========================================
@@ -72,7 +74,6 @@ public class SystemBootstrap
         presGroup.AddSystem(new GhostTrailSystem(entities));      
         presGroup.AddSystem(new ViewSyncSystem(entities));        
         
-        // 👇 新增通用方向指示器系统 (必须在 ViewSync 位置同步之后执行)
         presGroup.AddSystem(new DirectionIndicatorSystem(entities)); 
 
         // --- 渲染与颜色覆写 ---

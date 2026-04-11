@@ -70,3 +70,19 @@ public class SwarmSeparationComponent : Component
     public float SeparationWeight; // 排斥力权重
     public SwarmSeparationComponent(float weight = 1.5f) => SeparationWeight = weight;
 }
+
+
+/// <summary>
+/// 射击蓄力状态组件：表示实体正在瞄准准备开火
+/// </summary>
+public class ShootPrepStateComponent : Component
+{
+    public float Timer;        // 剩余蓄力时间
+    public Vector2 TargetDir;  // 锁定的射击方向
+
+    public ShootPrepStateComponent(float duration, Vector2 dir)
+    {
+        Timer = duration;
+        TargetDir = dir;
+    }
+}

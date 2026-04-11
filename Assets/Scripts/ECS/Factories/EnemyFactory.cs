@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿// 路径: Assets/Scripts/ECS/Factories/EnemyFactory.cs
+using UnityEngine;
 
 public static class EnemyFactory 
 {
@@ -10,6 +11,13 @@ public static class EnemyFactory
 
         GameObject prefab = GameObject_PoolManager.Instance.GetEnemyPrefab(type);
         GameObject go = GameObject_PoolManager.Instance.Spawn(prefab, spawnPos, Quaternion.identity);
+
+        // 防御性校验：防止因面板漏填预制体导致的严重报错
+        if (go == null) 
+        {
+            Debug.LogError($"[EnemyFactory] 实体生成失败！{type} 的预制体为空，请检查 GameObject_PoolManager 面板是否已赋值！");
+            return null;
+        }
 
         Entity enemy = ecs.CreateEntity();
     
@@ -53,16 +61,19 @@ public static class EnemyFactory
         }
 
         // ==========================================
-        // 远程怪能力装配 (新增)
+        // 远程怪能力装配
         // ==========================================
         if (type.ToString() == "Ranged")
         {
-            // 赋予武器组件：发射普通子弹，射击间隔 1.5 秒
-            enemy.AddComponent(new WeaponComponent(BulletType.Normal, 1.5f));
+            // 发放武器 (打普通子弹，射击真正的CD设为 2.5 秒)
+            enemy.AddComponent(new WeaponComponent(BulletType.Normal, 2.5f));
+            
+            // 装配远程 AI (射程 8 米，开火前摇红外线蓄力 1.0 秒)
+            enemy.AddComponent(new RangedAIComponent(8f, 1.0f));
         }
 
         // ==========================================
-        // 挂载通用方向指示器 (分离后的解耦逻辑)
+        // 挂载通用方向指示器
         // ==========================================
         var indicatorView = go.GetComponent<DirectionIndicatorView>();
         if (indicatorView != null && indicatorView.ArrowPivot != null)
