@@ -10,13 +10,17 @@ public class SystemBootstrap
     {
         Grid = new GridSystem(2f, entities);
 
+        // ==========================================
         // 1. 初始化组 (数据捕捉)
+        // ==========================================
         var initGroup = new InitializationSystemGroup(entities);
         initGroup.AddSystem(new InputCaptureSystem(entities));    
         initGroup.AddSystem(new StatusGatherSystem(entities));    
         _systemGroups.Add(initGroup);
 
+        // ==========================================
         // 2. 模拟组 (逻辑结算)
+        // ==========================================
         var simGroup = new SimulationSystemGroup(entities);
         simGroup.AddSystem(new PhysicsBakingSystem(entities));    
         simGroup.AddSystem(new PlayerControlSystem(entities));    
@@ -48,13 +52,15 @@ public class SystemBootstrap
         simGroup.AddSystem(new DeathCleanupSystem(entities));     
         simGroup.AddSystem(new ScoreSystem(entities));            
         simGroup.AddSystem(new SlowEffectSystem(entities));       
-        simGroup.AddSystem(new ExplosionSystem(entities)); // 确保爆炸逻辑在清理前
+        simGroup.AddSystem(new ExplosionSystem(entities)); 
         simGroup.AddSystem(new LifetimeSystem(entities));         
         simGroup.AddSystem(new EventCleanupSystem(entities));     
         simGroup.AddSystem(new EntityCleanupSystem(entities));    
         _systemGroups.Add(simGroup);
 
+        // ==========================================
         // 3. 表现组 (渲染同步)
+        // ==========================================
         var presGroup = new PresentationSystemGroup(entities);
         // 【核心修复】：实例化必须在烘焙之前，否则特效在生成帧没有 SpriteRenderer 缓存
         presGroup.AddSystem(new VFXInstantiationSystem(entities)); 
@@ -64,10 +70,14 @@ public class SystemBootstrap
         presGroup.AddSystem(new CameraFollowSystem(entities));
         presGroup.AddSystem(new GhostTrailSystem(entities));      
         presGroup.AddSystem(new ViewSyncSystem(entities));        
-        presGroup.AddSystem(new RenderSyncSystem(entities));      
+        
+        // --- 渲染与颜色覆写 (顺序极其重要) ---
+        presGroup.AddSystem(new RenderSyncSystem(entities));        // 1. 刷回基础底色或减速冰冻色
+        presGroup.AddSystem(new HitFeedbackVisualSystem(entities)); // 2. 【已修复】在底色之上覆写受击闪烁 (红白)
+        presGroup.AddSystem(new InvincibleVisualSystem(entities));  // 3. 最后控制整体颜色的透明度 (Alpha闪烁)
+        
         presGroup.AddSystem(new VFXSystem(entities));             
         presGroup.AddSystem(new VFXCleanupSystem(entities));
-        presGroup.AddSystem(new InvincibleVisualSystem(entities)); 
         presGroup.AddSystem(new LightningRenderSystem(entities)); 
         presGroup.AddSystem(new UISyncSystem(entities));          
         _systemGroups.Add(presGroup);

@@ -13,7 +13,7 @@ public static class BulletFactory
 
         Entity bullet = ecs.CreateEntity();
         
-        // --- 基础组件装配 ---
+        // --- 1. 基础组件装配 ---
         bullet.AddComponent(new BulletTag());
         bullet.AddComponent(new FactionComponent(sourceFaction));
         bullet.AddComponent(new PositionComponent(position.x, position.y, 0));
@@ -23,19 +23,37 @@ public static class BulletFactory
         bullet.AddComponent(new LifetimeComponent { Duration = recipe.LifeTime });
         bullet.AddComponent(new TraceComponent(position.x, position.y));
         
-        // 补充通用物理组件
+        // --- 2. 补充通用物理组件 ---
         bullet.AddComponent(new CollisionComponent(0.2f));
         bullet.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Enemy", "Player"))); 
         bullet.AddComponent(new NeedsPhysicsBakingTag());
         bullet.AddComponent(new NeedsVisualBakingTag());
 
-        // 【重构点】：使用组件注册表动态装载能力，彻底移除 switch(type)
-        // 假设 recipe.Traits 存储了 "Slow", "AOE", "Chain" 等字符串数组
-        if (recipe.Traits != null)
+        // 【修复2】：赋予子弹受击反馈组件，bounce=false(不产生物理推力)，recovery=true(触发怪物受击闪烁硬直)
+        bullet.AddComponent(new ImpactFeedbackComponent(bounce: false, recovery: true));
+
+        // --- 3. 【修复1】：不再依赖空的 Traits，而是直接读取 Config 数值动态挂载特殊能力 ---
+        
+        // 挂载减速能力
+        if (recipe.SlowRatio > 0)
         {
-            foreach (var trait in recipe.Traits) 
-                ComponentRegistry.Apply(bullet, trait);
+            bullet.AddComponent(new SlowEffectComponent(recipe.SlowRatio, recipe.SlowDuration));
         }
+
+        // 挂载闪电链能力
+        if (recipe.ChainTargets > 0)
+        {
+            bullet.AddComponent(new ChainComponent(recipe.ChainTargets, recipe.ChainRange));
+        }
+
+        // 挂载范围爆炸能力
+        if (recipe.AOERadius > 0)
+        {
+            bullet.AddComponent(new AOEComponent(recipe.AOERadius));
+        }
+
+        // 注意：敌人的 Factory 使用 Traits 没问题，因为 EnemyData 确实在 ConfigLoader 里解析了那一列。
+        // 但子弹由于各项参数都是明确的浮点数，直接读数值更符合 Data-Driven 的设计。
 
         return bullet;
     }
