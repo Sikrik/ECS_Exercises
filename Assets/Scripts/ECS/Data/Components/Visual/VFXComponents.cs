@@ -14,3 +14,8 @@ public class AttachedVFXComponent : Component
     public GameObject EffectObject; // 挂载在实体上的跟随特效（如冰冻气息）
     public AttachedVFXComponent(GameObject go) => EffectObject = go;
 }
+public class VFXSpawnEventComponent : Component
+{
+    public string VFXType; // "Explosion", "Lightning" 等
+    public Vector3 Position;
+}

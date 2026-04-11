@@ -3,7 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// 终极位移系统（Motor）
-/// 职责：仲裁物理与输入状态，计算最终速度，并执行位移
+/// 职责：仲裁物理与输入状态，计算最终速度，并执行位移 (高内聚改造版)
 /// </summary>
 public class MovementSystem : SystemBase
 {
@@ -26,11 +26,10 @@ public class MovementSystem : SystemBase
                 trace.PreviousY = pos.Y;
             }
 
-            // 2. 【核心重构：速度控制权仲裁】
+            // 2. 速度控制权仲裁
             if (entity.HasComponent<KnockbackComponent>())
             {
-                // 最高优先级：被击退中。剥夺输入控制权！
-                // 【修复】：删除了此处的 Mathf.Lerp 减速代码，统一交给 KnockbackSystem 处理，防止双重计算导致怪物疯狂分裂抖动。
+                // 最高优先级：被击退中。剥夺输入控制权
             }
             else if (entity.HasComponent<HitRecoveryComponent>())
             {
@@ -38,9 +37,7 @@ public class MovementSystem : SystemBase
                 vel.VX = 0;
                 vel.VY = 0;
             }
-            // ==========================================
             // 冲刺状态接管速度控制权
-            // ==========================================
             else if (entity.HasComponent<DashStateComponent>())
             {
                 var dash = entity.GetComponent<DashStateComponent>();
@@ -52,7 +49,7 @@ public class MovementSystem : SystemBase
             }
             else 
             {
-                // 普通状态：读取输入意图（可能是玩家键盘，也可能是怪物AI）
+                // 普通状态：读取输入意图
                 var input = entity.GetComponent<MoveInputComponent>();
                 var speed = entity.GetComponent<SpeedComponent>();
                 
@@ -70,16 +67,7 @@ public class MovementSystem : SystemBase
             pos.X += vel.VX * deltaTime;
             pos.Y += vel.VY * deltaTime;
 
-            // 4. 相机跟随
-            if (entity.HasComponent<PlayerTag>())
-            {
-                var mainCam = Camera.main;
-                if (mainCam != null)
-                {
-                    Vector3 target = new Vector3(pos.X, pos.Y, mainCam.transform.position.z);
-                    mainCam.transform.position = Vector3.Lerp(mainCam.transform.position, target, 0.1f);
-                }
-            }
+            // 【高内聚改造】：相机的表现层逻辑已彻底抽离，移交至 Presentation 组
         }
         ReturnListToPool(entities);
     }
