@@ -14,17 +14,17 @@ public static class ConfigLoader
         GameConfig config = new GameConfig();
 
         // 1. 加载基础全局配置
-        TextAsset baseCsv = Resources.Load<TextAsset>("game_config");
+        TextAsset baseCsv = Resources.Load<TextAsset>("Configs/game_config");
         if (baseCsv != null) ParseBaseSettings(config, baseCsv);
         else Debug.LogError("初始化失败：未找到 Resources/game_config.csv");
 
         // 2. 加载敌人装配配方
-        TextAsset enemyCsv = Resources.Load<TextAsset>("Enemy_config");
+        TextAsset enemyCsv = Resources.Load<TextAsset>("Configs/Enemy_config");
         if (enemyCsv != null) ParseEnemyRecipes(config, enemyCsv);
         else Debug.LogError("初始化失败：未找到 Resources/Enemy_config.csv");
 
         // 3. 加载子弹数值配方
-        TextAsset bulletCsv = Resources.Load<TextAsset>("Bullet_Config"); // 注意大小写匹配实际文件名
+        TextAsset bulletCsv = Resources.Load<TextAsset>("Configs/Bullet_Config"); // 注意大小写匹配实际文件名
         if (bulletCsv != null) ParseBulletRecipes(config, bulletCsv);
         else Debug.LogError("初始化失败：未找到 Resources/Bullet_Config.csv");
 
