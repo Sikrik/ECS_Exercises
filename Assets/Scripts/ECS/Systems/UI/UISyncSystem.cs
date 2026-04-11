@@ -17,7 +17,7 @@ public class UISyncSystem : SystemBase
         if (UIManager.Instance == null) return;
 
         // ==========================================
-        // 1. 处理玩家血量刷新事件 (基于单帧组件标签)
+        // 1. 处理玩家血量刷新事件 (基于单帧组件标签，用于全局屏幕UI)
         // ==========================================
         var healthEvents = GetEntitiesWith<PlayerTag, HealthComponent, UIHealthUpdateEvent>();
         foreach (var entity in healthEvents)
@@ -54,23 +54,54 @@ public class UISyncSystem : SystemBase
         }
 
         // ==========================================
-        // 4. 同步在场敌人计数 (新增功能)
+        // 4. 同步在场敌人计数
         // ==========================================
-        // 利用缓存查询直接获取所有带 EnemyTag 的实体
         var enemies = GetEntitiesWith<EnemyTag>();
         int currentEnemyCount = enemies.Count;
 
         if (currentEnemyCount != _lastEnemyCount)
         {
-            // 需要在 UIManager 中预先实现 UpdateEnemyCount 方法
             UIManager.Instance.UpdateEnemyCount(currentEnemyCount);
             _lastEnemyCount = currentEnemyCount;
         }
 
-        // 养成好习惯：显式调用 ReturnListToPool 虽然在你的基类中是空实现，
-        // 但符合你代码规范中的“逻辑闭环”。
+        // ==========================================
+        // 5. 【新增】同步玩家随身 HUD (血条和冲刺 CD)
+        // ==========================================
+        var hudEntities = GetEntitiesWith<PlayerHUDComponent, HealthComponent, DashAbilityComponent>();
+        foreach (var entity in hudEntities)
+        {
+            var hud = entity.GetComponent<PlayerHUDComponent>();
+            var hp = entity.GetComponent<HealthComponent>();
+            var dash = entity.GetComponent<DashAbilityComponent>();
+
+            // 5.1 同步 360 度圆环血量
+            if (hud.HealthRing != null)
+            {
+                hud.HealthRing.fillAmount = hp.MaxHealth > 0 ? hp.CurrentHealth / hp.MaxHealth : 0;
+            }
+
+            // 5.2 同步冲刺 CD
+            if (hud.FlashIcon != null)
+            {
+                if (dash.CurrentCD > 0)
+                {
+                    // 正在冷却中：用 1 减去剩余比例
+                    // 效果：刚冲刺完变空(0)，然后随着冷却慢慢涨满到(1)
+                    hud.FlashIcon.fillAmount = 1f - (dash.CurrentCD / dash.Cooldown);
+                }
+                else
+                {
+                    // 冷却完毕：设为 1f，让闪电完全亮起常驻！
+                    hud.FlashIcon.fillAmount = 1f; 
+                }
+            }
+        }
+
+        // 养成好习惯：显式调用 ReturnListToPool 维持闭环
         ReturnListToPool(enemies);
         ReturnListToPool(healthEvents);
         ReturnListToPool(gameOverEvents);
+        ReturnListToPool(hudEntities);
     }
 }
