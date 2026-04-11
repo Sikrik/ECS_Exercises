@@ -27,8 +27,8 @@ public static class PlayerFactory
         player.AddComponent(new ImpactFeedbackComponent(bounce: true, recovery: false));
         player.AddComponent(new FactionComponent(FactionType.Player));
         
-        // 关键标记：触发后续的物理烘焙与视图注册
-        player.AddComponent(new NeedsBakingTag());
+        player.AddComponent(new NeedsPhysicsBakingTag());
+        player.AddComponent(new NeedsVisualBakingTag());
         
         // 取消玩家主动检测怪物的权限，防止同一帧内触发双重排斥导致怪物抖动/乱飞。
         player.AddComponent(new CollisionFilterComponent(0));

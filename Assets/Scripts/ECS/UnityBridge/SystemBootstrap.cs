@@ -78,9 +78,11 @@ public class SystemBootstrap
         // 3. 表现组 (Presentation) - 【视觉渲染与画面表现区】
         // ========================================================
         var presGroup = new PresentationSystemGroup(entities);
-        
+        presGroup.AddSystem(new VisualBakingSystem(entities));    
         presGroup.AddSystem(new CameraCullingSystem(entities));   
-        presGroup.AddSystem(new CameraFollowSystem(entities));    
+        presGroup.AddSystem(new CameraFollowSystem(entities));
+
+  
         presGroup.AddSystem(new GhostTrailSystem(entities));      
         presGroup.AddSystem(new ViewSyncSystem(entities));        
         presGroup.AddSystem(new RenderSyncSystem(entities));      

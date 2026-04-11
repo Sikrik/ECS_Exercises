@@ -3,7 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// 终极位移系统（Motor）
-/// 职责：仲裁物理与输入状态，计算最终速度，并执行位移 (高内聚改造版)
+/// 职责：仲裁物理与输入状态，计算最终速度，并执行平滑位移（惯性系统）
 /// </summary>
 public class MovementSystem : SystemBase
 {
@@ -49,7 +49,7 @@ public class MovementSystem : SystemBase
             }
             else 
             {
-                // 普通状态：读取输入意图
+                // 普通状态：读取输入意图并应用惯性
                 var input = entity.GetComponent<MoveInputComponent>();
                 var speed = entity.GetComponent<SpeedComponent>();
                 
@@ -58,16 +58,36 @@ public class MovementSystem : SystemBase
                     Vector2 dir = new Vector2(input.X, input.Y);
                     if (dir.sqrMagnitude > 0.001f) dir.Normalize();
                     
-                    vel.VX = dir.x * speed.CurrentSpeed;
-                    vel.VY = dir.y * speed.CurrentSpeed;
+                    // 计算当前的“期望目标速度”
+                    float targetVX = dir.x * speed.CurrentSpeed;
+                    float targetVY = dir.y * speed.CurrentSpeed;
+
+                    // 惯性系统：基于最大血量计算加速度
+                    float acceleration = 25f; // 默认极快响应（无惯性）
+                    var hp = entity.GetComponent<HealthComponent>();
+                    
+                    if (hp != null)
+                    {
+                        // 核心机制：最大血量越大，加速度越小，惯性越强！
+                        // 限制在 [2f, 30f] 区间，防止极端数值导致无法控制
+                        acceleration = Mathf.Clamp(800f / hp.MaxHealth, 2f, 30f);
+                        
+                        // 玩家专属手感特调，保留丝滑感且不易失控
+                        if (entity.HasComponent<PlayerTag>())
+                        {
+                            acceleration = Mathf.Clamp(10000f / hp.MaxHealth, 10f, 25f); 
+                        }
+                    }
+
+                    // 执行最终速度的平滑过渡
+                    vel.VX = Mathf.Lerp(vel.VX, targetVX, acceleration * deltaTime);
+                    vel.VY = Mathf.Lerp(vel.VY, targetVY, acceleration * deltaTime);
                 }
             }
 
             // 3. 执行最终位移
             pos.X += vel.VX * deltaTime;
             pos.Y += vel.VY * deltaTime;
-
-            // 【高内聚改造】：相机的表现层逻辑已彻底抽离，移交至 Presentation 组
         }
         ReturnListToPool(entities);
     }

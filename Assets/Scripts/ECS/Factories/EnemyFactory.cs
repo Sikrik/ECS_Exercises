@@ -32,7 +32,8 @@ public static class EnemyFactory
         enemy.AddComponent(new ImpactFeedbackComponent(bounce: true, recovery: true));
         enemy.AddComponent(new FactionComponent(FactionType.Enemy));
         // --- 特性装载 ---
-        enemy.AddComponent(new NeedsBakingTag());
+        enemy.AddComponent(new NeedsPhysicsBakingTag());
+        enemy.AddComponent(new NeedsVisualBakingTag());
         enemy.AddComponent(new MassComponent(recipe.Health)); 
 
         // 让怪物之间也能互相挤开，形成包围网

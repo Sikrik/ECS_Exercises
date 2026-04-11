@@ -42,7 +42,8 @@ public static class BulletFactory
         bullet.AddComponent(new CollisionComponent(0.2f));
         // 这里可以允许子弹检测所有实体，真正的免伤过滤在 DamageSystem 里通过阵营判断
         bullet.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Enemy", "Player"))); 
-        bullet.AddComponent(new NeedsBakingTag());
+        bullet.AddComponent(new NeedsPhysicsBakingTag());
+        bullet.AddComponent(new NeedsVisualBakingTag());
         bullet.AddComponent(new TraceComponent(position.x, position.y));
 
         // ==========================================

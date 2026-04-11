@@ -22,9 +22,14 @@ public class BulletTag : Component { }
 public class BouncyTag : Component { }
 
 /// <summary>
-/// 需要烘焙标签组件，用于标记需要初始化物理数据的实体
+/// 物理烘焙标签：标记实体需要初始化物理碰撞器数据 (交由 Simulation 组处理)
 /// </summary>
-public class NeedsBakingTag : Component { }
+public class NeedsPhysicsBakingTag : Component { }
+
+/// <summary>
+/// 视觉烘焙标签：标记实体需要缓存 SpriteRenderer 和初始颜色 (交由 Presentation 组处理)
+/// </summary>
+public class NeedsVisualBakingTag : Component { }
 
 /// <summary>
 /// 远程攻击标签组件，用于标识具有远程攻击能力的实体
