@@ -38,3 +38,8 @@ public class GameOverEventComponent : Component { }
 
 // 在 ECSDefinitions.cs 或 StateComponents.cs 中添加
 public class OffScreenTag : Component { }
+/// <summary>
+/// 表现层特效清理标记（单帧意图）
+/// 逻辑层加上这个标签，表现层看到后就会去销毁实体身上的 GameObject 特效
+/// </summary>
+public class PendingVFXDestroyTag : Component { }
