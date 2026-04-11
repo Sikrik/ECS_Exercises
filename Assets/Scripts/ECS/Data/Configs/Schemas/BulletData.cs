@@ -13,4 +13,7 @@ public class BulletData
     public int ChainTargets;
     public float ChainRange;
     public float AOERadius;
+
+    // ======== 新增字段以支持 ComponentRegistry 动态装配 ========
+    public string[] Traits; 
 }

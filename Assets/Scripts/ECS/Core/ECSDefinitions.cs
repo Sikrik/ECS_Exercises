@@ -43,3 +43,19 @@ public class OffScreenTag : Component { }
 /// 逻辑层加上这个标签，表现层看到后就会去销毁实体身上的 GameObject 特效
 /// </summary>
 public class PendingVFXDestroyTag : Component { }
+
+/// <summary>
+/// 爆炸意图组件（逻辑层）：
+/// 这是一个瞬时意图组件，标记一个位置需要发生爆炸计算。
+/// </summary>
+public class ExplosionIntentComponent : Component
+{
+    public float Radius; // 爆炸半径
+    public float Damage; // 爆炸伤害
+
+    public ExplosionIntentComponent(float radius, float damage)
+    {
+        Radius = radius;
+        Damage = damage;
+    }
+}
