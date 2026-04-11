@@ -3,7 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// 冲锋怪 AI 系统
-/// 职责：判断条件，当下达冲锋决定时，赋予单帧意图组件
+/// 职责：判断条件，当下达冲锋决定时，进入蓄力阶段并开启范围预测
 /// </summary>
 public class ChargerAISystem : SystemBase
 {
@@ -11,7 +11,6 @@ public class ChargerAISystem : SystemBase
 
     public override void Update(float deltaTime)
     {
-        // 筛选出拥有冲锋AI、坐标以及冲刺能力的实体
         var chargers = GetEntitiesWith<ChargerAIComponent, PositionComponent, DashAbilityComponent>();
         var player = ECSManager.Instance.PlayerEntity;
 
@@ -20,45 +19,44 @@ public class ChargerAISystem : SystemBase
 
         foreach (var enemy in chargers)
         {
-            // 处于受击硬直或击退中，无法思考冲锋
-            if (enemy.HasComponent<HitRecoveryComponent>() || enemy.HasComponent<KnockbackComponent>())
+            // 如果已经在蓄力、冲刺或处于硬直，跳过 AI 决策
+            if (enemy.HasComponent<DashPrepStateComponent>() || 
+                enemy.HasComponent<DashStateComponent>() ||
+                enemy.HasComponent<HitRecoveryComponent>() || 
+                enemy.HasComponent<KnockbackComponent>())
             {
                 continue;
             }
 
             var ability = enemy.GetComponent<DashAbilityComponent>();
-            
-            // CD 还没好，直接跳过，此时它会受原本的 EnemyTrackingSystem 控制正常走向玩家
             if (ability.CurrentCD > 0) continue;
 
             var ePos = enemy.GetComponent<PositionComponent>();
             var chargerAI = enemy.GetComponent<ChargerAIComponent>();
 
-            // 计算与玩家的距离
             Vector2 toPlayer = new Vector2(pPos.X - ePos.X, pPos.Y - ePos.Y);
             float distance = toPlayer.magnitude;
 
-            // 当进入冲锋警戒范围时
+            // 进入蓄力警戒范围
             if (distance <= chargerAI.TriggerDistance)
             {
-                // 确保它当前的移动意图绝对精准指向玩家
+                Vector2 dashDir = toPlayer.normalized;
+
+                // 1. 赋予蓄力状态组件 (锁定方向，蓄力 0.8 秒)
+                enemy.AddComponent(new DashPrepStateComponent(0.8f, dashDir));
+                
+                // 2. 赋予预览意图组件 (告知表现层：长 10 米，宽 1.2 米)
+                enemy.AddComponent(new DashPreviewIntentComponent(dashDir, 10f, 1.2f));
+
+                // 3. 停止当前常规寻路移动
                 if (enemy.HasComponent<MoveInputComponent>())
                 {
-                    var dir = toPlayer.normalized;
                     var moveInput = enemy.GetComponent<MoveInputComponent>();
-                    moveInput.X = dir.x;
-                    moveInput.Y = dir.y;
-                }
-
-                // 核心逻辑：下达冲锋指令（贴上单帧意图组件）
-                if (!enemy.HasComponent<DashInputComponent>())
-                {
-                    enemy.AddComponent(new DashInputComponent());
-                    // 此时右脑（表现层）可以考虑监听这个，播个红眼变色的特效之类
+                    moveInput.X = 0;
+                    moveInput.Y = 0;
                 }
             }
         }
-        
         ReturnListToPool(chargers);
     }
 }
