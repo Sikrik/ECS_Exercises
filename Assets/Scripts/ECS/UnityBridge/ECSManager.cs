@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/UnityBridge/ECSManager.cs
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -6,15 +7,16 @@ public class ECSManager : MonoBehaviour
 {
     public static ECSManager Instance;
     
+    [Header("Select Character")]
+    [Tooltip("在这里切换当前出战的角色类型！")]
+    public PlayerClass SelectedCharacter = PlayerClass.Standard;
+
     public GameConfig Config;
     public GameObject PlayerPrefab;
     public int Score = 0; 
 
     private List<Entity> _entities = new List<Entity>();
-    
-    // 【修复 1】将 List<SystemBase> 替换为 SystemBootstrap 实例引用
     private SystemBootstrap _bootstrap;
-    
     private Dictionary<int, Entity> _gameObjectToEntity = new Dictionary<int, Entity>();
 
     public Entity PlayerEntity { get; private set; }
@@ -26,20 +28,23 @@ public class ECSManager : MonoBehaviour
     void Awake()
     {
         Instance = this;
+        // 在 Awake 阶段加载所有的 CSV 配置表
         Config = ConfigLoader.Load(); 
     }
 
     void Start()
     {
-        PlayerEntity = PlayerFactory.Create(PlayerPrefab, Config);
+        // 传入选中的角色类型给 PlayerFactory
+        PlayerEntity = PlayerFactory.Create(SelectedCharacter, PlayerPrefab, Config);
         
-        // 【修复 2】实例化 SystemBootstrap，并从中获取 GridSystem 引用
+        // 实例化系统引导程序并获取全局网格索引
         _bootstrap = new SystemBootstrap(_entities);
         Grid = _bootstrap.Grid; 
     }
 
     void Update()
     {
+        // 帧末统一回收查询列表（实现 0 GC 核心）
         foreach (var list in _leasedLists)
         {
             ListPool.Return(list); 
@@ -47,7 +52,7 @@ public class ECSManager : MonoBehaviour
         _leasedLists.Clear();
         QueryCache.Clear();
 
-        // 【修复 3】调用 bootstrap 内部的系统组更新
+        // 驱动所有 ECS 系统运转
         if (_bootstrap != null)
         {
             _bootstrap.Update(Time.deltaTime);
@@ -76,6 +81,7 @@ public class ECSManager : MonoBehaviour
         }
     }
 
+    // 维持 Unity GameObject 实例 ID 到 ECS Entity 的映射
     public void RegisterEntityView(GameObject g, Entity e) => _gameObjectToEntity[g.GetInstanceID()] = e;
     public void UnregisterView(GameObject go) { if (go != null) _gameObjectToEntity.Remove(go.GetInstanceID()); }
     public Entity GetEntityFromGameObject(GameObject g) => (g != null && _gameObjectToEntity.TryGetValue(g.GetInstanceID(), out var e)) ? e : null;

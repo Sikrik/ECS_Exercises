@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿// 路径: Assets/Scripts/ECS/Factories/BulletFactory.cs
+using UnityEngine;
 
 public static class BulletFactory 
 {
@@ -24,15 +25,16 @@ public static class BulletFactory
         bullet.AddComponent(new TraceComponent(position.x, position.y));
         
         // --- 2. 补充通用物理组件 ---
-        bullet.AddComponent(new CollisionComponent(0.2f));
+        // 【核心修改】：移除硬编码的 0.2f，改为读取配方中的 HitRadius
+        bullet.AddComponent(new CollisionComponent(recipe.HitRadius));
         bullet.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Enemy", "Player"))); 
         bullet.AddComponent(new NeedsPhysicsBakingTag());
         bullet.AddComponent(new NeedsVisualBakingTag());
 
-        // 【修复2】：赋予子弹受击反馈组件，bounce=false(不产生物理推力)，recovery=true(触发怪物受击闪烁硬直)
+        // 赋予子弹受击反馈组件，bounce=false(不产生物理推力)，recovery=true(触发怪物受击闪烁硬直)
         bullet.AddComponent(new ImpactFeedbackComponent(bounce: false, recovery: true));
 
-        // --- 3. 【修复1】：不再依赖空的 Traits，而是直接读取 Config 数值动态挂载特殊能力 ---
+        // --- 3. 动态挂载特殊能力 ---
         
         // 挂载减速能力
         if (recipe.SlowRatio > 0)
@@ -51,9 +53,6 @@ public static class BulletFactory
         {
             bullet.AddComponent(new AOEComponent(recipe.AOERadius));
         }
-
-        // 注意：敌人的 Factory 使用 Traits 没问题，因为 EnemyData 确实在 ConfigLoader 里解析了那一列。
-        // 但子弹由于各项参数都是明确的浮点数，直接读数值更符合 Data-Driven 的设计。
 
         return bullet;
     }

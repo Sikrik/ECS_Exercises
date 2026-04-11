@@ -1,0 +1,4 @@
+﻿ID,MaxHealth,MoveSpeed,InvincibleDuration,Mass,FireRate,DashSpeed,DashDuration,DashCD,DefaultBullet
+Standard,100,6,1,100,0.2,18,0.2,1.5,Normal
+Heavy,200,3.5,1.5,400,0.6,12,0.3,3.0,AOE
+Agile,60,9,0.8,40,0.15,25,0.15,0.8,ChainLightning

@@ -1,4 +1,5 @@
-﻿[System.Serializable]
+﻿// 路径: Assets/Scripts/ECS/Data/Configs/Schemas/BulletData.cs
+[System.Serializable]
 public class BulletData 
 {
     public string Id;
@@ -14,6 +15,9 @@ public class BulletData
     public float ChainRange;
     public float AOERadius;
 
-    // ======== 新增字段以支持 ComponentRegistry 动态装配 ========
+    // ======== 动态装配特性 ========
     public string[] Traits; 
+
+    // ======== 新增：子弹的碰撞体积半径 ========
+    public float HitRadius; 
 }

@@ -19,7 +19,6 @@ public static class EnemyFactory
         GameObject prefab = GameObject_PoolManager.Instance.GetEnemyPrefab(type);
         GameObject go = GameObject_PoolManager.Instance.Spawn(prefab, spawnPos, Quaternion.identity);
 
-        // 防御性校验：防止因面板漏填预制体导致的严重报错
         if (go == null) 
         {
             Debug.LogError($"[EnemyFactory] 实体生成失败！{type} 的预制体为空，请检查 GameObject_PoolManager 面板是否已赋值！");
@@ -44,16 +43,13 @@ public static class EnemyFactory
         enemy.AddComponent(new HitRecoveryStatsComponent(recipe.HitRecoveryDuration));
         enemy.AddComponent(new BounceForceComponent(recipe.BounceForce));
         
-        // ImpactFeedback 决定碰撞时是否产生物理反弹和受击硬直
         enemy.AddComponent(new ImpactFeedbackComponent(bounce: true, recovery: true));
         enemy.AddComponent(new FactionComponent(FactionType.Enemy));
         
-        // --- 物理与视觉烘焙标记（交由对应的 BakingSystem 在第一帧处理） ---
         enemy.AddComponent(new NeedsPhysicsBakingTag());
         enemy.AddComponent(new NeedsVisualBakingTag());
-        enemy.AddComponent(new MassComponent(recipe.Health)); // 质量与血量挂钩，影响挤压力度
+        enemy.AddComponent(new MassComponent(recipe.Health)); 
 
-        // 设置碰撞过滤掩码
         enemy.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Player", "Enemy")));
         
         // 4. 特性装载（数据驱动：将 CSV 中的 Trait 字符串转换为组件）
@@ -63,31 +59,35 @@ public static class EnemyFactory
                 ComponentRegistry.Apply(enemy, trait);
         }
         
-        // 5. 特定怪物类型的额外逻辑装配
+        // 5. 特定怪物类型的额外逻辑装配 (彻底消除硬编码)
         
         // 冲锋怪 (Charger) 特有组件
         if (type == EnemyType.Charger)
         {
-            enemy.AddComponent(new DashAbilityComponent(25f, 0.6f, 3f));
-            enemy.AddComponent(new ChargerAIComponent(8f));
+            // 【核心修改】：读取 CSV 配置的冲刺速度、时间、CD和触发距离
+            enemy.AddComponent(new DashAbilityComponent(recipe.SkillSpeed, recipe.SkillDuration, recipe.SkillCD));
+            enemy.AddComponent(new ChargerAIComponent(recipe.ActionDist1));
         }
 
         // 远程怪 (Ranged) 特有组件
         if (type == EnemyType.Ranged)
         {
-            // 发放武器 (使用普通子弹，射击间隔 2.5 秒)
-            enemy.AddComponent(new WeaponComponent(BulletType.Normal, 4f));
+            // 【核心修改】：读取 CSV 配置的射击间隔
+            enemy.AddComponent(new WeaponComponent(BulletType.Normal, recipe.FireRate));
             
-            // 装配远程 AI (射程 8 米，预警蓄力 1.0 秒)
-            // 注意：需确保 RangedAIComponent 已修复包含 AttackRange 和 PrepDuration 字段
-            enemy.AddComponent(new RangedAIComponent(dist: 4f, tolerance: 1f, attackRange: 8f, prepDuration: 1.0f));
+            // 【核心修改】：读取 CSV 配置的风筝距离、容差、射程、红外线蓄力时长
+            enemy.AddComponent(new RangedAIComponent(
+                dist: recipe.ActionDist1, 
+                tolerance: recipe.ActionDist2, 
+                attackRange: recipe.ActionDist3, 
+                prepDuration: recipe.ActionTime1
+            ));
         }
 
         // 6. 挂载通用方向指示器（表现层箭头）
         var indicatorView = go.GetComponent<DirectionIndicatorView>();
         if (indicatorView != null && indicatorView.ArrowPivot != null)
         {
-            // 怪物转向阻尼较大，设为 3f
             enemy.AddComponent(new DirectionIndicatorComponent(indicatorView.ArrowPivot, 3f));
         }
 
