@@ -2,9 +2,8 @@
 using UnityEngine;
 
 /// <summary>
-/// ECS 系统启动器
+/// ECS 系统启动器 (高内聚管线重构版)
 /// 职责：初始化所有系统组，并严格按照 逻辑 -> 表现 的顺序进行每帧更新。
-/// 优化顺序解决了子弹闪烁消失、得分失效以及物理反馈延迟的问题。
 /// </summary>
 public class SystemBootstrap
 {
@@ -48,18 +47,21 @@ public class SystemBootstrap
         
         // --- 第四步：冲突仲裁与伤害处理 ---
         simGroup.AddSystem(new ImpactResolutionSystem(entities)); // 处理物理反弹与挤压
-        simGroup.AddSystem(new DamageSystem(entities));           // 处理扣血逻辑
-        simGroup.AddSystem(new BulletEffectSystem(entities));     // 处理子弹特有效果（AOE、连锁等）
+        simGroup.AddSystem(new DamageSystem(entities));           // 处理扣血逻辑 (已改造为纯数值系统)
+        simGroup.AddSystem(new BulletEffectSystem(entities));     // 处理子弹特有效果及销毁
         
-        // --- 第五步：状态反馈与生命判定 ---
+        // --- 第五步：状态反馈与生命判定 (【高内聚改造区】) ---
         simGroup.AddSystem(new EnemyHitReactionSystem(entities)); // 受击硬直触发
         simGroup.AddSystem(new PlayerHitReactionSystem(entities)); // 玩家无敌帧触发
         simGroup.AddSystem(new HitRecoverySystem(entities));      // 更新硬直计时
-        simGroup.AddSystem(new HealthSystem(entities));           // 判定死亡并打上销毁标记
         
-        // 【核心修复】：ScoreSystem 必须在销毁前执行，以确保能读取到 BountyComponent
-        simGroup.AddSystem(new ScoreSystem(entities));            // 结算得分
-                 
+        // 死亡结算流水线（替代了原本大包大揽的 HealthSystem）
+        simGroup.AddSystem(new HealthSystem(entities));           // 1. 判定血量，产生 DeadTag
+        simGroup.AddSystem(new BountySystem(entities));           // 2. 消费 DeadTag，产生 ScoreEvent
+        simGroup.AddSystem(new PlayerDeathSystem(entities));      // 3. 消费 DeadTag，产生 GameOverEvent
+        simGroup.AddSystem(new DeathCleanupSystem(entities));     // 4. 将 DeadTag 转化为 PendingDestroyComponent
+        
+        simGroup.AddSystem(new ScoreSystem(entities));            // 结算得分 (处理 ScoreEvent)
         simGroup.AddSystem(new SlowEffectSystem(entities));       // 更新减速状态计时
         
         // --- 第六步：生命周期清理 ---
@@ -85,7 +87,7 @@ public class SystemBootstrap
         
         _systemGroups.Add(presGroup);
 
-        Debug.Log("<color=green>[SystemBootstrap]</color> ECS 管道流顺序已重构，渲染消失问题已修复。");
+        Debug.Log("<color=green>[SystemBootstrap]</color> ECS 管道流顺序已重构，死亡结算管线高内聚改造完成。");
     }
 
     public void Update(float deltaTime)

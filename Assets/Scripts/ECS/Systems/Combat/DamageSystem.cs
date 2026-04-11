@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
 
 /// <summary>
-/// 纯粹的伤害结算系统
-/// 职责：只处理数值扣减与子弹销毁，绝不插手任何物理击退或硬直逻辑
-/// 优势：通过 Faction 阵营完美支持未来敌人发射子弹的需求
+/// 纯粹的伤害结算系统 (高内聚改造版)
+/// 职责：只处理数值扣减，绝不插手任何物理击退、硬直逻辑或子弹销毁。
+/// 优势：通过 Faction 阵营完美支持未来敌人发射子弹的需求。
 /// </summary>
 public class DamageSystem : SystemBase
 {
@@ -24,7 +24,7 @@ public class DamageSystem : SystemBase
             if (target == null || !target.IsAlive || source == null || !source.IsAlive) continue;
             
             // ==========================================
-            // 【修改】：全局无敌帧保护（移除玩家独占限制）
+            // 全局无敌帧保护
             // 只要有无敌组件，任何人都可以免疫伤害
             // ==========================================
             if (target.HasComponent<InvincibleComponent>())
@@ -42,7 +42,7 @@ public class DamageSystem : SystemBase
                 continue;
             }
 
-            // 纯粹的扣血与销毁逻辑
+            // 纯粹的扣血逻辑
             if (target.HasComponent<HealthComponent>() && source.HasComponent<DamageComponent>())
             {
                 var hp = target.GetComponent<HealthComponent>();
@@ -57,11 +57,8 @@ public class DamageSystem : SystemBase
                     target.AddComponent(EventPool.GetDamageEvent(dmg.Value));
                 }
 
-                // 3. 如果攻击源是子弹，命中后打上销毁标签
-                if (source.HasComponent<BulletTag>() && !source.HasComponent<PendingDestroyComponent>())
-                {
-                    source.AddComponent(new PendingDestroyComponent());
-                }
+                // 【高内聚改造】：移除了此处的子弹销毁代码。
+                // 子弹的销毁已经交由 BulletEffectSystem 处理。
             }
         }
         

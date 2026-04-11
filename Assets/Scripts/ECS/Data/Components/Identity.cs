@@ -40,3 +40,7 @@ public class FactionComponent : Component
     public FactionType Value;
     public FactionComponent(FactionType type) => Value = type;
 }
+/// <summary>
+/// 死亡状态标签：表示该实体逻辑上已经死亡，但还在等待结算（如发奖金、播放死亡动画等）
+/// </summary>
+public class DeadTag : Component { }
