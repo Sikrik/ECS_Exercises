@@ -2,7 +2,6 @@
 
 /// <summary>
 /// 实体回收系统：全场最后执行的系统。
-/// 负责将所有被判死刑（PendingDestroyComponent）的实体，剥离视觉表现并安全丢入对象池。
 /// </summary>
 public class EntityCleanupSystem : SystemBase
 {
@@ -23,10 +22,7 @@ public class EntityCleanupSystem : SystemBase
             var view = entity.GetComponent<ViewComponent>();
             if (view != null && view.GameObject != null)
             {
-                // 解除物理和逻辑的映射注册
                 ECSManager.Instance.UnregisterView(view.GameObject);
-                
-                // 交给对象池回收，或直接销毁
                 if (view.Prefab != null) 
                     GameObject_PoolManager.Instance.Despawn(view.Prefab, view.GameObject);
                 else 
@@ -43,7 +39,20 @@ public class EntityCleanupSystem : SystemBase
             }
 
             // ==========================================
-            // 3. 抹除逻辑存在 (彻底回收进池子)
+            // 3. 【新增】清理蓄力红框预览 (ActiveDashPreviewComponent)
+            // ==========================================
+            var activePreview = entity.GetComponent<ActiveDashPreviewComponent>();
+            if (activePreview != null && activePreview.PreviewObject != null)
+            {
+                // 安全回收到对象池中，防止遗留在场景里
+                GameObject_PoolManager.Instance.Despawn(
+                    GameObject_PoolManager.Instance.DashPreviewPrefab, 
+                    activePreview.PreviewObject
+                );
+            }
+
+            // ==========================================
+            // 4. 抹除逻辑存在 (彻底回收进池子)
             // ==========================================
             ECSManager.Instance.RemoveEntityInternal(entity);
         }
