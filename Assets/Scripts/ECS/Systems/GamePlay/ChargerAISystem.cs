@@ -42,11 +42,14 @@ public class ChargerAISystem : SystemBase
             {
                 Vector2 dashDir = toPlayer.normalized;
 
+                // 【修复1】：动态计算真实的冲刺距离 = 冲刺速度 * 冲刺时间
+                float actualDashDistance = ability.DashSpeed * ability.Duration;
+
                 // 1. 赋予蓄力状态组件 (锁定方向，蓄力 0.8 秒)
                 enemy.AddComponent(new DashPrepStateComponent(0.8f, dashDir));
                 
-                // 2. 赋予预览意图组件 (告知表现层：长 10 米，宽 1.2 米)
-                enemy.AddComponent(new DashPreviewIntentComponent(dashDir, 10f, 1.2f));
+                // 2. 赋予预览意图组件 (告知表现层：长度使用真实计算距离，宽 1.2 米)
+                enemy.AddComponent(new DashPreviewIntentComponent(dashDir, actualDashDistance, 1.2f));
 
                 // 3. 停止当前常规寻路移动
                 if (enemy.HasComponent<MoveInputComponent>())

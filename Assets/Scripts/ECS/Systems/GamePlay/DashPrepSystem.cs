@@ -24,6 +24,15 @@ public class DashPrepSystem : SystemBase
 
             if (prep.Timer <= 0)
             {
+                // 【修复2】：在正式触发冲刺前，把蓄力时锁定的方向塞回 MoveInputComponent
+                // 防止 DashActivationSystem 读到输入为 (0,0) 后默认向右滑步
+                if (e.HasComponent<MoveInputComponent>())
+                {
+                    var move = e.GetComponent<MoveInputComponent>();
+                    move.X = prep.TargetDir.x;
+                    move.Y = prep.TargetDir.y;
+                }
+
                 // 蓄力结束，移除蓄力和预览，下达正式冲刺指令
                 e.RemoveComponent<DashPrepStateComponent>();
                 e.RemoveComponent<DashPreviewIntentComponent>();

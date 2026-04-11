@@ -22,6 +22,8 @@ public class GameObject_PoolManager : MonoBehaviour
     public GameObject SlowVFXPrefab;
     public GameObject LightningChainVFX;
     public GameObject ExplosionVFXPrefab;
+    // 👇 添加这一行：冲刺预警红框的预制体槽位
+    public GameObject DashPreviewPrefab;
 
     // 【核心优化】：将 Queue(FIFO) 替换为 Stack(LIFO)，大幅提升 CPU 高速缓存（Cache）亲和度
     private Dictionary<GameObject, Stack<GameObject>> _pools = new Dictionary<GameObject, Stack<GameObject>>();

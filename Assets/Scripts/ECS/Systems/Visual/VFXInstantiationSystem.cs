@@ -23,7 +23,7 @@ public class VFXInstantiationSystem : SystemBase
     public override void Update(float deltaTime)
     {
         // ==========================================
-        // 1. 处理瞬时 VFX 事件 (原有逻辑)
+        // 1. 处理瞬时 VFX 事件
         // ==========================================
         var events = GetEntitiesWith<VFXSpawnEventComponent>();
         for (int i = events.Count - 1; i >= 0; i--)
@@ -39,7 +39,7 @@ public class VFXInstantiationSystem : SystemBase
         ReturnListToPool(events);
 
         // ==========================================
-        // 2. 处理蓄力范围预测可视化 (新增逻辑)
+        // 2. 处理蓄力范围预测可视化
         // ==========================================
         var previews = GetEntitiesWith<DashPreviewIntentComponent, ViewComponent>();
         foreach (var e in previews)
@@ -63,7 +63,12 @@ public class VFXInstantiationSystem : SystemBase
             if (activePreview.PreviewObject != null)
             {
                 Transform t = activePreview.PreviewObject.transform;
-                t.position = view.GameObject.transform.position;
+                
+                // 【修复3】：修正 Pivot 偏移。将方块沿着冲刺方向往前推自身长度的一半，使其从怪物身前开始延伸
+                Vector3 basePosition = view.GameObject.transform.position;
+                Vector3 offset = new Vector3(previewIntent.Direction.x, previewIntent.Direction.y, 0) * (previewIntent.Distance * 0.5f);
+                
+                t.position = basePosition + offset;
                 
                 // 旋转指向冲刺方向
                 float angle = Mathf.Atan2(previewIntent.Direction.y, previewIntent.Direction.x) * Mathf.Rad2Deg;
@@ -93,8 +98,8 @@ public class VFXInstantiationSystem : SystemBase
         ReturnListToPool(activePreviews);
     }
 
-    // --- 原有 Setup 方法保持不变 ---
-    private void SetupSlowVFX(VFXSpawnEventComponent evt) { /* ... */ }
-    private void SetupExplosionVFX(VFXSpawnEventComponent evt) { /* ... */ }
-    private void SetupLightningChainVFX(VFXSpawnEventComponent evt) { /* ... */ }
+    // --- 原有 Setup 方法保持不变，留空或保留你的实现 ---
+    private void SetupSlowVFX(VFXSpawnEventComponent evt) { /* 视你的具体实现而定 */ }
+    private void SetupExplosionVFX(VFXSpawnEventComponent evt) { /* 视你的具体实现而定 */ }
+    private void SetupLightningChainVFX(VFXSpawnEventComponent evt) { /* 视你的具体实现而定 */ }
 }
