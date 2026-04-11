@@ -18,4 +18,8 @@ public class VFXSpawnEventComponent : Component
 {
     public string VFXType; // "Explosion", "Lightning" 等
     public Vector3 Position;
+    
+    // ======== 新增缺失的字段 ========
+    public Entity AttachTarget;  // 绑定的目标（如减速特效绑定在敌人身上）
+    public Vector3 EndPosition;  // 特效结束坐标（用于闪电链等需要两点的特效）
 }
