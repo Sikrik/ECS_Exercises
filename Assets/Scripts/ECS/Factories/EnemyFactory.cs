@@ -27,10 +27,9 @@ public static class EnemyFactory
         enemy.AddComponent(new HitRecoveryStatsComponent(recipe.HitRecoveryDuration));
         enemy.AddComponent(new BounceForceComponent(recipe.BounceForce));
         
-        // 👇 【核心重构：赋予肉身冲撞反馈设定】
-        // 方案二：怪物碰怪物、怪物碰玩家，只产生物理弹性排斥 (Bounce)，不会导致对方陷入受击硬直 (Recovery)
         enemy.AddComponent(new ImpactFeedbackComponent(bounce: true, recovery: true));
         enemy.AddComponent(new FactionComponent(FactionType.Enemy));
+        
         // --- 特性装载 ---
         enemy.AddComponent(new NeedsPhysicsBakingTag());
         enemy.AddComponent(new NeedsVisualBakingTag());
@@ -45,6 +44,20 @@ public static class EnemyFactory
                 ComponentRegistry.Apply(enemy, trait);
         }
         
+        // ==========================================
+        // 👇 【新增：冲锋怪专用能力组装】
+        // ==========================================
+        // (注：需要确保你的 EnemyType 枚举中包含 Charger，或者配置表的配方 ID 为 Charger)
+        if (type.ToString() == "Charger")
+        {
+            // 赋予冲刺物理能力 (速度提升到 15，持续 0.3 秒，冷却 3 秒)
+            enemy.AddComponent(new DashAbilityComponent(12f, 0.3f, 3f));
+            
+            // 赋予冲锋 AI 决策意图 (距离玩家 6 米以内触发)
+            enemy.AddComponent(new ChargerAIComponent(3f));
+        }
+        // ==========================================
+
         return enemy;
     }
 }

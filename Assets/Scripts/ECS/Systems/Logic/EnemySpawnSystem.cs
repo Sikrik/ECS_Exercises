@@ -68,8 +68,6 @@ public class EnemySpawnSystem : SystemBase
     /// <summary>
     /// 计算当前动态生成间隔，基于初始间隔和时间衰减率
     /// </summary>
-    /// <param name="initialInterval">初始生成间隔</param>
-    /// <returns>当前实际生成间隔</returns>
     private float CalculateSpawnInterval(float initialInterval)
     {
         return Mathf.Max(MIN_SPAWN_INTERVAL, initialInterval - (_totalTime * SPAWN_INTERVAL_DECAY_RATE));
@@ -78,7 +76,6 @@ public class EnemySpawnSystem : SystemBase
     /// <summary>
     /// 计算当前批次应生成的敌人数量，基于存活时间的波次叠加逻辑
     /// </summary>
-    /// <returns>本批次生成数量</returns>
     private int CalculateSpawnBatchCount()
     {
         return 1 + Mathf.FloorToInt(_totalTime / WAVE_INCREMENT_PERIOD);
@@ -89,8 +86,10 @@ public class EnemySpawnSystem : SystemBase
     /// </summary>
     private void SpawnEnemy()
     {
-        // 随机选择敌人类型（0-2共3种类型）
-        EnemyType type = (EnemyType)Random.Range(0, 3);
+        // 👇 【核心优化】：使用 System.Enum.GetValues 获取枚举类型的总数量
+        // 这样一来，你在 EnemyType 枚举里加多少种怪物，这里都会自动适配，不用再手动改数字了！
+        int enemyTypeCount = System.Enum.GetValues(typeof(EnemyType)).Length;
+        EnemyType type = (EnemyType)Random.Range(0, enemyTypeCount);
         
         // 获取屏幕外的安全生成坐标，防止怪物贴脸生成
         Vector3 spawnPos = GetOffScreenSpawnPosition();
@@ -102,7 +101,6 @@ public class EnemySpawnSystem : SystemBase
     /// <summary>
     /// 获取屏幕外的安全生成坐标，以玩家为中心在指定圆环范围内随机生成
     /// </summary>
-    /// <returns>世界坐标系下的生成位置</returns>
     private Vector3 GetOffScreenSpawnPosition()
     {
         Vector2 centerPos = Vector2.zero;

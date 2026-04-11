@@ -31,17 +31,23 @@ public class SystemBootstrap
         var simGroup = new SimulationSystemGroup(entities);
         simGroup.AddSystem(new PhysicsBakingSystem(entities));    
         simGroup.AddSystem(new PlayerControlSystem(entities));    
-        simGroup.AddSystem(new DashCooldownSystem(entities)); 
-        simGroup.AddSystem(new DashActivationSystem(entities));             
-        simGroup.AddSystem(new DashStateSystem(entities));         
         
         // --- 射击系统 ---
         simGroup.AddSystem(new WeaponCooldownSystem(entities));   
         simGroup.AddSystem(new PlayerAimingSystem(entities));     
         simGroup.AddSystem(new WeaponFiringSystem(entities, Grid)); 
         
+        // --- 敌人AI系统 ---
         simGroup.AddSystem(new EnemySpawnSystem(entities));       
         simGroup.AddSystem(new EnemyTrackingSystem(entities));    
+        // 👇【新增】：冲锋怪AI，在基础寻路之后进行判断，下达冲刺意图
+        simGroup.AddSystem(new ChargerAISystem(entities));        
+        
+        // --- 冲刺结算系统 ---
+        // (完美复用：无论玩家还是怪物的冲刺意图都在这里统一结算)
+        simGroup.AddSystem(new DashCooldownSystem(entities)); 
+        simGroup.AddSystem(new DashActivationSystem(entities));             
+        simGroup.AddSystem(new DashStateSystem(entities));         
         
         // --- 空间与物理 ---
         simGroup.AddSystem(Grid);                                 
@@ -52,13 +58,11 @@ public class SystemBootstrap
         // --- 战斗结算 (高内聚管线) ---
         simGroup.AddSystem(new ImpactResolutionSystem(entities)); 
         
-        // 【核心修改 1】：替换掉原来的 BulletEffectSystem，变为 4 个各司其职的原子系统
         simGroup.AddSystem(new BulletDestroySystem(entities));
         simGroup.AddSystem(new SlowBulletReactionSystem(entities));
         simGroup.AddSystem(new AOEBulletReactionSystem(entities));
         simGroup.AddSystem(new ChainLightningReactionSystem(entities));
         
-        // 【核心修改 2】：把 DamageSystem 移到特效反应系统之后，这样才能统一消费它们产生的伤害事件
         simGroup.AddSystem(new DamageSystem(entities));           
         
         // --- 状态与反应 ---
@@ -94,17 +98,16 @@ public class SystemBootstrap
         presGroup.AddSystem(new RenderSyncSystem(entities));      
         presGroup.AddSystem(new VFXSystem(entities));             
         
-        // 【核心修改 3】：加入表现层的特效清理系统，承接逻辑层 SlowEffectSystem 抛出的销毁意图
         presGroup.AddSystem(new VFXCleanupSystem(entities));
 
-        presGroup.AddSystem(new VFXInstantiationSystem(entities));// 接管所有特效的生成
+        presGroup.AddSystem(new VFXInstantiationSystem(entities));
         presGroup.AddSystem(new InvincibleVisualSystem(entities)); 
         presGroup.AddSystem(new LightningRenderSystem(entities)); 
         presGroup.AddSystem(new UISyncSystem(entities));          
         
         _systemGroups.Add(presGroup);
 
-        Debug.Log("<color=cyan>[SystemBootstrap]</color> ECS 启动完毕。高内聚分离管线已装载。");
+        Debug.Log("<color=cyan>[SystemBootstrap]</color> ECS 启动完毕。高内聚分离管线已装载 (含冲锋怪系统)。");
     }
 
     public void Update(float deltaTime)

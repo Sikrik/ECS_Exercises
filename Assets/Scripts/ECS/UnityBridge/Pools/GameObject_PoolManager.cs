@@ -15,6 +15,8 @@ public class GameObject_PoolManager : MonoBehaviour
     public GameObject NormalEnemyPrefab;
     public GameObject FastEnemyPrefab;
     public GameObject TankEnemyPrefab;
+    // 👇 新增：冲锋怪的预制体挂载槽位
+    public GameObject ChargerEnemyPrefab; 
 
     [Header("VFX Prefabs")]
     public GameObject SlowVFXPrefab;
@@ -30,6 +32,7 @@ public class GameObject_PoolManager : MonoBehaviour
     public GameObject GetEnemyPrefab(EnemyType type) => type switch {
         EnemyType.Fast => FastEnemyPrefab,
         EnemyType.Tank => TankEnemyPrefab,
+        EnemyType.Charger => ChargerEnemyPrefab, // 👇 新增：分发冲锋怪预制体
         _ => NormalEnemyPrefab
     };
 
