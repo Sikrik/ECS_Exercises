@@ -2,8 +2,9 @@
 using UnityEngine;
 
 /// <summary>
-/// 碰撞解析系统：负责将纯粹的碰撞事件转化为物理效果（击退、互推排斥）
-/// 不负责扣血（由DamageSystem负责）。
+/// 碰撞解析系统 (Data-Driven 高内聚重构版)
+/// 职责：仅负责计算有质量的物理实体之间的挤压和弹开反馈。
+/// 优势：彻底消灭 PlayerTag/EnemyTag 判断，纯靠组件数据运算，完美支持未来添加的友军 NPC 或多阵营大乱斗。
 /// </summary>
 public class ImpactResolutionSystem : SystemBase
 {
@@ -19,102 +20,103 @@ public class ImpactResolutionSystem : SystemBase
             var source = evt.Source; 
             var target = evt.Target; 
 
+            // 防御性校验
             if (source == null || !source.IsAlive || target == null || !target.IsAlive) continue;
 
-            bool isSourcePlayer = source.HasComponent<PlayerTag>();
-            bool isTargetPlayer = target.HasComponent<PlayerTag>();
-            bool isSourceEnemy = source.HasComponent<EnemyTag>();
-            bool isTargetEnemy = target.HasComponent<EnemyTag>();
-            bool isSourceBullet = source.HasComponent<BulletTag>();
-            bool isTargetBullet = target.HasComponent<BulletTag>();
+            // ========================================================
+            // 1. 物理实体过滤：剥离不具备“质量”的物体（例如子弹）
+            // ========================================================
+            bool sourceIsPhysical = source.HasComponent<MassComponent>();
+            bool targetIsPhysical = target.HasComponent<MassComponent>();
 
-            // ========================================================
-            // 场景 1：玩家 vs 敌人 (双向弹开 + 双向硬直)
-            // ========================================================
-            if ((isSourcePlayer && isTargetEnemy) || (isSourceEnemy && isTargetPlayer))
+            // 只要有一方不是物理实体（如子弹打肉体），直接跳过碰撞排斥
+            // 这些非物理碰撞全权交给 DamageSystem 处理伤害即可
+            if (!sourceIsPhysical || !targetIsPhysical) 
             {
-                Entity player = isSourcePlayer ? source : target;
-                Entity enemy = isSourceEnemy ? source : target;
-
-                var pPos = player.GetComponent<PositionComponent>();
-                var ePos = enemy.GetComponent<PositionComponent>();
-                Vector2 dirToEnemy = new Vector2(ePos.X - pPos.X, ePos.Y - pPos.Y).normalized;
-                
-                // --- 1. 玩家受到反弹 ---
-                var pVel = player.GetComponent<VelocityComponent>();
-                if (pVel != null)
-                {
-                    pVel.VX = -dirToEnemy.x * 12f; // 反冲力度
-                    pVel.VY = -dirToEnemy.y * 12f;
-                }
-                if (!player.HasComponent<KnockbackComponent>())
-                {
-                    player.AddComponent(new KnockbackComponent { Timer = 0.15f, HitRecoveryAfterwards = 0.1f });
-                }
-
-                // --- 2. 敌人受到反弹 ---
-                var eVel = enemy.GetComponent<VelocityComponent>();
-                if (eVel != null)
-                {
-                    float bounceForce = enemy.HasComponent<BounceForceComponent>() ? enemy.GetComponent<BounceForceComponent>().Value : 15f;
-                    eVel.VX = dirToEnemy.x * bounceForce;
-                    eVel.VY = dirToEnemy.y * bounceForce;
-                }
-                if (!enemy.HasComponent<KnockbackComponent>())
-                {
-                    float eRecovery = enemy.HasComponent<HitRecoveryStatsComponent>() ? enemy.GetComponent<HitRecoveryStatsComponent>().Duration : 0.2f;
-                    enemy.AddComponent(new KnockbackComponent { Timer = 0.2f, HitRecoveryAfterwards = eRecovery });
-                }
-                continue; 
+                continue;
             }
 
-            // ========================================================
-            // 场景 2：敌人 vs 敌人 (怪物互挤，消除抖动)
-            // 规则：不碰 Velocity，直接平滑修正 Position，实现贴边滑动
-            // ========================================================
-            else if (isSourceEnemy && isTargetEnemy)
-            {
-                var pos1 = source.GetComponent<PositionComponent>();
-                var pos2 = target.GetComponent<PositionComponent>();
-                
-                Vector2 dir = new Vector2(pos1.X - pos2.X, pos1.Y - pos2.Y);
-                if (dir.sqrMagnitude < 0.001f) 
-                {
-                    dir = new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f));
-                }
-                dir.Normalize();
+            var fSource = source.GetComponent<FactionComponent>();
+            var fTarget = target.GetComponent<FactionComponent>();
+            
+            var posS = source.GetComponent<PositionComponent>();
+            var posT = target.GetComponent<PositionComponent>();
 
-                // 平滑纠正坐标，不再引发惯性系统计算
+            // 计算从 Source 指向 Target 的向量方向
+            Vector2 dirToTarget = new Vector2(posT.X - posS.X, posT.Y - posS.Y);
+            if (dirToTarget.sqrMagnitude < 0.001f) 
+            {
+                dirToTarget = new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f));
+            }
+            dirToTarget.Normalize();
+
+            // ========================================================
+            // 2. 场景 A：同阵营碰撞（软排斥平滑滑动）
+            // 效果：怪物和怪物之间、玩家和友军之间互相挤开，不产生硬直
+            // ========================================================
+            if (fSource != null && fTarget != null && fSource.Value == fTarget.Value)
+            {
                 float slideSpeed = 2.0f * deltaTime; 
-                pos1.X += dir.x * slideSpeed;
-                pos1.Y += dir.y * slideSpeed;
-                pos2.X -= dir.x * slideSpeed;
-                pos2.Y -= dir.y * slideSpeed;
-                
+                posS.X -= dirToTarget.x * slideSpeed;
+                posS.Y -= dirToTarget.y * slideSpeed;
+                posT.X += dirToTarget.x * slideSpeed;
+                posT.Y += dirToTarget.y * slideSpeed;
                 continue;
             }
 
             // ========================================================
-            // 场景 3：子弹 vs 任何活物
+            // 3. 场景 B：敌对阵营碰撞（硬核物理弹开与击退硬直）
             // ========================================================
-            if (isSourceBullet || isTargetBullet)
+            var fbSource = source.GetComponent<ImpactFeedbackComponent>();
+            var fbTarget = target.GetComponent<ImpactFeedbackComponent>();
+
+            // 规则 1：如果发起方（Source）具有冲撞排斥能力，则把目标（Target）撞飞
+            if (fbSource != null && fbSource.CauseBounce)
             {
-                Entity bullet = isSourceBullet ? source : target;
-                Entity victim = isSourceBullet ? target : source;
-                
-                var bFaction = bullet.GetComponent<FactionComponent>();
-                var vFaction = victim.GetComponent<FactionComponent>();
+                ApplyBounce(target, dirToTarget);
+            }
 
-                if (bFaction != null && vFaction != null && bFaction.Value == vFaction.Value)
-                {
-                    continue; 
-                }
-
-                // 无物理操作，全权交由 DamageSystem 处理
-                continue; 
+            // 规则 2：如果被撞方（Target）也具有冲撞排斥能力，则把发起方（Source）也反向弹开
+            // 这就是为什么原来玩家撞怪物，两个人都会各自弹开的原因
+            if (fbTarget != null && fbTarget.CauseBounce)
+            {
+                ApplyBounce(source, -dirToTarget);
             }
         }
         
         ReturnListToPool(hitEvents);
+    }
+
+    /// <summary>
+    /// 对受害者施加物理弹开和击退状态
+    /// </summary>
+    /// <param name="victim">被弹开的受害者</param>
+    /// <param name="pushDirection">被弹开的方向</param>
+    private void ApplyBounce(Entity victim, Vector2 pushDirection)
+    {
+        var vVel = victim.GetComponent<VelocityComponent>();
+        if (vVel != null)
+        {
+            // 【核心还原】：读取受击方的弹性配置，代表其物理抵抗力
+            // 坦克怪 BounceForce=2（弹开极慢），敏捷怪=8（弹开很快），玩家默认无此组件取 fallback=12f（受击反冲明显）
+            float force = victim.HasComponent<BounceForceComponent>() 
+                ? victim.GetComponent<BounceForceComponent>().Value 
+                : 12f; 
+            
+            vVel.VX = pushDirection.x * force;
+            vVel.VY = pushDirection.y * force;
+        }
+
+        // 赋予击退与滑行状态（完美对接 KnockbackSystem）
+        if (!victim.HasComponent<KnockbackComponent>())
+        {
+            // 读取配置表里的受击硬直持续时间 (HitRecoveryStatsComponent)，玩家如果没有则默认给个极短的 0.1f 衔接
+            float recovery = victim.HasComponent<HitRecoveryStatsComponent>() 
+                ? victim.GetComponent<HitRecoveryStatsComponent>().Duration 
+                : 0.1f;
+            
+            // Timer = 0.15f 是滑行减速的时间
+            victim.AddComponent(new KnockbackComponent { Timer = 0.15f, HitRecoveryAfterwards = recovery });
+        }
     }
 }

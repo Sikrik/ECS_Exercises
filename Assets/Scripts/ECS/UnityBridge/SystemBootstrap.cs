@@ -29,11 +29,11 @@ public class SystemBootstrap
         // 2. 模拟组 (Simulation) - 【纯净数据流区】无表现层代码
         // ========================================================
         var simGroup = new SimulationSystemGroup(entities);
-        
         simGroup.AddSystem(new PhysicsBakingSystem(entities));    
-        
         simGroup.AddSystem(new PlayerControlSystem(entities));    
-        simGroup.AddSystem(new DashSystem(entities));             
+        simGroup.AddSystem(new DashCooldownSystem(entities)); 
+        simGroup.AddSystem(new DashActivationSystem(entities));             
+        simGroup.AddSystem(new DashStateSystem(entities));         
         
         // --- 射击系统 ---
         simGroup.AddSystem(new WeaponCooldownSystem(entities));   
