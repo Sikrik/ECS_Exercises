@@ -32,7 +32,9 @@ public static class PlayerFactory
         
         // 取消玩家主动检测怪物的权限，防止同一帧内触发双重排斥导致怪物抖动/乱飞。
         player.AddComponent(new CollisionFilterComponent(0));
-
+// 在 PlayerFactory.Create 方法中添加：
+        float fireRate = 0.2f; // 你可以从 GameConfig 中读取
+        player.AddComponent(new WeaponComponent(BulletType.Normal, fireRate));
         // ==========================================
         // 【新增】：赋予玩家冲刺能力配置
         // (DashSpeed = 18f, Duration = 0.2s, Cooldown = 1.5s)
