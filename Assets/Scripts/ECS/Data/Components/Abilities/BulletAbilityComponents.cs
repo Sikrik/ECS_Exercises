@@ -1,4 +1,6 @@
-﻿/// <summary>
+﻿using System.Collections.Generic;
+
+/// <summary>
 /// 范围伤害组件，用于标识子弹具有AOE（Area of Effect）效果
 /// </summary>
 public class AOEComponent : Component 
@@ -39,4 +41,13 @@ public class ChainComponent : Component
     /// <param name="m">连锁伤害的最大目标数量</param>
     /// <param name="r">连锁搜索下一个目标的最大距离</param>
     public ChainComponent(int m, float r) { MaxTargets = m; Range = r;  }
+}
+public class PierceComponent : Component 
+{
+    public int MaxPierces;      // 最大穿透次数
+    public int CurrentPierces;  // 当前穿透次数
+    // 记录已经打过的敌人，防止同一帧或连续帧对同一敌人扣血
+    public HashSet<Entity> HitHistory = new HashSet<Entity>(); 
+    
+    public PierceComponent(int max) { MaxPierces = max; CurrentPierces = max; }
 }

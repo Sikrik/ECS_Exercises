@@ -2,8 +2,7 @@
 using UnityEngine;
 
 /// <summary>
-/// 子弹特效系统：处理子弹命中后的逻辑运算（减速、范围伤害、闪电链等）
-/// 【高内聚改造版】：绝对不触碰 GameObject_PoolManager，改用单帧事件解耦视觉渲染。
+/// 子弹特效系统：处理子弹命中后的逻辑运算（减速、范围伤害、闪电链等），并负责子弹的最终销毁或穿透。
 /// </summary>
 public class BulletEffectSystem : SystemBase
 {
@@ -43,9 +42,29 @@ public class BulletEffectSystem : SystemBase
                 ProcessChain(target, pos, chain, dmg.Value);
             }
 
-            // 4. 任务完成，标记子弹销毁
-            if (!bullet.HasComponent<PendingDestroyComponent>())
-                bullet.AddComponent(new PendingDestroyComponent());
+            // 4. 【核心重构】处理子弹销毁与穿透逻辑
+            // (注意：如需使用穿透，请自行定义 PierceComponent 并给子弹挂载)
+            // var pierce = bullet.GetComponent<PierceComponent>();
+            // if (pierce != null)
+            // {
+            //     if (pierce.HitHistory.Contains(target)) continue;
+            //     
+            //     pierce.HitHistory.Add(target);
+            //     pierce.CurrentPierces--;
+            //
+            //     if (pierce.CurrentPierces <= 0 && !bullet.HasComponent<PendingDestroyComponent>())
+            //     {
+            //         bullet.AddComponent(new PendingDestroyComponent());
+            //     }
+            // }
+            // else
+            // {
+                // 普通子弹：碰撞一次即销毁
+                if (!bullet.HasComponent<PendingDestroyComponent>())
+                {
+                    bullet.AddComponent(new PendingDestroyComponent());
+                }
+            // }
         }
         
         ReturnListToPool(hitEvents);
@@ -65,7 +84,6 @@ public class BulletEffectSystem : SystemBase
         {
             target.AddComponent(new SlowEffectComponent(bSlow.SlowRatio, bSlow.Duration));
             
-            // 【下发特效意图】：通知表现层给该目标挂载减速特效
             Entity vfxEvent = ECSManager.Instance.CreateEntity();
             vfxEvent.AddComponent(new VFXSpawnEventComponent { 
                 VFXType = "SlowVFX", 
@@ -76,7 +94,6 @@ public class BulletEffectSystem : SystemBase
 
     private void ProcessAOE(float x, float y, float radius, float damageValue)
     {
-        // 【下发特效意图】：通知表现层在指定坐标播放爆炸
         Entity vfxEvent = ECSManager.Instance.CreateEntity();
         vfxEvent.AddComponent(new VFXSpawnEventComponent { 
             VFXType = "Explosion", 
@@ -130,7 +147,6 @@ public class BulletEffectSystem : SystemBase
                 var nPos = next.GetComponent<PositionComponent>();
                 Vector3 nextPos = new Vector3(nPos.X, nPos.Y, 0);
                 
-                // 【下发特效意图】：通知表现层绘制闪电链
                 Entity vfxEvent = ECSManager.Instance.CreateEntity();
                 vfxEvent.AddComponent(new VFXSpawnEventComponent { 
                     VFXType = "LightningChain", 

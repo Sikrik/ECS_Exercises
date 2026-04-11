@@ -68,6 +68,11 @@ public class DamageTakenEventComponent : Component
     public float DamageAmount;
     
     /// <summary>
+    /// 【新增】该伤害是否会造成物理硬直
+    /// </summary>
+    public bool CauseHitRecovery;
+    
+    /// <summary>
     /// 无参构造函数，专用于对象池回收和复用
     /// </summary>
     public DamageTakenEventComponent() { }
@@ -76,5 +81,10 @@ public class DamageTakenEventComponent : Component
     /// 初始化伤害承受事件组件
     /// </summary>
     /// <param name="amt">伤害数值</param>
-    public DamageTakenEventComponent(float amt) => DamageAmount = amt;
+    /// <param name="causeRecovery">是否造成硬直</param>
+    public DamageTakenEventComponent(float amt, bool causeRecovery) 
+    { 
+        DamageAmount = amt; 
+        CauseHitRecovery = causeRecovery;
+    }
 }
