@@ -3,8 +3,8 @@
 public abstract class Component { }
 
 public enum BulletType { Normal, Slow, ChainLightning, AOE }
-public enum EnemyType { Normal, Fast, Tank, Charger }
-
+// 路径: Assets/Scripts/ECS/Core/ECSDefinitions.cs
+public enum EnemyType { Normal, Fast, Tank, Charger, Ranged } // 新增 Ranged
 // 玩家血量变化事件
 public struct PlayerHealthChangedEvent 
 {

@@ -57,6 +57,7 @@ public class SystemBootstrap
         simGroup.AddSystem(new LifetimeSystem(entities));         
         simGroup.AddSystem(new EventCleanupSystem(entities));     
         simGroup.AddSystem(new EntityCleanupSystem(entities));    
+        simGroup.AddSystem(new RangedAISystem(entities)); // 👇 新增：注册远程怪 AI 系统
         _systemGroups.Add(simGroup);
 
         // ==========================================

@@ -53,6 +53,15 @@ public static class EnemyFactory
         }
 
         // ==========================================
+        // 远程怪能力装配 (新增)
+        // ==========================================
+        if (type.ToString() == "Ranged")
+        {
+            // 赋予武器组件：发射普通子弹，射击间隔 1.5 秒
+            enemy.AddComponent(new WeaponComponent(BulletType.Normal, 1.5f));
+        }
+
+        // ==========================================
         // 挂载通用方向指示器 (分离后的解耦逻辑)
         // ==========================================
         var indicatorView = go.GetComponent<DirectionIndicatorView>();

@@ -43,3 +43,30 @@ public class DashPreviewIntentComponent : Component
         Width = width;
     }
 }
+
+// 1. 预判走位 AI（适合敏捷型/刺客型敌人，不直接瞄准玩家当前位置，而是预判玩家未来的位置）
+public class PredictiveAIComponent : Component
+{
+    public float PredictTime; // 预判未来的时间（秒）
+    public PredictiveAIComponent(float time = 0.5f) => PredictTime = time;
+}
+
+// 2. 远程风筝 AI（适合射手，靠近到一定距离后停下开火，太近了会后退）
+public class RangedAIComponent : Component
+{
+    public float PreferredDistance; // 期望保持的射击距离
+    public float Tolerance;         // 距离容差，防止频繁前后鬼畜抖动
+
+    public RangedAIComponent(float dist = 6f, float tolerance = 1f)
+    {
+        PreferredDistance = dist;
+        Tolerance = tolerance;
+    }
+}
+
+// 3. 虫群分离 AI（让怪物主动避开同类，形成包围圈，而不是全挤在一条直线上）
+public class SwarmSeparationComponent : Component
+{
+    public float SeparationWeight; // 排斥力权重
+    public SwarmSeparationComponent(float weight = 1.5f) => SeparationWeight = weight;
+}

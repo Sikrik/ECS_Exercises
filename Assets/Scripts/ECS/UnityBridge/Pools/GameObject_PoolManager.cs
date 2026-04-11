@@ -15,8 +15,17 @@ public class GameObject_PoolManager : MonoBehaviour
     public GameObject NormalEnemyPrefab;
     public GameObject FastEnemyPrefab;
     public GameObject TankEnemyPrefab;
-    // 👇 新增：冲锋怪的预制体挂载槽位
-    public GameObject ChargerEnemyPrefab; 
+    public GameObject ChargerEnemyPrefab;
+    public GameObject RangedEnemyPrefab; // 👇 新增：远程敌人预制体
+
+// ... 在 GetEnemyPrefab 方法中添加对应分支 ...
+    public GameObject GetEnemyPrefab(EnemyType type) => type switch {
+        EnemyType.Fast => FastEnemyPrefab,
+        EnemyType.Tank => TankEnemyPrefab,
+        EnemyType.Charger => ChargerEnemyPrefab,
+        EnemyType.Ranged => RangedEnemyPrefab, // 👇 新增：分发远程怪预制体
+        _ => NormalEnemyPrefab
+    };
 
     [Header("VFX Prefabs")]
     public GameObject SlowVFXPrefab;
@@ -29,15 +38,7 @@ public class GameObject_PoolManager : MonoBehaviour
     private Dictionary<GameObject, Stack<GameObject>> _pools = new Dictionary<GameObject, Stack<GameObject>>();
 
     void Awake() => Instance = this;
-
-    // 根据枚举获取敌人预制体
-    public GameObject GetEnemyPrefab(EnemyType type) => type switch {
-        EnemyType.Fast => FastEnemyPrefab,
-        EnemyType.Tank => TankEnemyPrefab,
-        EnemyType.Charger => ChargerEnemyPrefab, // 👇 新增：分发冲锋怪预制体
-        _ => NormalEnemyPrefab
-    };
-
+    
     // 根据枚举获取子弹预制体
     public GameObject GetBulletPrefab(BulletType type) => type switch {
         BulletType.Slow => SlowBulletPrefab,
