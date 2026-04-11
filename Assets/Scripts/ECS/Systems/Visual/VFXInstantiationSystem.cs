@@ -4,7 +4,6 @@ using UnityEngine;
 
 /// <summary>
 /// 特效实例化系统（表现层）
-/// 职责：处理瞬时视觉事件，并管理持续性视觉反馈（如蓄力预测框）
 /// </summary>
 public class VFXInstantiationSystem : SystemBase
 {
@@ -12,6 +11,7 @@ public class VFXInstantiationSystem : SystemBase
 
     public VFXInstantiationSystem(List<Entity> entities) : base(entities) 
     {
+        // 注册各种特效的生成策略
         _vfxStrategies = new Dictionary<string, Action<VFXSpawnEventComponent>>()
         {
             { "SlowVFX", SetupSlowVFX },
@@ -23,23 +23,26 @@ public class VFXInstantiationSystem : SystemBase
     public override void Update(float deltaTime)
     {
         // ==========================================
-        // 1. 处理瞬时 VFX 事件
+        // 1. 处理瞬时 VFX 事件 (如闪电链、爆炸)
         // ==========================================
         var events = GetEntitiesWith<VFXSpawnEventComponent>();
         for (int i = events.Count - 1; i >= 0; i--)
         {
             var evtEntity = events[i];
             var vfxEvent = evtEntity.GetComponent<VFXSpawnEventComponent>();
+            
+            // 执行对应的生成逻辑
             if (_vfxStrategies.TryGetValue(vfxEvent.VFXType, out var setupAction))
                 setupAction.Invoke(vfxEvent);
 
+            // 消费完事件后，打上销毁标签
             if (!evtEntity.HasComponent<PendingDestroyComponent>())
                 evtEntity.AddComponent(new PendingDestroyComponent());
         }
         ReturnListToPool(events);
 
         // ==========================================
-        // 2. 处理蓄力范围预测可视化
+        // 2. 处理蓄力范围预测可视化 (自适应红框)
         // ==========================================
         var previews = GetEntitiesWith<DashPreviewIntentComponent, ViewComponent>();
         foreach (var e in previews)
@@ -47,10 +50,8 @@ public class VFXInstantiationSystem : SystemBase
             var previewIntent = e.GetComponent<DashPreviewIntentComponent>();
             var view = e.GetComponent<ViewComponent>();
             
-            // 如果该实体还没有关联预览物体，则从池中获取
             if (!e.HasComponent<ActiveDashPreviewComponent>())
             {
-                // 假设 GameObject_PoolManager 中有名为 DashPreviewPrefab 的槽位
                 GameObject prefab = GameObject_PoolManager.Instance.DashPreviewPrefab; 
                 if (prefab == null) continue;
 
@@ -58,24 +59,51 @@ public class VFXInstantiationSystem : SystemBase
                 e.AddComponent(new ActiveDashPreviewComponent(go));
             }
 
-            // 更新预览物体的坐标、旋转和缩放
             var activePreview = e.GetComponent<ActiveDashPreviewComponent>();
             if (activePreview.PreviewObject != null)
             {
                 Transform t = activePreview.PreviewObject.transform;
-                
-                // 【修复3】：修正 Pivot 偏移。将方块沿着冲刺方向往前推自身长度的一半，使其从怪物身前开始延伸
-                Vector3 basePosition = view.GameObject.transform.position;
-                Vector3 offset = new Vector3(previewIntent.Direction.x, previewIntent.Direction.y, 0) * (previewIntent.Distance * 0.5f);
-                
-                t.position = basePosition + offset;
-                
+                SpriteRenderer sr = activePreview.PreviewObject.GetComponent<SpriteRenderer>();
+
+                // 获取怪物自身的物理半径
+                float radius = e.HasComponent<CollisionComponent>() ? e.GetComponent<CollisionComponent>().Radius : 0.5f;
+                // 绝对物理总长度 = 冲刺位移 + 怪物自身的直径
+                float totalVisualLength = previewIntent.Distance + (radius * 2f);
+                Vector3 dashDir = new Vector3(previewIntent.Direction.x, previewIntent.Direction.y, 0);
+
+                if (sr != null && sr.sprite != null)
+                {
+                    // 动态修正缩放：用期望的总长度，除以图片本身的基础长度
+                    float spriteBaseWidth = sr.sprite.bounds.size.x;
+                    float spriteBaseHeight = sr.sprite.bounds.size.y;
+                    
+                    if (spriteBaseWidth > 0.001f && spriteBaseHeight > 0.001f)
+                    {
+                        t.localScale = new Vector3(totalVisualLength / spriteBaseWidth, previewIntent.Width / spriteBaseHeight, 1f);
+                    }
+
+                    // 动态修正位置与轴心：获取图片 Pivot
+                    float pivotX = sr.sprite.pivot.x / sr.sprite.rect.width;
+
+                    // 几何中心理论位置：怪物中心 向前推 (总长度的一半) 减去 (怪物半径)
+                    Vector3 visualCenterOffset = dashDir * ((totalVisualLength * 0.5f) - radius);
+                    
+                    // 补偿由于图片自身 Pivot 带来的偏移
+                    float pivotCorrection = (pivotX - 0.5f) * totalVisualLength;
+                    Vector3 finalOffset = visualCenterOffset + (dashDir * pivotCorrection);
+
+                    t.position = view.GameObject.transform.position + finalOffset;
+                }
+                else
+                {
+                    // 没有 SpriteRenderer 的保底计算
+                    t.localScale = new Vector3(totalVisualLength, previewIntent.Width, 1f);
+                    t.position = view.GameObject.transform.position + (dashDir * ((totalVisualLength * 0.5f) - radius));
+                }
+
                 // 旋转指向冲刺方向
                 float angle = Mathf.Atan2(previewIntent.Direction.y, previewIntent.Direction.x) * Mathf.Rad2Deg;
                 t.rotation = Quaternion.Euler(0, 0, angle);
-                
-                // 缩放对应预测的距离和宽度 (假设 Prefab 原始长宽为 1x1)
-                t.localScale = new Vector3(previewIntent.Distance, previewIntent.Width, 1f);
             }
         }
         ReturnListToPool(previews);
@@ -87,7 +115,6 @@ public class VFXInstantiationSystem : SystemBase
         for (int i = activePreviews.Count - 1; i >= 0; i--)
         {
             var e = activePreviews[i];
-            // 如果实体已经没有预测意图了（蓄力结束），回收预览物体
             if (!e.HasComponent<DashPreviewIntentComponent>())
             {
                 var ap = e.GetComponent<ActiveDashPreviewComponent>();
@@ -98,8 +125,48 @@ public class VFXInstantiationSystem : SystemBase
         ReturnListToPool(activePreviews);
     }
 
-    // --- 原有 Setup 方法保持不变，留空或保留你的实现 ---
-    private void SetupSlowVFX(VFXSpawnEventComponent evt) { /* 视你的具体实现而定 */ }
-    private void SetupExplosionVFX(VFXSpawnEventComponent evt) { /* 视你的具体实现而定 */ }
-    private void SetupLightningChainVFX(VFXSpawnEventComponent evt) { /* 视你的具体实现而定 */ }
+    // ==========================================
+    // 具体的 VFX 生成策略（确保在 PoolManager 中挂载了预制体）
+    // ==========================================
+
+    private void SetupLightningChainVFX(VFXSpawnEventComponent evt) 
+    {
+        GameObject prefab = GameObject_PoolManager.Instance.LightningChainVFX;
+        if (prefab == null) return;
+
+        GameObject go = GameObject_PoolManager.Instance.Spawn(prefab, evt.Position, Quaternion.identity);
+        
+        Entity lightningEntity = ECSManager.Instance.CreateEntity();
+        lightningEntity.AddComponent(new ViewComponent(go, prefab));
+        lightningEntity.AddComponent(new LightningVFXComponent(evt.Position, evt.EndPosition, 0.15f));
+    }
+
+    private void SetupExplosionVFX(VFXSpawnEventComponent evt) 
+    { 
+        GameObject prefab = GameObject_PoolManager.Instance.ExplosionVFXPrefab;
+        if (prefab == null) return;
+
+        GameObject go = GameObject_PoolManager.Instance.Spawn(prefab, evt.Position, Quaternion.identity);
+        
+        Entity expEntity = ECSManager.Instance.CreateEntity();
+        expEntity.AddComponent(new ViewComponent(go, prefab));
+        expEntity.AddComponent(new LifetimeComponent { Duration = 0.5f });
+    }
+
+    private void SetupSlowVFX(VFXSpawnEventComponent evt) 
+    { 
+        GameObject prefab = GameObject_PoolManager.Instance.SlowVFXPrefab;
+        if (prefab == null || evt.AttachTarget == null) return;
+
+        var view = evt.AttachTarget.GetComponent<ViewComponent>();
+        if (view != null && view.GameObject != null)
+        {
+            GameObject go = GameObject_PoolManager.Instance.Spawn(prefab, view.GameObject.transform.position, Quaternion.identity);
+            
+            go.transform.SetParent(view.GameObject.transform);
+            go.transform.localPosition = Vector3.zero;
+
+            evt.AttachTarget.AddComponent(new AttachedVFXComponent(go));
+        }
+    }
 }

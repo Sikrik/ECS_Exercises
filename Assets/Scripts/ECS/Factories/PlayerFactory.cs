@@ -14,17 +14,27 @@ public static class PlayerFactory
         Entity player = ecs.CreateEntity();
         
         // ==========================================
-        // 【新增】：将身上的 HUD View 引用抓取并封装为 ECS 组件
+        // 挂载 PlayerHUD (纯 UI 显示)
         // ==========================================
         var hudView = go.GetComponent<PlayerHUDView>();
         if (hudView != null && hudView.HealthRing != null && hudView.FlashIcon != null)
         {
-            
-            player.AddComponent(new PlayerHUDComponent(hudView.HealthRing, hudView.FlashIcon, hudView.ArrowPivot));
+            // 已移除 ArrowPivot 参数
+            player.AddComponent(new PlayerHUDComponent(hudView.HealthRing, hudView.FlashIcon));
         }
         else
         {
             Debug.LogWarning("Player 预制体上缺少 PlayerHUDView 组件或未绑定相应的 Image 引用！");
+        }
+
+        // ==========================================
+        // 挂载通用方向指示器 (分离后的解耦逻辑)
+        // ==========================================
+        var indicatorView = go.GetComponent<DirectionIndicatorView>();
+        if (indicatorView != null && indicatorView.ArrowPivot != null)
+        {
+            // 玩家转向灵敏度给 6f
+            player.AddComponent(new DirectionIndicatorComponent(indicatorView.ArrowPivot, 6f));
         }
 
         player.AddComponent(new PlayerTag());
@@ -34,31 +44,20 @@ public static class PlayerFactory
         player.AddComponent(new HealthComponent(config.PlayerMaxHealth));
         player.AddComponent(new ViewComponent(go, prefab));
         
-        // 赋予玩家质量与弹性
         player.AddComponent(new MassComponent(100f)); 
         player.AddComponent(new BouncyTag());
-        
-        // 补充碰撞反馈组件，让玩家在主动撞击时能产生物理排斥力挤开怪物
         player.AddComponent(new ImpactFeedbackComponent(bounce: true, recovery: false));
         player.AddComponent(new FactionComponent(FactionType.Player));
         
         player.AddComponent(new NeedsPhysicsBakingTag());
         player.AddComponent(new NeedsVisualBakingTag());
         
-        // 取消玩家主动检测怪物的权限，防止同一帧内触发双重排斥导致怪物抖动/乱飞。
         player.AddComponent(new CollisionFilterComponent(0));
 
-        // 在 PlayerFactory.Create 方法中添加：
-        float fireRate = 0.2f; // 你可以从 GameConfig 中读取
+        float fireRate = 0.2f; 
         player.AddComponent(new WeaponComponent(BulletType.Normal, fireRate));
         
-        // ==========================================
-        // 赋予玩家冲刺能力配置
-        // (DashSpeed = 18f, Duration = 0.2s, Cooldown = 1.5s)
-        // ==========================================
         player.AddComponent(new DashAbilityComponent(18f, 0.2f, 1.5f));
-
-        // 进入游戏第一帧强制刷新一次血条
         player.AddComponent(new UIHealthUpdateEvent()); 
 
         return player;

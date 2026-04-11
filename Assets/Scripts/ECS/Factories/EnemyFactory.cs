@@ -35,7 +35,6 @@ public static class EnemyFactory
         enemy.AddComponent(new NeedsVisualBakingTag());
         enemy.AddComponent(new MassComponent(recipe.Health)); 
 
-        // 让怪物之间也能互相挤开，形成包围网
         enemy.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Player", "Enemy")));
         
         if (recipe.Traits != null)
@@ -45,18 +44,23 @@ public static class EnemyFactory
         }
         
         // ==========================================
-        // 👇 【新增：冲锋怪专用能力组装】
+        // 冲锋怪能力装配
         // ==========================================
-        // (注：需要确保你的 EnemyType 枚举中包含 Charger，或者配置表的配方 ID 为 Charger)
         if (type.ToString() == "Charger")
         {
-            // 赋予冲刺物理能力 (速度提升到 15，持续 0.3 秒，冷却 3 秒)
-            enemy.AddComponent(new DashAbilityComponent(12f, 0.3f, 3f));
-            
-            // 赋予冲锋 AI 决策意图 (距离玩家 6 米以内触发)
-            enemy.AddComponent(new ChargerAIComponent(3f));
+            enemy.AddComponent(new DashAbilityComponent(25f, 0.6f, 3f));
+            enemy.AddComponent(new ChargerAIComponent(8f));
         }
+
         // ==========================================
+        // 挂载通用方向指示器 (分离后的解耦逻辑)
+        // ==========================================
+        var indicatorView = go.GetComponent<DirectionIndicatorView>();
+        if (indicatorView != null && indicatorView.ArrowPivot != null)
+        {
+            // 怪物转向阻尼更大（转得慢），设为 3f
+            enemy.AddComponent(new DirectionIndicatorComponent(indicatorView.ArrowPivot, 3f));
+        }
 
         return enemy;
     }

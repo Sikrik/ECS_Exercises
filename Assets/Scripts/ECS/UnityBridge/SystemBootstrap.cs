@@ -30,6 +30,7 @@ public class SystemBootstrap
         simGroup.AddSystem(new EnemySpawnSystem(entities));       
         simGroup.AddSystem(new EnemyTrackingSystem(entities));    
         simGroup.AddSystem(new ChargerAISystem(entities));        
+        simGroup.AddSystem(new DashPrepSystem(entities));         
         simGroup.AddSystem(new DashCooldownSystem(entities)); 
         simGroup.AddSystem(new DashActivationSystem(entities));             
         simGroup.AddSystem(new DashStateSystem(entities));         
@@ -62,7 +63,6 @@ public class SystemBootstrap
         // 3. 表现组 (渲染同步)
         // ==========================================
         var presGroup = new PresentationSystemGroup(entities);
-        // 【核心修复】：实例化必须在烘焙之前，否则特效在生成帧没有 SpriteRenderer 缓存
         presGroup.AddSystem(new VFXInstantiationSystem(entities)); 
         presGroup.AddSystem(new VisualBakingSystem(entities));    
         
@@ -71,10 +71,13 @@ public class SystemBootstrap
         presGroup.AddSystem(new GhostTrailSystem(entities));      
         presGroup.AddSystem(new ViewSyncSystem(entities));        
         
-        // --- 渲染与颜色覆写 (顺序极其重要) ---
-        presGroup.AddSystem(new RenderSyncSystem(entities));        // 1. 刷回基础底色或减速冰冻色
-        presGroup.AddSystem(new HitFeedbackVisualSystem(entities)); // 2. 【已修复】在底色之上覆写受击闪烁 (红白)
-        presGroup.AddSystem(new InvincibleVisualSystem(entities));  // 3. 最后控制整体颜色的透明度 (Alpha闪烁)
+        // 👇 新增通用方向指示器系统 (必须在 ViewSync 位置同步之后执行)
+        presGroup.AddSystem(new DirectionIndicatorSystem(entities)); 
+
+        // --- 渲染与颜色覆写 ---
+        presGroup.AddSystem(new RenderSyncSystem(entities));        
+        presGroup.AddSystem(new HitFeedbackVisualSystem(entities)); 
+        presGroup.AddSystem(new InvincibleVisualSystem(entities));  
         
         presGroup.AddSystem(new VFXSystem(entities));             
         presGroup.AddSystem(new VFXCleanupSystem(entities));
