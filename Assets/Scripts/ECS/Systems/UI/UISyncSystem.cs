@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using UnityEngine;
 
 /// <summary>
 /// UI 数据同步系统 (位于 PresentationSystemGroup)
@@ -66,14 +67,16 @@ public class UISyncSystem : SystemBase
         }
 
         // ==========================================
-        // 5. 【新增】同步玩家随身 HUD (血条和冲刺 CD)
+        // 5. 同步玩家随身 HUD (血条、冲刺 CD、方向指示箭头)
         // ==========================================
-        var hudEntities = GetEntitiesWith<PlayerHUDComponent, HealthComponent, DashAbilityComponent>();
+        // 【注意】这里在查询参数中新增了 VelocityComponent 来获取实时速度
+        var hudEntities = GetEntitiesWith<PlayerHUDComponent, HealthComponent, DashAbilityComponent, VelocityComponent>();
         foreach (var entity in hudEntities)
         {
             var hud = entity.GetComponent<PlayerHUDComponent>();
             var hp = entity.GetComponent<HealthComponent>();
             var dash = entity.GetComponent<DashAbilityComponent>();
+            var vel = entity.GetComponent<VelocityComponent>();
 
             // 5.1 同步 360 度圆环血量
             if (hud.HealthRing != null)
@@ -94,6 +97,24 @@ public class UISyncSystem : SystemBase
                 {
                     // 冷却完毕：设为 1f，让闪电完全亮起常驻！
                     hud.FlashIcon.fillAmount = 1f; 
+                }
+            }
+
+            
+            // 5.3 【新增】同步前进方向箭头 (冰块级丝滑延迟)
+            if (hud.ArrowPivot != null && vel != null)
+            {
+                // 只有当玩家在移动（存在物理速度）时才计算目标方向
+                if (vel.VX != 0 || vel.VY != 0)
+                {
+                    // 1. 计算出理论上的“目标角度”
+                    float targetAngle = Mathf.Atan2(vel.VY, vel.VX) * Mathf.Rad2Deg;
+                    Quaternion targetRotation = Quaternion.Euler(0, 0, targetAngle);
+                    
+                    // 2. 使用 Slerp 进行平滑过渡
+                    // 【核心修改】：把原来的 15f 改成 4f！
+                    // 数值越小（比如 2f、3f），箭头转得越慢，那种“冰面打滑、悠悠转过去”的阻尼感就越强。
+                    hud.ArrowPivot.localRotation = Quaternion.Slerp(hud.ArrowPivot.localRotation, targetRotation, deltaTime * 4f);
                 }
             }
         }

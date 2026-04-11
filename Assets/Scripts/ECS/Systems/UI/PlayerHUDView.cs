@@ -8,4 +8,6 @@ public class PlayerHUDView : MonoBehaviour
 {
     public Image HealthRing; // 圆环血条
     public Image FlashIcon;  // 闪电CD图标
+    
+    public Transform ArrowPivot;
 }

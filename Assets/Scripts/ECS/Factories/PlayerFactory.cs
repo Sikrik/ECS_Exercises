@@ -19,7 +19,8 @@ public static class PlayerFactory
         var hudView = go.GetComponent<PlayerHUDView>();
         if (hudView != null && hudView.HealthRing != null && hudView.FlashIcon != null)
         {
-            player.AddComponent(new PlayerHUDComponent(hudView.HealthRing, hudView.FlashIcon));
+            
+            player.AddComponent(new PlayerHUDComponent(hudView.HealthRing, hudView.FlashIcon, hudView.ArrowPivot));
         }
         else
         {

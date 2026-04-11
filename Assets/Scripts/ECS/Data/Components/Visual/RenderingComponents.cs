@@ -13,15 +13,16 @@ public class BaseColorComponent : Component
     public Color Color; // 存储物体的原始颜色，用于受击/冰冻效果恢复
     public BaseColorComponent(Color c) => Color = c;
 }
-// 在 RenderingComponents.cs 文件的末尾添加：
 public class PlayerHUDComponent : Component 
 {
     public UnityEngine.UI.Image HealthRing;
     public UnityEngine.UI.Image FlashIcon;
+    public Transform ArrowPivot; // 👇 新增数据位
 
-    public PlayerHUDComponent(UnityEngine.UI.Image health, UnityEngine.UI.Image flash)
+    public PlayerHUDComponent(UnityEngine.UI.Image health, UnityEngine.UI.Image flash, Transform arrowPivot) // 👇 构造函数添加参数
     {
         HealthRing = health;
         FlashIcon = flash;
+        ArrowPivot = arrowPivot; // 👇 赋值
     }
 }
