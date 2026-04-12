@@ -7,32 +7,35 @@ public class ScoreSystem : SystemBase
     public override void Update(float deltaTime)
     {
         var scoreEvents = GetEntitiesWith<ScoreEventComponent>();
-        if (scoreEvents.Count == 0) 
-        {
-            return;
-        }
+        if (scoreEvents.Count == 0) return;
 
         int totalAddedScore = 0;
-        bool scoreChanged = false;
-
         for (int i = scoreEvents.Count - 1; i >= 0; i--)
         {
             var entity = scoreEvents[i];
-            var evt = entity.GetComponent<ScoreEventComponent>();
-
-            totalAddedScore += evt.Amount;
-            scoreChanged = true;
-
-            // 处理完立即移除组件，防止同一帧内其他系统干扰或下一帧重复计算
+            totalAddedScore += entity.GetComponent<ScoreEventComponent>().Amount;
             entity.RemoveComponent<ScoreEventComponent>(); 
         }
 
-        if (scoreChanged)
+        if (totalAddedScore > 0)
         {
             ECSManager.Instance.Score += totalAddedScore;
-        
+            
+            // 经验与升级判定
+            var players = GetEntitiesWith<PlayerTag, ExperienceComponent>();
+            foreach(var p in players)
+            {
+                var exp = p.GetComponent<ExperienceComponent>();
+                exp.CurrentXP += totalAddedScore;
+                
+                if (exp.CurrentXP >= exp.MaxXP && !p.HasComponent<LevelUpEventComponent>())
+                {
+                    exp.CurrentXP -= exp.MaxXP;
+                    exp.MaxXP *= 1.2f; // 每级所需经验增加 20%
+                    exp.Level++;
+                    p.AddComponent(new LevelUpEventComponent());
+                }
+            }
         }
-
-
     }
 }

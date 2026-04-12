@@ -27,7 +27,7 @@ public class SystemBootstrap
 
         simGroup.AddSystem(new WeaponCooldownSystem(entities));   
         simGroup.AddSystem(new PlayerAimingSystem(entities));     
-        simGroup.AddSystem(new WeaponFiringSystem(entities, Grid)); 
+        simGroup.AddSystem(new WeaponFiringSystem(entities)); 
         simGroup.AddSystem(new EnemySpawnSystem(entities));       
         simGroup.AddSystem(new EnemyTrackingSystem(entities));    
         simGroup.AddSystem(new ChargerAISystem(entities));        

@@ -122,7 +122,6 @@ public class UISyncSystem : SystemBase
         {
             // 准星跟随鼠标屏幕坐标
             UIManager.Instance.UpdateCrosshairPosition(Input.mousePosition);
-            
             // 隐藏系统默认鼠标指针
             Cursor.visible = false;
         }
@@ -130,6 +129,24 @@ public class UISyncSystem : SystemBase
         {
             // 自动瞄准模式下恢复系统鼠标指针
             Cursor.visible = true;
+        }
+
+        // ==========================================
+        // 9. 处理经验升级事件 (弹出三选一面板)
+        // ==========================================
+        var levelUpEvents = GetEntitiesWith<PlayerTag, WeaponModifierComponent, LevelUpEventComponent>();
+        for (int i = levelUpEvents.Count - 1; i >= 0; i--)
+        {
+            var entity = levelUpEvents[i];
+            
+            // 呼叫 UI 表现层处理面板展示
+            if (UpgradeUIManager.Instance != null)
+            {
+                UpgradeUIManager.Instance.ShowUpgradePanel(entity);
+            }
+            
+            // 处理完后立刻撕下单帧标签，防止下一帧重复触发
+            entity.RemoveComponent<LevelUpEventComponent>();
         }
     }
 }

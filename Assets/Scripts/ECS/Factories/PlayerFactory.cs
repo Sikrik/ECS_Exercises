@@ -65,6 +65,9 @@ public static class PlayerFactory
         player.AddComponent(new NeedsVisualBakingTag());
         player.AddComponent(new CollisionFilterComponent(0)); // 0 代表与任何能撞的层级都交互
         player.AddComponent(new UIHealthUpdateEvent()); 
+        // 在 PlayerFactory.Create 方法末尾，返回 player 前添加：
+        player.AddComponent(new ExperienceComponent(50f)); // 升1级需要50点
+        player.AddComponent(new WeaponModifierComponent()); // 初始修饰器（无额外buff）
 
         return player;
     }

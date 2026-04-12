@@ -48,3 +48,50 @@ public class ExplosionIntentComponent : Component
 }
 // 游戏胜利事件（单帧组件）
 public class GameVictoryEventComponent : Component { }
+
+
+/// <summary>
+/// 经验值组件
+/// </summary>
+public class ExperienceComponent : Component
+{
+    public float CurrentXP;
+    public float MaxXP;
+    public int Level;
+    
+    public ExperienceComponent(float maxXP = 50f) 
+    { 
+        MaxXP = maxXP; 
+        CurrentXP = 0; 
+        Level = 1; 
+    }
+}
+
+/// <summary>
+/// 升级事件（单帧意图，用于呼出 UI）
+/// </summary>
+public class LevelUpEventComponent : Component { }
+
+/// <summary>
+/// 武器修饰器组件：记录所有通过升级获得的永久 Buff
+/// </summary>
+public class WeaponModifierComponent : Component
+{
+    public int ExtraProjectiles = 0;      // 额外弹道数 (分裂/多重射击)
+    public bool HasSlow = false;          // 是否附加减速
+    public bool HasChainLightning = false;// 是否附加闪电链
+    public bool HasAOE = false;           // 是否附加范围爆炸
+    public float FireRateMultiplier = 1f; // 射速倍率
+}
+
+/// <summary>
+/// 定义升级池中的选项枚举
+/// </summary>
+public enum UpgradeType
+{
+    MultiShot,      // 额外发射子弹
+    AddSlow,        // 赋予减速效果
+    AddChain,       // 赋予闪电链效果
+    AddAOE,         // 赋予爆炸效果
+    FireRateUp      // 提升射速
+}
