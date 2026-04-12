@@ -1,12 +1,21 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/Data/Configs/Schemas/WaveData.cs
+using System.Collections.Generic;
+
+[System.Serializable]
+public struct EnemySpawnInfo 
+{
+    public string Id;
+    public int Level;
+    public int Count;
+}
 
 [System.Serializable]
 public class WaveData
 {
     public int WaveIndex;        // 波次序号
     
-    // 存储本波的混合生成配方：敌人ID -> 生成数量
-    public Dictionary<string, int> SpawnDict = new Dictionary<string, int>(); 
+    // 存储本波的生成配方列表 (支持同一个怪物不同等级)
+    public List<EnemySpawnInfo> SpawnList = new List<EnemySpawnInfo>(); 
     public int TotalSpawnCount;  // 解析时自动计算总数
     
     public float SpawnInterval;  // 本波敌人的生成间隔

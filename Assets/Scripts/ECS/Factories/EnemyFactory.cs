@@ -3,7 +3,8 @@ using UnityEngine;
 
 public static class EnemyFactory 
 {
-    public static Entity Create(EnemyType type, Vector3 spawnPos) 
+    // 【修改】增加 level 参数
+    public static Entity Create(EnemyType type, int level, Vector3 spawnPos) 
     {
         var ecs = ECSManager.Instance;
         string recipeId = type.ToString();
@@ -20,16 +21,25 @@ public static class EnemyFactory
         if (go == null) return null;
 
         Entity enemy = ecs.CreateEntity();
+        var config = ecs.Config;
     
         // --- 核心基础组件 ---
         enemy.AddComponent(new EnemyTag());
         enemy.AddComponent(new ViewComponent(go, prefab));
         enemy.AddComponent(new PositionComponent(spawnPos.x, spawnPos.y, 0));
         enemy.AddComponent(new VelocityComponent(0, 0));
+
+        // ==========================================
+        // 【核心修改】：根据等级和全局成长系数，计算最终面板数值
+        // ==========================================
+        float finalHp = recipe.Health * (1f + (level - 1) * config.EnemyHpGrowth);
+        int finalDmg = Mathf.RoundToInt(recipe.Damage * (1f + (level - 1) * config.EnemyDmgGrowth));
+        float finalSpeed = recipe.Speed * (1f + (level - 1) * config.EnemySpeedGrowth);
+
         float speedVariation = UnityEngine.Random.Range(0.85f, 1.15f);
-        enemy.AddComponent(new SpeedComponent(recipe.Speed * speedVariation));
-        enemy.AddComponent(new HealthComponent(recipe.Health));
-        enemy.AddComponent(new DamageComponent(recipe.Damage));
+        enemy.AddComponent(new SpeedComponent(finalSpeed * speedVariation));
+        enemy.AddComponent(new HealthComponent(finalHp));
+        enemy.AddComponent(new DamageComponent(finalDmg));
 
         // --- 数值与战斗配置组件 ---
         enemy.AddComponent(new BountyComponent(recipe.EnemyDeathScore));
@@ -41,19 +51,18 @@ public static class EnemyFactory
         
         enemy.AddComponent(new NeedsPhysicsBakingTag());
         enemy.AddComponent(new NeedsVisualBakingTag());
-        enemy.AddComponent(new MassComponent(recipe.Health)); 
+        enemy.AddComponent(new MassComponent(finalHp)); // 质量挂钩最终血量
 
         enemy.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Player", "Enemy")));
         
-        // 4. 特性装载
+        // --- 特性装载 ---
         if (recipe.Traits != null)
         {
             foreach (var trait in recipe.Traits) 
                 ComponentRegistry.Apply(enemy, trait);
         }
         
-        // 5. 特定怪物类型的额外逻辑装配
-        
+        // --- 特定怪物类型的额外逻辑装配 ---
         if (type == EnemyType.Charger)
         {
             enemy.AddComponent(new DashAbilityComponent(recipe.SkillSpeed, recipe.SkillDuration, recipe.SkillCD));
@@ -62,7 +71,6 @@ public static class EnemyFactory
 
         if (type == EnemyType.Ranged)
         {
-            // 👇 【修复 6】通过获取组件来修改数值，而不是重新 AddComponent 产生 GC 并覆盖 ComponentRegistry 的底层数据
             var weapon = enemy.GetComponent<WeaponComponent>();
             if (weapon != null) weapon.FireRate = recipe.FireRate;
 
@@ -76,7 +84,7 @@ public static class EnemyFactory
             }
         }
 
-        // 6. 挂载通用方向指示器
+        // --- 挂载通用方向指示器 ---
         var indicatorView = go.GetComponent<DirectionIndicatorView>();
         if (indicatorView != null && indicatorView.ArrowPivot != null)
         {

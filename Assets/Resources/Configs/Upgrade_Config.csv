@@ -1,6 +1,10 @@
 ﻿ID,MaxLevel,Description
 MultiShot,5,多重射击: 额外发射1发子弹
-AddSlow,1,冰霜附魔: 子弹附带减速效果
-AddChain,1,闪电附魔: 子弹附带闪电链
-AddAOE,1,爆裂附魔: 子弹附带范围爆炸
+AddSlow,1,冰霜附魔: 子弹附带基础减速效果
+SlowEnhance,5,绝对零度: 提升减速弹的减速倍率与持续时间
+AddChain,1,闪电附魔: 子弹附带基础闪电链
+ChainEnhance,5,雷霆万钧: 增加闪电链的弹射次数与索敌范围
+AddAOE,1,爆裂附魔: 子弹附带基础范围爆炸
+AOEEnhance,5,核聚变: 大幅提升爆炸范围与爆炸伤害
 FireRateUp,5,快速装填: 攻击速度提升10%
+AttackUp,5,火力强化: 玩家基础攻击力提升20%

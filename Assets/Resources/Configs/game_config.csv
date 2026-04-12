@@ -2,3 +2,6 @@
 CollisionPushDistance,0.2,碰撞挤压距离
 CollisionBounceForce,5,弹性碰撞反弹力度
 InitialSpawnInterval,2,初始刷怪间隔
+EnemyHpGrowth,0.2,怪物每级血量成长(20%)
+EnemyDmgGrowth,0.15,怪物每级攻击力成长(15%)
+EnemySpeedGrowth,0.05,怪物每级速度成长(5%)

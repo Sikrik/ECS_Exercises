@@ -13,32 +13,26 @@ public static class ConfigLoader
     {
         GameConfig config = new GameConfig();
 
-        // 1. 加载基础全局配置
         TextAsset baseCsv = Resources.Load<TextAsset>("Configs/game_config");
         if (baseCsv != null) ParseBaseSettings(config, baseCsv);
         else Debug.LogError("初始化失败：未找到 Resources/game_config.csv");
 
-        // 2. 加载玩家职业配方
         TextAsset playerCsv = Resources.Load<TextAsset>("Configs/Player_config");
         if (playerCsv != null) ParsePlayerRecipes(config, playerCsv);
         else Debug.LogError("初始化失败：未找到 Resources/Player_config.csv");
 
-        // 3. 加载敌人装配配方
         TextAsset enemyCsv = Resources.Load<TextAsset>("Configs/Enemy_config");
         if (enemyCsv != null) ParseEnemyRecipes(config, enemyCsv);
         else Debug.LogError("初始化失败：未找到 Resources/Enemy_config.csv");
 
-        // 4. 加载波次混合刷新配置
         TextAsset waveCsv = Resources.Load<TextAsset>("Configs/Wave_config");
         if (waveCsv != null) ParseWaveSettings(config, waveCsv);
         else Debug.LogError("初始化失败：未找到 Resources/Wave_config.csv");
 
-        // 5. 【新增】加载三选一升级配置
         TextAsset upgradeCsv = Resources.Load<TextAsset>("Configs/Upgrade_Config");
         if (upgradeCsv != null) ParseUpgradeRecipes(config, upgradeCsv);
         else Debug.LogError("初始化失败：未找到 Resources/Upgrade_Config.csv");
 
-        // 6. 【新增】加载等级经验曲线配置
         TextAsset levelCsv = Resources.Load<TextAsset>("Configs/Level_Config");
         if (levelCsv != null) ParseLevelRecipes(config, levelCsv);
         else Debug.LogError("初始化失败：未找到 Resources/Level_Config.csv");
@@ -62,6 +56,10 @@ public static class ConfigLoader
                 case "CollisionPushDistance": config.CollisionPushDistance = ParseFloat(valueStr); break;
                 case "CollisionBounceForce": config.CollisionBounceForce = ParseFloat(valueStr); break;
                 case "InitialSpawnInterval": config.InitialSpawnInterval = ParseFloat(valueStr); break;
+                // 【新增】解析全局成长系数
+                case "EnemyHpGrowth": config.EnemyHpGrowth = ParseFloat(valueStr); break;
+                case "EnemyDmgGrowth": config.EnemyDmgGrowth = ParseFloat(valueStr); break;
+                case "EnemySpeedGrowth": config.EnemySpeedGrowth = ParseFloat(valueStr); break;
             }
         }
     }
@@ -144,11 +142,13 @@ public static class ConfigLoader
                 foreach (var s in spawns)
                 {
                     string[] kv = s.Split(':');
-                    if (kv.Length == 2)
+                    // 【新增】适配 ID:Level:Count 格式
+                    if (kv.Length == 3)
                     {
                         string eId = kv[0].Trim();
-                        int count = ParseInt(kv[1]);
-                        data.SpawnDict[eId] = count;
+                        int level = ParseInt(kv[1]);
+                        int count = ParseInt(kv[2]);
+                        data.SpawnList.Add(new EnemySpawnInfo { Id = eId, Level = level, Count = count });
                         data.TotalSpawnCount += count; 
                     }
                 }
@@ -157,9 +157,6 @@ public static class ConfigLoader
         }
     }
 
-    // ==========================================
-    // 【新增】解析升级配置
-    // ==========================================
     private static void ParseUpgradeRecipes(GameConfig config, TextAsset csv)
     {
         string[] lines = csv.text.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
@@ -178,9 +175,6 @@ public static class ConfigLoader
         }
     }
 
-    // ==========================================
-    // 【新增】解析等级经验配置
-    // ==========================================
     private static void ParseLevelRecipes(GameConfig config, TextAsset csv)
     {
         string[] lines = csv.text.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
