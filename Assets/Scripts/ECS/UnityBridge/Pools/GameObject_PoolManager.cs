@@ -16,14 +16,13 @@ public class GameObject_PoolManager : MonoBehaviour
     public GameObject FastEnemyPrefab;
     public GameObject TankEnemyPrefab;
     public GameObject ChargerEnemyPrefab;
-    public GameObject RangedEnemyPrefab; // 👇 新增：远程敌人预制体
+    public GameObject RangedEnemyPrefab; 
 
-// ... 在 GetEnemyPrefab 方法中添加对应分支 ...
     public GameObject GetEnemyPrefab(EnemyType type) => type switch {
         EnemyType.Fast => FastEnemyPrefab,
         EnemyType.Tank => TankEnemyPrefab,
         EnemyType.Charger => ChargerEnemyPrefab,
-        EnemyType.Ranged => RangedEnemyPrefab, // 👇 新增：分发远程怪预制体
+        EnemyType.Ranged => RangedEnemyPrefab, 
         _ => NormalEnemyPrefab
     };
 
@@ -31,11 +30,13 @@ public class GameObject_PoolManager : MonoBehaviour
     public GameObject SlowVFXPrefab;
     public GameObject LightningChainVFX;
     public GameObject ExplosionVFXPrefab;
-    // 👇 添加这一行：冲刺预警红框的预制体槽位
     public GameObject DashPreviewPrefab;
 
-    // 【核心优化】：将 Queue(FIFO) 替换为 Stack(LIFO)，大幅提升 CPU 高速缓存（Cache）亲和度
+    // 将 Queue(FIFO) 替换为 Stack(LIFO)，大幅提升 CPU 高速缓存（Cache）亲和度
     private Dictionary<GameObject, Stack<GameObject>> _pools = new Dictionary<GameObject, Stack<GameObject>>();
+    
+    // 用于收纳不同预制体的父节点字典，保持 Hierarchy 整洁
+    private Dictionary<GameObject, Transform> _poolRoots = new Dictionary<GameObject, Transform>();
 
     void Awake() => Instance = this;
     
@@ -46,6 +47,20 @@ public class GameObject_PoolManager : MonoBehaviour
         BulletType.AOE => AOEBulletPrefab,
         _ => NormalBulletPrefab
     };
+
+    // 获取或创建对应预制体的专属父节点（文件夹）
+    private Transform GetPoolRoot(GameObject prefab)
+    {
+        if (!_poolRoots.ContainsKey(prefab))
+        {
+            // 创建一个空的 GameObject 作为文件夹
+            GameObject rootGo = new GameObject($"[Pool] {prefab.name}");
+            // 将这个文件夹设为当前 PoolManager 的子物体
+            rootGo.transform.SetParent(this.transform); 
+            _poolRoots[prefab] = rootGo.transform;
+        }
+        return _poolRoots[prefab];
+    }
 
     /// <summary>
     /// 从池子中获取对象。如果池子为空或对象已损坏，则生成新的。
@@ -69,8 +84,8 @@ public class GameObject_PoolManager : MonoBehaviour
             }
         }
 
-        // 池子为空则创建新对象
-        return Instantiate(prefab, position, rotation);
+        // 池子为空则创建新对象，并把它的父节点设置到对应的分类文件夹下
+        return Instantiate(prefab, position, rotation, GetPoolRoot(prefab));
     }
 
     /// <summary>

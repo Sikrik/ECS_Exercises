@@ -20,6 +20,9 @@ public class UIManager : MonoBehaviour
     [Tooltip("在场敌人数量文本")]
     public TextMeshProUGUI EnemyCountText;
 
+    [Tooltip("准星 UI")]
+    public RectTransform CrosshairUI; // 新增：准星UI引用
+
     [Header("失败界面")]
     [Tooltip("失败面板")]
     public GameObject GameOverPanel;
@@ -75,6 +78,28 @@ public class UIManager : MonoBehaviour
     }
 
     /// <summary>
+    /// 控制准星的显示与隐藏
+    /// </summary>
+    public void SetCrosshairActive(bool isActive)
+    {
+        if (CrosshairUI != null && CrosshairUI.gameObject.activeSelf != isActive)
+        {
+            CrosshairUI.gameObject.SetActive(isActive);
+        }
+    }
+
+    /// <summary>
+    /// 更新准星位置（屏幕坐标）
+    /// </summary>
+    public void UpdateCrosshairPosition(Vector2 screenPos)
+    {
+        if (CrosshairUI != null)
+        {
+            CrosshairUI.position = screenPos; 
+        }
+    }
+
+    /// <summary>
     /// 更新玩家血量显示
     /// </summary>
     /// <param name="current">当前血量</param>
@@ -126,6 +151,7 @@ public class UIManager : MonoBehaviour
     /// <param name="finalScore">最终得分</param>
     public void ShowGameOver(int finalScore)
     {
+        Cursor.visible = true; // 确保鼠标显示
         if (GameOverPanel != null)
         {
             GameOverPanel.SetActive(true);
@@ -143,6 +169,7 @@ public class UIManager : MonoBehaviour
     /// <param name="finalScore">最终得分</param>
     public void ShowVictory(int finalScore)
     {
+        Cursor.visible = true; // 确保鼠标显示
         if (VictoryPanel != null)
         {
             VictoryPanel.SetActive(true);

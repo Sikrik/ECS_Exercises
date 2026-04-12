@@ -110,6 +110,26 @@ public class UISyncSystem : SystemBase
             }
         }
 
+        // ==========================================
+        // 8. 同步准星 (Crosshair) 状态与位置
+        // ==========================================
+        // 检测当前是否处于鼠标手动瞄准模式
+        bool isManualAim = PlayerAimingSystem.CurrentAimStrategy is ManualAimStrategy;
+        
+        UIManager.Instance.SetCrosshairActive(isManualAim);
 
+        if (isManualAim)
+        {
+            // 准星跟随鼠标屏幕坐标
+            UIManager.Instance.UpdateCrosshairPosition(Input.mousePosition);
+            
+            // 隐藏系统默认鼠标指针
+            Cursor.visible = false;
+        }
+        else
+        {
+            // 自动瞄准模式下恢复系统鼠标指针
+            Cursor.visible = true;
+        }
     }
 }

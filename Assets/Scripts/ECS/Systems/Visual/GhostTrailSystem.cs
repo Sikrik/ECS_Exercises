@@ -17,8 +17,16 @@ public class GhostTrailSystem : SystemBase
     // 内部对象池，防止频繁实例化销毁
     private Queue<GameObject> _ghostPool = new Queue<GameObject>();
     private List<ActiveGhost> _activeGhosts = new List<ActiveGhost>();
+    
+    // 用于收纳残影的统一父节点容器
+    private Transform _ghostRootContainer;
 
-    public GhostTrailSystem(List<Entity> entities) : base(entities) { }
+    public GhostTrailSystem(List<Entity> entities) : base(entities) 
+    { 
+        // 在系统初始化时创建一个空物体充当文件夹
+        GameObject rootGo = new GameObject("[Pool] DashGhosts");
+        _ghostRootContainer = rootGo.transform;
+    }
 
     public override void Update(float deltaTime)
     {
@@ -75,6 +83,12 @@ public class GhostTrailSystem : SystemBase
         {
             ghostGo = new GameObject("DashGhost_Item");
             ghostSr = ghostGo.AddComponent<SpriteRenderer>();
+            
+            // 将新生成的残影直接放进专属文件夹里
+            if (_ghostRootContainer != null)
+            {
+                ghostGo.transform.SetParent(_ghostRootContainer);
+            }
         }
 
         // 同步视觉状态
@@ -94,9 +108,5 @@ public class GhostTrailSystem : SystemBase
         ghostSr.sortingOrder = sourceSr.sortingOrder - 1;
 
         _activeGhosts.Add(new ActiveGhost { Go = ghostGo, Sr = ghostSr, Alpha = initialAlpha });
-
-        // Debug 提示生成情况
-        // 注意：高频生成时为了避免刷屏，可以根据需要决定是否开启此 Log
-        // Debug.Log($"[GhostTrail] 已生成残影于: {sourceTf.position}");
     }
 }
