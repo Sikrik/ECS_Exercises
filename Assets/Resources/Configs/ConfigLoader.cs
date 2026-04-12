@@ -1,5 +1,4 @@
-﻿// 路径: Assets/Scripts/ECS/Data/Configs/ConfigLoader.cs
-using System;
+﻿using System;
 using System.Globalization;
 using UnityEngine;
 
@@ -56,7 +55,7 @@ public static class ConfigLoader
                 case "CollisionPushDistance": config.CollisionPushDistance = ParseFloat(valueStr); break;
                 case "CollisionBounceForce": config.CollisionBounceForce = ParseFloat(valueStr); break;
                 case "InitialSpawnInterval": config.InitialSpawnInterval = ParseFloat(valueStr); break;
-                // 【新增】解析全局成长系数
+                // 全局成长系数已废弃，可在此保留以防 game_config.csv 未删除报错
                 case "EnemyHpGrowth": config.EnemyHpGrowth = ParseFloat(valueStr); break;
                 case "EnemyDmgGrowth": config.EnemyDmgGrowth = ParseFloat(valueStr); break;
                 case "EnemySpeedGrowth": config.EnemySpeedGrowth = ParseFloat(valueStr); break;
@@ -95,28 +94,32 @@ public static class ConfigLoader
         for (int i = 1; i < lines.Length; i++)
         {
             string[] cols = lines[i].Split(',');
-            if (cols.Length < 7) continue;
+            if (cols.Length < 8) continue; // 增加了等级列，最少需要8列(到Traits)
 
             EnemyData data = new EnemyData
             {
                 Id = cols[0].Trim(),
-                Health = ParseFloat(cols[1]),
-                Speed = ParseFloat(cols[2]),
-                Damage = ParseInt(cols[3]),
-                HitRecoveryDuration = ParseFloat(cols[4]),
-                EnemyDeathScore = ParseInt(cols[5]),
-                Traits = string.IsNullOrWhiteSpace(cols[6]) ? new string[0] : cols[6].Trim().Split('|'),
-                BounceForce = cols.Length > 7 ? ParseFloat(cols[7]) : 5.0f,
-                FireRate      = cols.Length > 8 ? ParseFloat(cols[8]) : 0f,
-                ActionDist1   = cols.Length > 9 ? ParseFloat(cols[9]) : 0f,
-                ActionDist2   = cols.Length > 10 ? ParseFloat(cols[10]) : 0f,
-                ActionDist3   = cols.Length > 11 ? ParseFloat(cols[11]) : 0f,
-                ActionTime1   = cols.Length > 12 ? ParseFloat(cols[12]) : 0f,
-                SkillSpeed    = cols.Length > 13 ? ParseFloat(cols[13]) : 0f,
-                SkillDuration = cols.Length > 14 ? ParseFloat(cols[14]) : 0f,
-                SkillCD       = cols.Length > 15 ? ParseFloat(cols[15]) : 0f
+                Level = ParseInt(cols[1]), // 读取等级
+                Health = ParseFloat(cols[2]),
+                Speed = ParseFloat(cols[3]),
+                Damage = ParseInt(cols[4]),
+                HitRecoveryDuration = ParseFloat(cols[5]),
+                EnemyDeathScore = ParseInt(cols[6]),
+                Traits = string.IsNullOrWhiteSpace(cols[7]) ? new string[0] : cols[7].Trim().Split('|'),
+                BounceForce = cols.Length > 8 ? ParseFloat(cols[8]) : 5.0f,
+                FireRate      = cols.Length > 9 ? ParseFloat(cols[9]) : 0f,
+                ActionDist1   = cols.Length > 10 ? ParseFloat(cols[10]) : 0f,
+                ActionDist2   = cols.Length > 11 ? ParseFloat(cols[11]) : 0f,
+                ActionDist3   = cols.Length > 12 ? ParseFloat(cols[12]) : 0f,
+                ActionTime1   = cols.Length > 13 ? ParseFloat(cols[13]) : 0f,
+                SkillSpeed    = cols.Length > 14 ? ParseFloat(cols[14]) : 0f,
+                SkillDuration = cols.Length > 15 ? ParseFloat(cols[15]) : 0f,
+                SkillCD       = cols.Length > 16 ? ParseFloat(cols[16]) : 0f
             };
-            config.EnemyRecipes[data.Id] = data;
+            
+            // 【核心修改】将字典的键改为 ID_Level 的组合键
+            string key = $"{data.Id}_{data.Level}";
+            config.EnemyRecipes[key] = data;
         }
     }
 
@@ -142,7 +145,6 @@ public static class ConfigLoader
                 foreach (var s in spawns)
                 {
                     string[] kv = s.Split(':');
-                    // 【新增】适配 ID:Level:Count 格式
                     if (kv.Length == 3)
                     {
                         string eId = kv[0].Trim();
@@ -169,7 +171,9 @@ public static class ConfigLoader
             {
                 Id = cols[0].Trim(),
                 MaxLevel = ParseInt(cols[1]),
-                Description = cols[2].Trim()
+                Description = cols[2].Trim(),
+                // 解析第四列(前置条件)，没有则留空
+                Prerequisite = cols.Length > 3 ? cols[3].Trim() : string.Empty 
             };
             config.UpgradeRecipes[data.Id] = data;
         }

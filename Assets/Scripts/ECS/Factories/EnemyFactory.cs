@@ -1,17 +1,16 @@
-﻿// 路径: Assets/Scripts/ECS/Factories/EnemyFactory.cs
-using UnityEngine;
+﻿using UnityEngine;
 
 public static class EnemyFactory 
 {
-    // 【修改】增加 level 参数
     public static Entity Create(EnemyType type, int level, Vector3 spawnPos) 
     {
         var ecs = ECSManager.Instance;
-        string recipeId = type.ToString();
+        // 组合 ID_Level 去字典里找配方
+        string recipeId = $"{type.ToString()}_{level}"; 
         
         if (!ecs.Config.EnemyRecipes.TryGetValue(recipeId, out var recipe)) 
         {
-            Debug.LogError($"[EnemyFactory] 找不到 ID 为 {recipeId} 的敌人配置！");
+            Debug.LogError($"[EnemyFactory] 找不到 ID 为 {recipeId} 的敌人配置！请检查 CSV 中是否配置了该怪物等级！");
             return null;
         }
 
@@ -30,11 +29,11 @@ public static class EnemyFactory
         enemy.AddComponent(new VelocityComponent(0, 0));
 
         // ==========================================
-        // 【核心修改】：根据等级和全局成长系数，计算最终面板数值
+        // 直接使用配置表里的独立数值，不再计算全局成长
         // ==========================================
-        float finalHp = recipe.Health * (1f + (level - 1) * config.EnemyHpGrowth);
-        int finalDmg = Mathf.RoundToInt(recipe.Damage * (1f + (level - 1) * config.EnemyDmgGrowth));
-        float finalSpeed = recipe.Speed * (1f + (level - 1) * config.EnemySpeedGrowth);
+        float finalHp = recipe.Health;
+        int finalDmg = recipe.Damage;
+        float finalSpeed = recipe.Speed;
 
         float speedVariation = UnityEngine.Random.Range(0.85f, 1.15f);
         enemy.AddComponent(new SpeedComponent(finalSpeed * speedVariation));
@@ -51,7 +50,7 @@ public static class EnemyFactory
         
         enemy.AddComponent(new NeedsPhysicsBakingTag());
         enemy.AddComponent(new NeedsVisualBakingTag());
-        enemy.AddComponent(new MassComponent(finalHp)); // 质量挂钩最终血量
+        enemy.AddComponent(new MassComponent(finalHp)); // 质量直接挂钩最终血量
 
         enemy.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Player", "Enemy")));
         
