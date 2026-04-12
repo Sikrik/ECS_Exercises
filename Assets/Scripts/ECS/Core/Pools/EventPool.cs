@@ -9,12 +9,13 @@ public static class EventPool
     private static Stack<DamageTakenEventComponent> _damagePool = new Stack<DamageTakenEventComponent>();
     private static Stack<CollisionEventComponent> _collisionPool = new Stack<CollisionEventComponent>();
 
-    // 【修改】增加 causeHitRecovery 参数
-    public static DamageTakenEventComponent GetDamageEvent(float amount, bool causeHitRecovery)
+    // 【修改】增加 durationOverride 参数
+    public static DamageTakenEventComponent GetDamageEvent(float amount, bool causeHitRecovery, float durationOverride = 0f)
     {
         var evt = _damagePool.Count > 0 ? _damagePool.Pop() : new DamageTakenEventComponent();
         evt.DamageAmount = amount;
-        evt.CauseHitRecovery = causeHitRecovery; // 赋值硬直标识
+        evt.CauseHitRecovery = causeHitRecovery; 
+        evt.RecoveryDurationOverride = durationOverride; // 赋值时间覆盖
         return evt;
     }
 
@@ -31,7 +32,6 @@ public static class EventPool
 
     public static void Return(CollisionEventComponent evt)
     {
-        // 清空所有引用，防止实体被回收后这里还拿捏着引用导致内存泄漏
         evt.Source = null; 
         evt.Target = null; 
         _collisionPool.Push(evt);

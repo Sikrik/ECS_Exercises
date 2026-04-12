@@ -1,5 +1,4 @@
-﻿// 路径: Assets/Scripts/ECS/Factories/BulletFactory.cs
-using UnityEngine;
+﻿using UnityEngine;
 
 public static class BulletFactory 
 {
@@ -35,12 +34,12 @@ public static class BulletFactory
         bullet.AddComponent(new NeedsPhysicsBakingTag());
         bullet.AddComponent(new NeedsVisualBakingTag());
 
-        bullet.AddComponent(new ImpactFeedbackComponent(bounce: false, recovery: true));
-
         // ==========================================
         // 3. 动态结算升级系统修饰器 (提取深度成长数值)
         // ==========================================
         float finalDamage = baseDamage;
+        bool causeRecovery = false;       // 【修改】子弹默认不再造成硬直
+        float stunDurationOverride = 0f;  // 【新增】默认无硬直覆盖时间
 
         if (modifiers != null)
         {
@@ -73,8 +72,20 @@ public static class BulletFactory
                 float radius = 2f + aoeEnhance * 0.8f;       // 基础半径2米，每级+0.8
                 bullet.AddComponent(new AOEComponent(radius));
             }
+
+            // 【新增】硬直附魔与强化
+            if (modifiers.GetLevel("AddStun") > 0)
+            {
+                causeRecovery = true;
+                int stunEnhance = modifiers.GetLevel("StunEnhance");
+                // 基础硬直 0.2 秒，每级增强 0.15 秒
+                stunDurationOverride = 0.2f + stunEnhance * 0.15f; 
+            }
         }
 
+        // 挂载物理反馈意图 (带有算好的硬直配置)
+        bullet.AddComponent(new ImpactFeedbackComponent(bounce: false, recovery: causeRecovery, stunDurationOverride));
+        
         // 最后挂载计算后的最终伤害
         bullet.AddComponent(new DamageComponent(finalDamage));
 

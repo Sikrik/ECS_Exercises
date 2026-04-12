@@ -1,5 +1,4 @@
-﻿// 路径: Assets/Scripts/ECS/Systems/Combat/DamageSystem.cs
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -43,24 +42,28 @@ public class DamageSystem : SystemBase
                 hp.CurrentHealth -= dmg.Value;
                 Debug.Log($"{target} 扣除血量：{dmg.Value}");
 
-                // 2. 读取攻击源的物理反馈配置，判断是否该造成硬直
+                // 2. 读取攻击源的物理反馈配置，判断是否该造成硬直，以及覆盖的硬直时间
                 bool causeRecovery = false;
+                float durationOverride = 0f;
                 var feedback = source.GetComponent<ImpactFeedbackComponent>();
                 if (feedback != null) 
                 {
                     causeRecovery = feedback.CauseHitRecovery;
+                    durationOverride = feedback.HitRecoveryDurationOverride;
                 }
 
-                // 👇 【修复 2】防覆盖与内存泄漏处理（改为累加伤害和合并状态）
+                // 3. 防覆盖与内存泄漏处理（合并状态与时间）
                 var existingEvt = target.GetComponent<DamageTakenEventComponent>();
                 if (existingEvt != null)
                 {
                     existingEvt.DamageAmount += dmg.Value;
                     existingEvt.CauseHitRecovery = existingEvt.CauseHitRecovery || causeRecovery;
+                    // 取两者的最大硬直时间叠加
+                    existingEvt.RecoveryDurationOverride = Mathf.Max(existingEvt.RecoveryDurationOverride, durationOverride);
                 }
                 else
                 {
-                    target.AddComponent(EventPool.GetDamageEvent(dmg.Value, causeRecovery));
+                    target.AddComponent(EventPool.GetDamageEvent(dmg.Value, causeRecovery, durationOverride));
                 }
             }
         }

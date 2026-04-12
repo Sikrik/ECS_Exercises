@@ -8,3 +8,5 @@ AddAOE,1,爆裂附魔: 子弹附带基础范围爆炸,
 AOEEnhance,5,核聚变: 大幅提升爆炸范围与爆炸伤害,AddAOE
 FireRateUp,5,快速装填: 攻击速度提升10%,
 AttackUp,5,火力强化: 玩家基础攻击力提升20%,
+AddStun,1,重击附魔: 子弹附带基础受击硬直效果,
+StunEnhance,5,震荡冲击: 提升受击硬直的持续时间,AddStun

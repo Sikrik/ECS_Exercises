@@ -5,15 +5,7 @@
 /// </summary>
 public class DamageComponent : Component 
 {
-    /// <summary>
-    /// 伤害数值
-    /// </summary>
     public float Value;
-
-    /// <summary>
-    /// 初始化伤害组件
-    /// </summary>
-    /// <param name="v">伤害数值</param>
     public DamageComponent(float v) => Value = v;
 }
 
@@ -22,15 +14,7 @@ public class DamageComponent : Component
 /// </summary>
 public class BountyComponent : Component 
 {
-    /// <summary>
-    /// 击杀该实体可获得的分数值
-    /// </summary>
     public int Score;
-
-    /// <summary>
-    /// 初始化悬赏组件
-    /// </summary>
-    /// <param name="score">悬赏分数值</param>
     public BountyComponent(int score) => Score = score;
 }
 
@@ -39,15 +23,7 @@ public class BountyComponent : Component
 /// </summary>
 public class HitRecoveryStatsComponent : Component 
 {
-    /// <summary>
-    /// 硬直持续时间，单位：秒
-    /// </summary>
     public float Duration;
-
-    /// <summary>
-    /// 初始化受击硬直配置组件
-    /// </summary>
-    /// <param name="duration">硬直持续时间</param>
     public HitRecoveryStatsComponent(float duration) => Duration = duration;
 }
 
@@ -56,15 +32,7 @@ public class HitRecoveryStatsComponent : Component
 /// </summary>
 public class BounceForceComponent : Component 
 {
-    /// <summary>
-    /// 碰撞反弹力度值，用于计算反弹速度
-    /// </summary>
     public float Value;
-
-    /// <summary>
-    /// 初始化碰撞反弹强度组件
-    /// </summary>
-    /// <param name="v">反弹力度值</param>
     public BounceForceComponent(float v) => Value = v;
 }
 
@@ -73,34 +41,26 @@ public class BounceForceComponent : Component
 /// </summary>
 public class HealthComponent : Component 
 {
-    /// <summary>
-    /// 当前生命值
-    /// </summary>
     public float CurrentHealth;
-
-    /// <summary>
-    /// 最大生命值上限
-    /// </summary>
     public float MaxHealth;
 
-    /// <summary>
-    /// 初始化生命值组件，当前生命值和最大生命值均设为指定值
-    /// </summary>
-    /// <param name="maxHealth">最大生命值</param>
     public HealthComponent(float maxHealth) { MaxHealth = maxHealth; CurrentHealth = maxHealth; }
 }
-// 存储碰撞时对目标造成的反馈效果
+
+/// <summary>
+/// 存储碰撞时对目标造成的反馈效果
+/// </summary>
 public class ImpactFeedbackComponent : Component 
 {
-    // 是否造成物理反弹（击退）
     public bool CauseBounce;      
-    // 是否造成受击硬直
     public bool CauseHitRecovery; 
+    // 新增：用于覆盖怪物默认的硬直时间 (由升级项提供)
+    public float HitRecoveryDurationOverride; 
 
-    // 初始化构造函数
-    public ImpactFeedbackComponent(bool bounce, bool recovery) 
+    public ImpactFeedbackComponent(bool bounce, bool recovery, float durationOverride = 0f) 
     {
         CauseBounce = bounce;
         CauseHitRecovery = recovery;
+        HitRecoveryDurationOverride = durationOverride;
     }
 }
