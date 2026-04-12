@@ -1,5 +1,6 @@
 ﻿// 路径: Assets/Scripts/ECS/Systems/Combat/DamageSystem.cs
 using System.Collections.Generic;
+using UnityEngine;
 
 /// <summary>
 /// 纯粹的伤害结算系统 (高内聚改造版)
@@ -40,6 +41,7 @@ public class DamageSystem : SystemBase
     
                 // 1. 扣除血量
                 hp.CurrentHealth -= dmg.Value;
+                Debug.Log($"{target} 扣除血量：{dmg.Value}");
 
                 // 2. 读取攻击源的物理反馈配置，判断是否该造成硬直
                 bool causeRecovery = false;
