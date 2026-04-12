@@ -1,5 +1,5 @@
 ﻿WaveIndex,Spawns,SpawnInterval,NextWaveDelay
-1,Normal:10|Fast:2,1.0,3.0
+1,Tank:5|Normal:10|Fast:2,1.0,3.0
 2,Normal:15|Fast:5|Ranged:3,0.8,4.0
 3,Normal:10|Fast:10|Charger:3|Ranged:5,0.8,4.0
 4,Tank:2|Fast:15|Charger:5,1.2,3.0

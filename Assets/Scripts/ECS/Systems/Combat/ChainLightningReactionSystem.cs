@@ -25,7 +25,6 @@ public class ChainLightningReactionSystem : SystemBase
             var dmg = bullet.GetComponent<DamageComponent>();
             var hitPos = bullet.GetComponent<PositionComponent>();
 
-            // 执行闪电链算法
             List<Entity> hitHistory = new List<Entity> { startTarget };
             Entity currentTarget = startTarget;
             Vector3 lastPos = new Vector3(hitPos.X, hitPos.Y, 0);
@@ -39,7 +38,10 @@ public class ChainLightningReactionSystem : SystemBase
                 var nearby = ECSManager.Instance.Grid.GetNearbyEnemies(curPos.X, curPos.Y);
                 foreach (var candidate in nearby)
                 {
-                    if (!candidate.IsAlive || !candidate.HasComponent<EnemyTag>() || hitHistory.Contains(candidate)) continue;
+                    // 加入无敌状态过滤
+                    if (!candidate.IsAlive || !candidate.HasComponent<EnemyTag>() || 
+                        hitHistory.Contains(candidate) || candidate.HasComponent<InvincibleComponent>()) 
+                        continue;
                     
                     var cPos = candidate.GetComponent<PositionComponent>();
                     float d2 = (cPos.X - curPos.X) * (cPos.X - curPos.X) + (cPos.Y - curPos.Y) * (cPos.Y - curPos.Y);
@@ -54,13 +56,27 @@ public class ChainLightningReactionSystem : SystemBase
                 {
                     hitHistory.Add(nextTarget);
                     
-                    // 下发规范的伤害事件
-                    nextTarget.AddComponent(EventPool.GetDamageEvent(dmg.Value, causeHitRecovery: false));
+                    // 👇 [核心修复]：直接扣除血量
+                    var nextHp = nextTarget.GetComponent<HealthComponent>();
+                    if (nextHp != null)
+                    {
+                        nextHp.CurrentHealth -= dmg.Value;
+                    }
+                    
+                    // 👇 [核心修复]：防覆盖合并，避免和子弹直击伤害互相顶替
+                    var existingEvt = nextTarget.GetComponent<DamageTakenEventComponent>();
+                    if (existingEvt != null)
+                    {
+                        existingEvt.DamageAmount += dmg.Value;
+                    }
+                    else
+                    {
+                        nextTarget.AddComponent(EventPool.GetDamageEvent(dmg.Value, causeHitRecovery: false));
+                    }
 
                     var nPos = nextTarget.GetComponent<PositionComponent>();
                     Vector3 nextPos = new Vector3(nPos.X, nPos.Y, 0);
                     
-                    // 抛出闪电线段特效意图
                     Entity vfxEvent = ECSManager.Instance.CreateEntity();
                     vfxEvent.AddComponent(new VFXSpawnEventComponent { 
                         VFXType = "LightningChain", 
@@ -71,10 +87,9 @@ public class ChainLightningReactionSystem : SystemBase
                     lastPos = nextPos;
                     currentTarget = nextTarget;
                 }
-                else break; // 范围内没敌人了，中断弹射
+                else break; 
             }
             
-            // 触发完弹射后移除组件，防止穿透时重复触发闪电链
             bullet.RemoveComponent<ChainComponent>();
         }
     }
