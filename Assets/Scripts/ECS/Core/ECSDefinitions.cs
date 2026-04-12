@@ -60,3 +60,5 @@ public class ExplosionIntentComponent : Component
         Damage = damage;
     }
 }
+// 游戏胜利事件（单帧组件）
+public class GameVictoryEventComponent : Component { }

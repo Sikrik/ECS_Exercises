@@ -33,6 +33,11 @@ public static class ConfigLoader
         if (bulletCsv != null) ParseBulletRecipes(config, bulletCsv);
         else Debug.LogError("初始化失败：未找到 Resources/Bullet_Config.csv");
 
+        // 5. 【新增】加载波次混合刷新配置
+        TextAsset waveCsv = Resources.Load<TextAsset>("Configs/Wave_config");
+        if (waveCsv != null) ParseWaveSettings(config, waveCsv);
+        else Debug.LogError("初始化失败：未找到 Resources/Wave_config.csv，请确保已创建该配表。");
+
         return config;
     }
 
@@ -141,6 +146,50 @@ public static class ConfigLoader
                 HitRadius = cols.Length > 10 ? ParseFloat(cols[10]) : 0.2f
             };
             config.BulletRecipes[data.Id] = data;
+        }
+    }
+
+    // ==========================================
+    // 【新增】波次数据解析 (支持混合兵种配置)
+    // ==========================================
+    private static void ParseWaveSettings(GameConfig config, TextAsset csv)
+    {
+        string[] lines = csv.text.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+        
+        for (int i = 1; i < lines.Length; i++)
+        {
+            string[] cols = lines[i].Split(',');
+            
+            // 确保至少有 4 列数据: WaveIndex, Spawns, SpawnInterval, NextWaveDelay
+            if (cols.Length < 4) continue; 
+
+            WaveData data = new WaveData
+            {
+                WaveIndex = ParseInt(cols[0]),
+                SpawnInterval = ParseFloat(cols[2]),
+                NextWaveDelay = ParseFloat(cols[3])
+            };
+
+            // 解析混合兵种配方 (格式例如 "Normal:10|Fast:5|Ranged:2")
+            string spawnsData = cols[1].Trim();
+            if (!string.IsNullOrEmpty(spawnsData))
+            {
+                string[] spawns = spawnsData.Split('|');
+                foreach (var s in spawns)
+                {
+                    string[] kv = s.Split(':');
+                    if (kv.Length == 2)
+                    {
+                        string eId = kv[0].Trim();
+                        int count = ParseInt(kv[1]);
+                        
+                        data.SpawnDict[eId] = count;
+                        data.TotalSpawnCount += count; // 自动累加本波怪物总数
+                    }
+                }
+            }
+            
+            config.Waves.Add(data);
         }
     }
 

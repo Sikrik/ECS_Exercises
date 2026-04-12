@@ -1,44 +1,19 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// 敌人生成系统，负责根据游戏时长动态调整生成频率和数量，实现难度递增
-/// </summary>
 public class EnemySpawnSystem : SystemBase
 {
-    /// <summary>
-    /// 生成计时器，累计距离上次生成的时间间隔
-    /// </summary>
-    private float _timer;
+    private enum SpawnState { InitWave, Spawning, WaitingForClear, DelayingNextWave, Finished }
+    
+    private SpawnState _state = SpawnState.InitWave;
+    private int _currentWaveListIndex = 0;
+    private float _timer = 0;
 
-    /// <summary>
-    /// 游戏总时长计数器，用于推算动态难度系数
-    /// </summary>
-    private float _totalTime;
+    // 混合兵种卡池
+    private List<string> _spawnPool = new List<string>();
 
-    /// <summary>
-    /// 常量定义：生成间隔随时间递减的速率（每秒减少的秒数）
-    /// </summary>
-    private const float SPAWN_INTERVAL_DECAY_RATE = 0.02f;
-
-    /// <summary>
-    /// 常量定义：最小生成间隔保底值（秒）
-    /// </summary>
-    private const float MIN_SPAWN_INTERVAL = 0.2f;
-
-    /// <summary>
-    /// 常量定义：波次叠加的时间周期（秒），每经过该时间增加一次生成数量
-    /// </summary>
-    private const float WAVE_INCREMENT_PERIOD = 30f;
-
-    /// <summary>
-    /// 常量定义：敌人生成的最小半径距离（单位：米）
-    /// </summary>
     private const float SPAWN_MIN_RADIUS = 12f;
-
-    /// <summary>
-    /// 常量定义：敌人生成的最大半径距离（单位：米）
-    /// </summary>
     private const float SPAWN_MAX_RADIUS = 15f;
 
     public EnemySpawnSystem(List<Entity> entities) : base(entities) { }
@@ -46,81 +21,138 @@ public class EnemySpawnSystem : SystemBase
     public override void Update(float deltaTime)
     {
         var config = ECSManager.Instance.Config;
-        _timer += deltaTime;
-        _totalTime += deltaTime;
+        
+        // 防御：没有波次配置或已经完成通关，则不执行
+        if (config.Waves == null || config.Waves.Count == 0 || _state == SpawnState.Finished) 
+            return;
 
-        // 计算当前动态生成间隔，随着游戏进行逐渐加快刷怪频率
-        float currentInterval = CalculateSpawnInterval(config.InitialSpawnInterval);
+        var currentWave = config.Waves[_currentWaveListIndex];
 
-        if (_timer >= currentInterval)
+        switch (_state)
         {
-            _timer = 0;
-            
-            // 根据存活时间计算本批次生成数量，实现波次叠加效果
-            int spawnCount = CalculateSpawnBatchCount();
-            for (int i = 0; i < spawnCount; i++)
-            {
-                SpawnEnemy();
-            }
+            case SpawnState.InitWave:
+                // 1. 初始化本波卡的卡池
+                _spawnPool.Clear();
+                foreach (var kvp in currentWave.SpawnDict)
+                {
+                    for (int i = 0; i < kvp.Value; i++) 
+                    {
+                        _spawnPool.Add(kvp.Key);
+                    }
+                }
+                
+                // 2. 洗牌算法打乱卡池，保证混合兵种随机刷新
+                for (int i = 0; i < _spawnPool.Count; i++)
+                {
+                    int rnd = UnityEngine.Random.Range(i, _spawnPool.Count);
+                    string temp = _spawnPool[i];
+                    _spawnPool[i] = _spawnPool[rnd];
+                    _spawnPool[rnd] = temp;
+                }
+
+                _state = SpawnState.Spawning;
+                _timer = currentWave.SpawnInterval; // 立即开始刷第一只
+                break;
+
+            case SpawnState.Spawning:
+                _timer += deltaTime;
+                if (_timer >= currentWave.SpawnInterval)
+                {
+                    _timer = 0;
+                    
+                    // 从卡池末尾抽一只怪生成
+                    string enemyToSpawn = _spawnPool[_spawnPool.Count - 1];
+                    _spawnPool.RemoveAt(_spawnPool.Count - 1);
+                    
+                    SpawnEnemy(enemyToSpawn);
+
+                    // 卡池抽空了，进入清怪等待阶段
+                    if (_spawnPool.Count == 0)
+                    {
+                        _state = SpawnState.WaitingForClear;
+                    }
+                }
+                break;
+
+            case SpawnState.WaitingForClear:
+                var enemies = GetEntitiesWith<EnemyTag>();
+                int aliveCount = 0;
+                foreach (var e in enemies)
+                {
+                    if (e.IsAlive && !e.HasComponent<DeadTag>()) aliveCount++;
+                }
+                ReturnListToPool(enemies);
+
+                if (aliveCount == 0)
+                {
+                    _state = SpawnState.DelayingNextWave;
+                    _timer = 0;
+                }
+                break;
+
+            case SpawnState.DelayingNextWave:
+                _timer += deltaTime;
+                if (_timer >= currentWave.NextWaveDelay)
+                {
+                    _timer = 0;
+                    _currentWaveListIndex++;
+
+                    // 判断是否打完了最后一波
+                    if (_currentWaveListIndex >= config.Waves.Count)
+                    {
+                        _state = SpawnState.Finished;
+                        TriggerVictory();
+                    }
+                    else
+                    {
+                        _state = SpawnState.InitWave; // 循环回到初始化新卡池
+                    }
+                }
+                break;
+        }
+
+        // 无论何种状态，始终更新数据层，供 UI 读取
+        ECSManager.Instance.CurrentWave = Mathf.Min(_currentWaveListIndex + 1, config.Waves.Count);
+        ECSManager.Instance.MaxWave = config.Waves.Count;
+    }
+
+    private void SpawnEnemy(string enemyId)
+    {
+        if (Enum.TryParse<EnemyType>(enemyId, out EnemyType type))
+        {
+            Vector3 spawnPos = GetOffScreenSpawnPosition();
+            EnemyFactory.Create(type, spawnPos);
+        }
+        else
+        {
+            Debug.LogError($"[EnemySpawnSystem] 波次配置中出现了无效的敌人类型: {enemyId}");
         }
     }
 
-    /// <summary>
-    /// 计算当前动态生成间隔，基于初始间隔和时间衰减率
-    /// </summary>
-    private float CalculateSpawnInterval(float initialInterval)
-    {
-        return Mathf.Max(MIN_SPAWN_INTERVAL, initialInterval - (_totalTime * SPAWN_INTERVAL_DECAY_RATE));
-    }
-
-    /// <summary>
-    /// 计算当前批次应生成的敌人数量，基于存活时间的波次叠加逻辑
-    /// </summary>
-    private int CalculateSpawnBatchCount()
-    {
-        return 1 + Mathf.FloorToInt(_totalTime / WAVE_INCREMENT_PERIOD);
-    }
-
-    /// <summary>
-    /// 执行单个敌人的生成逻辑
-    /// </summary>
-    private void SpawnEnemy()
-    {
-        // 👇 【核心优化】：使用 System.Enum.GetValues 获取枚举类型的总数量
-        // 这样一来，你在 EnemyType 枚举里加多少种怪物，这里都会自动适配，不用再手动改数字了！
-        int enemyTypeCount = System.Enum.GetValues(typeof(EnemyType)).Length;
-        EnemyType type = (EnemyType)Random.Range(0, enemyTypeCount);
-        
-        // 获取屏幕外的安全生成坐标，防止怪物贴脸生成
-        Vector3 spawnPos = GetOffScreenSpawnPosition();
-        
-        // 使用工厂模式创建敌人实体
-        EnemyFactory.Create(type, spawnPos);
-    }
-
-    /// <summary>
-    /// 获取屏幕外的安全生成坐标，以玩家为中心在指定圆环范围内随机生成
-    /// </summary>
     private Vector3 GetOffScreenSpawnPosition()
     {
         Vector2 centerPos = Vector2.zero;
         var player = ECSManager.Instance.PlayerEntity;
         
-        // 获取当前玩家的逻辑坐标作为生成圆心
         if (player != null && player.IsAlive && player.HasComponent<PositionComponent>())
         {
             var pComp = player.GetComponent<PositionComponent>();
             centerPos = new Vector2(pComp.X, pComp.Y);
         }
 
-        // 在玩家周围的圆环范围内随机生成（确保从屏幕边缘走进来）
-        float angle = Random.Range(0f, Mathf.PI * 2f);
-        float radius = Random.Range(SPAWN_MIN_RADIUS, SPAWN_MAX_RADIUS);
-
-        // 极坐标转换为笛卡尔坐标
+        // 从屏幕外随机极坐标产生
+        float angle = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
+        float radius = UnityEngine.Random.Range(SPAWN_MIN_RADIUS, SPAWN_MAX_RADIUS);
         float x = centerPos.x + Mathf.Cos(angle) * radius;
         float y = centerPos.y + Mathf.Sin(angle) * radius;
 
         return new Vector3(x, y, 0f);
+    }
+
+    private void TriggerVictory()
+    {
+        Debug.Log("<color=green>所有波次清空，游戏胜利！</color>");
+        var eventEntity = ECSManager.Instance.CreateEntity();
+        eventEntity.AddComponent(new GameVictoryEventComponent()); // 抛出事件给 UI 拦截
     }
 }

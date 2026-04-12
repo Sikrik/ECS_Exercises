@@ -1,5 +1,4 @@
-﻿// 路径: Assets/Scripts/ECS/UnityBridge/ECSManager.cs
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -14,6 +13,10 @@ public class ECSManager : MonoBehaviour
     public GameConfig Config;
     public GameObject PlayerPrefab;
     public int Score = 0; 
+
+    // 【新增】波次进度记录
+    public int CurrentWave = 1;
+    public int MaxWave = 1;
 
     private List<Entity> _entities = new List<Entity>();
     private SystemBootstrap _bootstrap;

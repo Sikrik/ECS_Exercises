@@ -27,4 +27,6 @@ public class GameConfig
     public Dictionary<string, PlayerData> PlayerRecipes = new Dictionary<string, PlayerData>();
     public Dictionary<string, EnemyData> EnemyRecipes = new Dictionary<string, EnemyData>();
     public Dictionary<string, BulletData> BulletRecipes = new Dictionary<string, BulletData>();
+    [Header("Wave Settings")]
+    public System.Collections.Generic.List<WaveData> Waves = new System.Collections.Generic.List<WaveData>();
 }

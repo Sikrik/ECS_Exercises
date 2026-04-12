@@ -10,6 +10,7 @@ public class UISyncSystem : SystemBase
 {
     private int _lastScore = -1;       // 缓存上一帧的分数
     private int _lastEnemyCount = -1;  // 缓存上一帧的敌人计数
+    private int _lastWave = -1;        // 缓存上一帧的波次
 
     public UISyncSystem(List<Entity> entities) : base(entities) { }
 
@@ -29,7 +30,7 @@ public class UISyncSystem : SystemBase
         }
 
         // ==========================================
-        // 2. 处理游戏结束事件
+        // 2. 处理游戏失败/死亡事件
         // ==========================================
         var gameOverEvents = GetEntitiesWith<GameOverEventComponent>();
         foreach (var entity in gameOverEvents)
@@ -39,7 +40,18 @@ public class UISyncSystem : SystemBase
         }
 
         // ==========================================
-        // 3. 同步得分变化 (脏标记)
+        // 3. 处理游戏胜利事件
+        // ==========================================
+        var victoryEvents = GetEntitiesWith<GameVictoryEventComponent>();
+        foreach (var entity in victoryEvents)
+        {
+            UIManager.Instance.ShowVictory(ECSManager.Instance.Score);
+            Time.timeScale = 0; // 胜利后暂停游戏时间
+            entity.AddComponent(new PendingDestroyComponent());
+        }
+
+        // ==========================================
+        // 4. 同步得分变化 (脏标记)
         // ==========================================
         if (ECSManager.Instance.Score != _lastScore)
         {
@@ -48,7 +60,7 @@ public class UISyncSystem : SystemBase
         }
 
         // ==========================================
-        // 4. 同步在场敌人计数 (脏标记)
+        // 5. 同步在场敌人计数 (脏标记)
         // ==========================================
         var enemies = GetEntitiesWith<EnemyTag>();
         int currentEnemyCount = enemies.Count;
@@ -60,7 +72,16 @@ public class UISyncSystem : SystemBase
         }
 
         // ==========================================
-        // 5. 同步玩家随身 HUD (血条、冲刺 CD)
+        // 6. 同步波次显示 (脏标记)
+        // ==========================================
+        if (ECSManager.Instance.CurrentWave != _lastWave)
+        {
+            UIManager.Instance.UpdateWave(ECSManager.Instance.CurrentWave, ECSManager.Instance.MaxWave);
+            _lastWave = ECSManager.Instance.CurrentWave;
+        }
+
+        // ==========================================
+        // 7. 同步玩家随身 HUD (血条、冲刺 CD)
         // ==========================================
         var hudEntities = GetEntitiesWith<PlayerHUDComponent, HealthComponent, DashAbilityComponent>();
         foreach (var entity in hudEntities)
@@ -69,13 +90,13 @@ public class UISyncSystem : SystemBase
             var hp = entity.GetComponent<HealthComponent>();
             var dash = entity.GetComponent<DashAbilityComponent>();
 
-            // 5.1 同步 360 度圆环血量
+            // 7.1 同步 360 度圆环血量
             if (hud.HealthRing != null)
             {
                 hud.HealthRing.fillAmount = hp.MaxHealth > 0 ? hp.CurrentHealth / hp.MaxHealth : 0;
             }
 
-            // 5.2 同步冲刺 CD
+            // 7.2 同步冲刺 CD
             if (hud.FlashIcon != null)
             {
                 if (dash.CurrentCD > 0)
@@ -89,9 +110,11 @@ public class UISyncSystem : SystemBase
             }
         }
 
+        // 统一归还查询列表给缓冲池
         ReturnListToPool(enemies);
         ReturnListToPool(healthEvents);
         ReturnListToPool(gameOverEvents);
+        ReturnListToPool(victoryEvents);
         ReturnListToPool(hudEntities);
     }
 }
