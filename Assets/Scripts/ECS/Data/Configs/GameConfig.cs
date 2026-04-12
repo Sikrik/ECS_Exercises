@@ -17,7 +17,11 @@ public class GameConfig
     [Header("Data Recipes")]
     public Dictionary<string, PlayerData> PlayerRecipes = new Dictionary<string, PlayerData>();
     public Dictionary<string, EnemyData> EnemyRecipes = new Dictionary<string, EnemyData>();
-    public Dictionary<string, BulletData> BulletRecipes = new Dictionary<string, BulletData>();
+    
+    // 【新增】升级与经验曲线字典
+    [Header("Upgrade & Level Settings")]
+    public Dictionary<string, UpgradeData> UpgradeRecipes = new Dictionary<string, UpgradeData>();
+    public Dictionary<int, int> LevelExpRecipes = new Dictionary<int, int>(); // Key: 当前等级, Value: 升下一级所需EXP
     
     [Header("Wave Settings")]
     public List<WaveData> Waves = new List<WaveData>();

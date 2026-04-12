@@ -1,0 +1,6 @@
+﻿ID,MaxLevel,Description
+MultiShot,5,多重射击: 额外发射1发子弹
+AddSlow,1,冰霜附魔: 子弹附带减速效果
+AddChain,1,闪电附魔: 子弹附带闪电链
+AddAOE,1,爆裂附魔: 子弹附带范围爆炸
+FireRateUp,5,快速装填: 攻击速度提升10%

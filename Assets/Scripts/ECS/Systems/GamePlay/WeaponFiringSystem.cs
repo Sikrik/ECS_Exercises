@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/Systems/GamePlay/WeaponFiringSystem.cs
+using System.Collections.Generic;
 using UnityEngine;
 
 public class WeaponFiringSystem : SystemBase
@@ -16,7 +17,6 @@ public class WeaponFiringSystem : SystemBase
             var intent = entity.GetComponent<FireIntentComponent>();
             var pos = entity.GetComponent<PositionComponent>();
             
-            // 读取武器修饰器（如果没有则视为默认状态）
             var modifiers = entity.HasComponent<WeaponModifierComponent>() 
                 ? entity.GetComponent<WeaponModifierComponent>() 
                 : null;
@@ -28,8 +28,10 @@ public class WeaponFiringSystem : SystemBase
             {
                 Vector3 spawnPos = new Vector3(pos.X, pos.Y, 0);
                 
-                // 计算多重射击数量与扇形散布
-                int projectileCount = 1 + (modifiers != null ? modifiers.ExtraProjectiles : 0);
+                // 【重构】从动态字典中提取多重射击技能等级
+                int multiShotLevel = modifiers != null ? modifiers.GetLevel("MultiShot") : 0;
+                int projectileCount = 1 + multiShotLevel;
+                
                 float spreadAngle = 15f; // 每颗子弹之间的夹角
                 float startAngle = -spreadAngle * (projectileCount - 1) / 2f;
                 Vector2 baseDir = intent.AimDirection;
@@ -39,13 +41,14 @@ public class WeaponFiringSystem : SystemBase
                     float currentAngle = startAngle + j * spreadAngle;
                     Vector2 finalDir = Quaternion.Euler(0, 0, currentAngle) * baseDir;
                     
-                    // 将修饰器传入工厂
                     BulletFactory.Create(weapon.CurrentBulletType, spawnPos, finalDir, faction, modifiers);
                 }
 
-                // 结算射速提升修饰
-                float rateMult = modifiers != null ? modifiers.FireRateMultiplier : 1f;
-                weapon.CurrentCooldown = weapon.FireRate * rateMult;
+                // 【重构】从动态字典中提取射速提升等级 (例如：每升一级缩短 10% 冷却)
+                float fireRateLevel = modifiers != null ? modifiers.GetLevel("FireRateUp") : 0f;
+                float cooldownReduction = Mathf.Min(0.8f, fireRateLevel * 0.1f); // 最多减免 80%
+                
+                weapon.CurrentCooldown = weapon.FireRate * (1f - cooldownReduction);
             }
 
             entity.RemoveComponent<FireIntentComponent>();

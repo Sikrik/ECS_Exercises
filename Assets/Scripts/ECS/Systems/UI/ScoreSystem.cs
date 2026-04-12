@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/Systems/UI/ScoreSystem.cs
+using System.Collections.Generic;
 
 public class ScoreSystem : SystemBase
 {
@@ -20,6 +21,7 @@ public class ScoreSystem : SystemBase
         if (totalAddedScore > 0)
         {
             ECSManager.Instance.Score += totalAddedScore;
+            var config = ECSManager.Instance.Config;
             
             // 经验与升级判定
             var players = GetEntitiesWith<PlayerTag, ExperienceComponent>();
@@ -28,12 +30,17 @@ public class ScoreSystem : SystemBase
                 var exp = p.GetComponent<ExperienceComponent>();
                 exp.CurrentXP += totalAddedScore;
                 
-                if (exp.CurrentXP >= exp.MaxXP && !p.HasComponent<LevelUpEventComponent>())
+                // 尝试从字典获取当前等级升下一级所需的经验值
+                if (config.LevelExpRecipes.TryGetValue(exp.Level, out int requiredExp))
                 {
-                    exp.CurrentXP -= exp.MaxXP;
-                    exp.MaxXP *= 1.2f; // 每级所需经验增加 20%
-                    exp.Level++;
-                    p.AddComponent(new LevelUpEventComponent());
+                    exp.MaxXP = requiredExp; // 同步给 UI 显示
+                    
+                    if (exp.CurrentXP >= requiredExp && !p.HasComponent<LevelUpEventComponent>())
+                    {
+                        exp.CurrentXP -= requiredExp;
+                        exp.Level++;
+                        p.AddComponent(new LevelUpEventComponent());
+                    }
                 }
             }
         }
