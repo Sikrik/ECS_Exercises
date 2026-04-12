@@ -19,6 +19,5 @@ public class HealthSystem : SystemBase
                 entity.AddComponent(new DeadTag());
             }
         }
-        ReturnListToPool(entities);
     }
 }

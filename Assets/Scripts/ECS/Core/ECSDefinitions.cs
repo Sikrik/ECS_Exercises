@@ -6,21 +6,7 @@ public enum BulletType { Normal, Slow, ChainLightning, AOE }
 // 路径: Assets/Scripts/ECS/Core/ECSDefinitions.cs
 public enum EnemyType { Normal, Fast, Tank, Charger, Ranged } // 新增 Ranged
 public enum PlayerClass { Standard, Heavy, Agile }
-// 玩家血量变化事件
-public struct PlayerHealthChangedEvent 
-{
-    public float CurrentHealth;
-    public float MaxHealth;
-}
 
-// 玩家得分变化事件
-public struct ScoreChangedEvent 
-{
-    public int NewScore;
-}
-
-// 游戏结束事件
-public struct GameOverEvent { }
 
 // --- 新增的单帧事件与视觉意图组件 ---
 

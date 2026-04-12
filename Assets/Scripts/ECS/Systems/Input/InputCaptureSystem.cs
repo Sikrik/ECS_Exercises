@@ -95,7 +95,5 @@ public class InputCaptureSystem : SystemBase
                 player.AddComponent(new DashInputComponent());
             }
         }
-        
-        ReturnListToPool(players);
     }
 }

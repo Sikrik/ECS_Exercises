@@ -27,8 +27,7 @@ public class EventCleanupSystem : SystemBase
             EventPool.Return(evt); 
         }
         
-        // 养成好习惯：查询完毕后，将借来的 List 还给 ECSManager
-        ReturnListToPool(collisionEvents); 
+
 
         // ==========================================
         // 2. 清理并回收【受伤瞬时事件】
@@ -47,7 +46,5 @@ public class EventCleanupSystem : SystemBase
             EventPool.Return(evt); 
         }
         
-        // 养成好习惯：查询完毕后，将借来的 List 还给 ECSManager
-        ReturnListToPool(damageEvents); 
     }
 }

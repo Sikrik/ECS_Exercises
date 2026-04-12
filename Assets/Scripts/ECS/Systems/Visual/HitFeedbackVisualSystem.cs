@@ -25,6 +25,5 @@ public class HitFeedbackVisualSystem : SystemBase
                 view.SpriteRenderer.color = Color.Lerp(Color.white, new Color(1f, 0.5f, 0.5f), lerp);
             }
         }
-        ReturnListToPool(entities);
     }
 }

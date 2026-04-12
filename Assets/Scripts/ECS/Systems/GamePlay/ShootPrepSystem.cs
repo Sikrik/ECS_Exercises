@@ -42,6 +42,6 @@ public class ShootPrepSystem : SystemBase
                 e.AddComponent(new FireIntentComponent(prep.TargetDir)); 
             }
         }
-        ReturnListToPool(preps);
+
     }
 }

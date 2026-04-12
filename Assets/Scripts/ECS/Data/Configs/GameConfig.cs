@@ -5,15 +5,7 @@ using UnityEngine;
 [Serializable]
 public class GameConfig
 {
-    [Header("Player Settings")]
-    public float PlayerMaxHealth;
-    public float PlayerMoveSpeed;
-    public float PlayerInvincibleDuration;
-    public float PlayerMass;          // 新增
-    public float PlayerFireRate;      // 新增
-    public float PlayerDashSpeed;     // 新增
-    public float PlayerDashDuration;  // 新增
-    public float PlayerDashCD;        // 新增
+
 
     [Header("Physics & Bounce Settings")]
     public float CollisionPushDistance = 0.2f; 

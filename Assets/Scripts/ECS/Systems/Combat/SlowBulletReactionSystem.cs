@@ -56,7 +56,6 @@ public class SlowBulletReactionSystem : SystemBase
             }
         }
         
-        // 归还查询列表，保持 0 GC
-        ReturnListToPool(hitEvents);
+
     }
 }

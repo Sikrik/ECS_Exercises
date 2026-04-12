@@ -19,7 +19,7 @@ public class DashCooldownSystem : SystemBase
                 ability.CurrentCD -= deltaTime;
             }
         }
-        ReturnListToPool(abilities);
+
     }
 }
 
@@ -82,7 +82,7 @@ public class DashActivationSystem : SystemBase
             // 无论是否成功冲刺，单帧意图都必须被消耗掉
             e.RemoveComponent<DashInputComponent>();
         }
-        ReturnListToPool(inputs);
+
     }
 }
 
@@ -118,6 +118,6 @@ public class DashStateSystem : SystemBase
                 Debug.Log($"<color=white>[DashStateSystem]</color> 冲刺状态结束");
             }
         }
-        ReturnListToPool(dashing);
+
     }
 }

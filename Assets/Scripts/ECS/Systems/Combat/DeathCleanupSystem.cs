@@ -18,6 +18,5 @@ public class DeathCleanupSystem : SystemBase
                 entity.AddComponent(new PendingDestroyComponent());
             }
         }
-        ReturnListToPool(deadEntities);
     }
 }

@@ -9,7 +9,6 @@ public class ScoreSystem : SystemBase
         var scoreEvents = GetEntitiesWith<ScoreEventComponent>();
         if (scoreEvents.Count == 0) 
         {
-            ReturnListToPool(scoreEvents);
             return;
         }
 
@@ -31,9 +30,9 @@ public class ScoreSystem : SystemBase
         if (scoreChanged)
         {
             ECSManager.Instance.Score += totalAddedScore;
-            EventManager.Broadcast(new ScoreChangedEvent { NewScore = ECSManager.Instance.Score });
+        
         }
 
-        ReturnListToPool(scoreEvents);
+
     }
 }

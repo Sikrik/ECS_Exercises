@@ -42,6 +42,5 @@ public class InvincibleVisualSystem : SystemBase
                 entity.RemoveComponent<InvincibleComponent>();
             }
         }
-        ReturnListToPool(entities);
     }
 }

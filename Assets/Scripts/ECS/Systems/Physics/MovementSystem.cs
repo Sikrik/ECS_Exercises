@@ -89,6 +89,5 @@ public class MovementSystem : SystemBase
             pos.X += vel.VX * deltaTime;
             pos.Y += vel.VY * deltaTime;
         }
-        ReturnListToPool(entities);
     }
 }

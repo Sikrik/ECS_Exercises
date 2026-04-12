@@ -24,7 +24,7 @@ public class SystemBootstrap
         // ==========================================
         var simGroup = new SimulationSystemGroup(entities);
         simGroup.AddSystem(new PhysicsBakingSystem(entities));    
-        simGroup.AddSystem(new PlayerControlSystem(entities));    
+
         simGroup.AddSystem(new WeaponCooldownSystem(entities));   
         simGroup.AddSystem(new PlayerAimingSystem(entities));     
         simGroup.AddSystem(new WeaponFiringSystem(entities, Grid)); 

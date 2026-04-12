@@ -28,7 +28,5 @@ public class RenderSyncSystem : SystemBase
                 view.SpriteRenderer.color = baseColor.Color;
             }
         }
-        
-        ReturnListToPool(entities);
     }
 }

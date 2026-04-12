@@ -55,7 +55,6 @@ public class DamageSystem : SystemBase
                 }
             }
         }
-        
-        ReturnListToPool(hitEvents);
+
     }
 }

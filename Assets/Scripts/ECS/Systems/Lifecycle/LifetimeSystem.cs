@@ -31,6 +31,5 @@ public class LifetimeSystem : SystemBase
             }
            
         }
-        ReturnListToPool(entities);
     }
 }

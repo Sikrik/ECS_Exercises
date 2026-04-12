@@ -81,7 +81,7 @@ public class EnemySpawnSystem : SystemBase
                 {
                     if (e.IsAlive && !e.HasComponent<DeadTag>()) aliveCount++;
                 }
-                ReturnListToPool(enemies);
+
 
                 if (aliveCount == 0)
                 {

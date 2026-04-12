@@ -110,11 +110,6 @@ public class UISyncSystem : SystemBase
             }
         }
 
-        // 统一归还查询列表给缓冲池
-        ReturnListToPool(enemies);
-        ReturnListToPool(healthEvents);
-        ReturnListToPool(gameOverEvents);
-        ReturnListToPool(victoryEvents);
-        ReturnListToPool(hudEntities);
+
     }
 }

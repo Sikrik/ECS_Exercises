@@ -16,6 +16,6 @@ public class WeaponCooldownSystem : SystemBase
                 weapon.CurrentCooldown -= deltaTime;
             }
         }
-        ReturnListToPool(armedEntities);
+
     }
 }

@@ -67,6 +67,6 @@ public class ChargerAISystem : SystemBase
                 }
             }
         }
-        ReturnListToPool(chargers);
+
     }
 }

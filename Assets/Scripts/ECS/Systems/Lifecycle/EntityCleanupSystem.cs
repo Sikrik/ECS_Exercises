@@ -56,7 +56,5 @@ public class EntityCleanupSystem : SystemBase
             // ==========================================
             ECSManager.Instance.RemoveEntityInternal(entity);
         }
-
-        ReturnListToPool(deadEntities);
     }
 }

@@ -77,6 +77,5 @@ public class ChainLightningReactionSystem : SystemBase
             // 触发完弹射后移除组件，防止穿透时重复触发闪电链
             bullet.RemoveComponent<ChainComponent>();
         }
-        ReturnListToPool(hitEvents);
     }
 }

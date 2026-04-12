@@ -39,7 +39,6 @@ public class VFXInstantiationSystem : SystemBase
             if (!evtEntity.HasComponent<PendingDestroyComponent>())
                 evtEntity.AddComponent(new PendingDestroyComponent());
         }
-        ReturnListToPool(events);
 
         // ==========================================
         // 2. 处理蓄力范围预测可视化 (自适应红框)
@@ -106,7 +105,7 @@ public class VFXInstantiationSystem : SystemBase
                 t.rotation = Quaternion.Euler(0, 0, angle);
             }
         }
-        ReturnListToPool(previews);
+
         
         // ==========================================
         // 3. 清理已结束蓄力的预览物体
@@ -122,7 +121,7 @@ public class VFXInstantiationSystem : SystemBase
                 e.RemoveComponent<ActiveDashPreviewComponent>();
             }
         }
-        ReturnListToPool(activePreviews);
+
     }
 
     // ==========================================

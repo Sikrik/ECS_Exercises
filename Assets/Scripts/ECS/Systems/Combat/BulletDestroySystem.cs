@@ -47,6 +47,6 @@ public class BulletDestroySystem : SystemBase
                 }
             }
         }
-        ReturnListToPool(hitEvents);
+
     }
 }

@@ -45,6 +45,6 @@ public class WeaponFiringSystem : SystemBase
             // 无论这一帧是否开火成功（可能因为 CD 没好），单帧意图都会被消耗/抹除
             entity.RemoveComponent<FireIntentComponent>();
         }
-        ReturnListToPool(firingEntities);
+
     }
 }

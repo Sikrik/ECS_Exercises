@@ -89,13 +89,4 @@ public abstract class SystemBase
         return list;
     }
     
-    /// <summary>
-    /// 【重要改动】归还列表。
-    /// 现在的逻辑下，此方法不再主动调用 ReturnListToPool，
-    /// 而是交给 ECSManager 在帧末统一回收，从而允许跨系统共享 List。
-    /// </summary>
-    protected void ReturnListToPool(List<Entity> list)
-    {
-        // 故意留空。如果手动回收了，QueryCache 里的引用就会指向一个被 Clear 掉的空列表。
-    }
 }

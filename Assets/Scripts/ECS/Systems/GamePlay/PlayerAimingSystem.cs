@@ -35,6 +35,6 @@ public class PlayerAimingSystem : SystemBase
                 }
             }
         }
-        ReturnListToPool(players);
+
     }
 }

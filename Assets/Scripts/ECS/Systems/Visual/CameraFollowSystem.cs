@@ -22,6 +22,5 @@ public class CameraFollowSystem : SystemBase
             Vector3 target = new Vector3(pos.X, pos.Y, _mainCam.transform.position.z);
             _mainCam.transform.position = Vector3.Lerp(_mainCam.transform.position, target, 0.1f);
         }
-        ReturnListToPool(players);
     }
 }

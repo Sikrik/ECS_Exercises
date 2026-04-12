@@ -21,6 +21,5 @@ public class PlayerDeathSystem : SystemBase
             // 移除 PlayerTag 防止重复触发
             deadPlayers[0].RemoveComponent<PlayerTag>();
         }
-        ReturnListToPool(deadPlayers);
     }
 }

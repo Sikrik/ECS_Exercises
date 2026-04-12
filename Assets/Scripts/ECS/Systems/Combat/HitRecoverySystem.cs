@@ -28,6 +28,6 @@ public class HitRecoverySystem : SystemBase
                 entity.RemoveComponent<HitRecoveryComponent>();
             }
         }
-        ReturnListToPool(entities);
+        
     }
 }

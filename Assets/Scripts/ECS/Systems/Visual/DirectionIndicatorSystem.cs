@@ -36,6 +36,6 @@ public class DirectionIndicatorSystem : SystemBase
                 }
             }
         }
-        ReturnListToPool(entities);
+        
     }
 }

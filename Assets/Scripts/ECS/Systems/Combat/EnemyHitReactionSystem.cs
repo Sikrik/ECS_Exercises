@@ -32,6 +32,6 @@ public class EnemyHitReactionSystem : SystemBase
             }
         }
         
-        ReturnListToPool(victims);
+
     }
 }

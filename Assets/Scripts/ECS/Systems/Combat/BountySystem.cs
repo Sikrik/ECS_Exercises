@@ -20,6 +20,6 @@ public class BountySystem : SystemBase
             // 剥夺悬赏组件，防止下一帧重复发钱
             entity.RemoveComponent<BountyComponent>();
         }
-        ReturnListToPool(entities);
+        
     }
 }

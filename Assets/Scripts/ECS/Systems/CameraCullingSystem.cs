@@ -49,6 +49,5 @@ public class CameraCullingSystem : SystemBase
                 view.SpriteRenderer.enabled = true;  // 回到屏幕内恢复渲染
             }
         }
-        ReturnListToPool(entities);
     }
 }

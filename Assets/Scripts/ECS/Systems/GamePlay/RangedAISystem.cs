@@ -61,6 +61,6 @@ public class RangedAISystem : SystemBase
                 }
             }
         }
-        ReturnListToPool(rangedEnemies);
+
     }
 }

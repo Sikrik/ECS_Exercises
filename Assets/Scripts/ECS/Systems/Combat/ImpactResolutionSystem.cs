@@ -84,7 +84,7 @@ public class ImpactResolutionSystem : SystemBase
             }
         }
         
-        ReturnListToPool(hitEvents);
+
     }
 
     /// <summary>
