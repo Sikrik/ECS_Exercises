@@ -31,15 +31,19 @@ public class SystemBootstrap
         simGroup.AddSystem(new EnemySpawnSystem(entities));       
         simGroup.AddSystem(new EnemyTrackingSystem(entities));    
         simGroup.AddSystem(new ChargerAISystem(entities));        
-        simGroup.AddSystem(new RangedAISystem(entities));      // 👇 注册：远程索敌与红外线逻辑
+        simGroup.AddSystem(new RangedAISystem(entities));      
         simGroup.AddSystem(new DashPrepSystem(entities));         
-        simGroup.AddSystem(new ShootPrepSystem(entities));     // 👇 注册：射击蓄力结算与开火指派
+        simGroup.AddSystem(new ShootPrepSystem(entities));     
         simGroup.AddSystem(new DashCooldownSystem(entities)); 
         simGroup.AddSystem(new DashActivationSystem(entities));             
         simGroup.AddSystem(new DashStateSystem(entities));         
         simGroup.AddSystem(Grid);                                 
         simGroup.AddSystem(new KnockbackSystem(entities));        
         simGroup.AddSystem(new MovementSystem(entities));         
+        
+        // 👇 【修复 1】将 ViewSyncSystem 移到这里，确保物理检测前 Transform 坐标已更新
+        simGroup.AddSystem(new ViewSyncSystem(entities));         
+        
         simGroup.AddSystem(new PhysicsDetectionSystem(entities)); 
         simGroup.AddSystem(new ImpactResolutionSystem(entities)); 
         simGroup.AddSystem(new BulletDestroySystem(entities));
@@ -72,7 +76,8 @@ public class SystemBootstrap
         presGroup.AddSystem(new CameraCullingSystem(entities));   
         presGroup.AddSystem(new CameraFollowSystem(entities));
         presGroup.AddSystem(new GhostTrailSystem(entities));      
-        presGroup.AddSystem(new ViewSyncSystem(entities));        
+        
+        // ❌ ViewSyncSystem 已从这里移除
         
         presGroup.AddSystem(new DirectionIndicatorSystem(entities)); 
 

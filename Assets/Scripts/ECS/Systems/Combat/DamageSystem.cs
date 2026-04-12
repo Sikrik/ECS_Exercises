@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/Systems/Combat/DamageSystem.cs
+using System.Collections.Generic;
 
 /// <summary>
 /// 纯粹的伤害结算系统 (高内聚改造版)
@@ -40,7 +41,7 @@ public class DamageSystem : SystemBase
                 // 1. 扣除血量
                 hp.CurrentHealth -= dmg.Value;
 
-                // 2. 【核心修改】读取攻击源的物理反馈配置，判断是否该造成硬直
+                // 2. 读取攻击源的物理反馈配置，判断是否该造成硬直
                 bool causeRecovery = false;
                 var feedback = source.GetComponent<ImpactFeedbackComponent>();
                 if (feedback != null) 
@@ -48,13 +49,18 @@ public class DamageSystem : SystemBase
                     causeRecovery = feedback.CauseHitRecovery;
                 }
 
-                // 3. 派发受伤事件，带上硬直标识
-                if (!target.HasComponent<DamageTakenEventComponent>())
+                // 👇 【修复 2】防覆盖与内存泄漏处理（改为累加伤害和合并状态）
+                var existingEvt = target.GetComponent<DamageTakenEventComponent>();
+                if (existingEvt != null)
+                {
+                    existingEvt.DamageAmount += dmg.Value;
+                    existingEvt.CauseHitRecovery = existingEvt.CauseHitRecovery || causeRecovery;
+                }
+                else
                 {
                     target.AddComponent(EventPool.GetDamageEvent(dmg.Value, causeRecovery));
                 }
             }
         }
-
     }
 }

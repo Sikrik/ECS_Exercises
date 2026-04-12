@@ -1,5 +1,5 @@
-﻿ID,Speed,Damage,LifeTime,ShootInterval,SlowRatio,SlowDuration,ChainTargets,ChainRange,AOERadius,HitRadius
-Normal,12,15,3,0.5,0,0,0,0,0,0.2
-Slow,12,15,3,0.4,0.5,3,0,0,0,0.2
-ChainLightning,12,10,3,0.6,0,0,4,5,0,0.2
-AOE,12,25,3,0.8,0,0,0,0,3,0.3
+﻿ID,Speed,Damage,LifeTime,ShootInterval,SlowRatio,SlowDuration,ChainTargets,ChainRange,AOERadius,HitRadius,Traits
+Normal,12,15,3,0.5,0,0,0,0,0,0.2,Pierce:3
+Slow,12,15,3,0.4,0.5,3,0,0,0,0.2,
+ChainLightning,12,10,3,0.6,0,0,4,5,0,0.2,
+AOE,12,25,3,0.8,0,0,0,0,3,0.3,

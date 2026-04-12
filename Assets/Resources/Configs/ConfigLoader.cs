@@ -143,7 +143,12 @@ public static class ConfigLoader
                 ChainTargets = ParseInt(cols[7]),
                 ChainRange = ParseFloat(cols[8]),
                 AOERadius = ParseFloat(cols[9]),
-                HitRadius = cols.Length > 10 ? ParseFloat(cols[10]) : 0.2f
+                HitRadius = cols.Length > 10 ? ParseFloat(cols[10]) : 0.2f,
+                
+                // 👇 【新增】解析第 12 列 (索引 11) 的 Traits 穿透特性
+                Traits = (cols.Length > 11 && !string.IsNullOrWhiteSpace(cols[11])) 
+                    ? cols[11].Trim().Split('|') 
+                    : new string[0]
             };
             config.BulletRecipes[data.Id] = data;
         }

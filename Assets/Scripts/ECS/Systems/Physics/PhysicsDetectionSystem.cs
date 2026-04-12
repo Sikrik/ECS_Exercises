@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/Systems/Physics/PhysicsDetectionSystem.cs
+using System.Collections.Generic;
 using UnityEngine;
 
 public class PhysicsDetectionSystem : SystemBase
@@ -16,7 +17,7 @@ public class PhysicsDetectionSystem : SystemBase
         for (int i = physicsEntities.Count - 1; i >= 0; i--)
         {
             var entity = physicsEntities[i];
-            if (entity.HasComponent<PendingDestroyComponent>()) continue;
+            if (!entity.IsAlive || entity.HasComponent<PendingDestroyComponent>()) continue;
 
             var pPhys = entity.GetComponent<PhysicsColliderComponent>();
             var filter = entity.GetComponent<CollisionFilterComponent>();
@@ -46,7 +47,7 @@ public class PhysicsDetectionSystem : SystemBase
                         if (_castResults[j].collider != pPhys.Collider)
                         {
                             CreateEvent(entity, _castResults[j].collider.gameObject, _castResults[j].normal);
-                            break; 
+                            // 👇 【修复 3】删除了这里的 break; 让电磁炮等穿透类子弹能把线上所有敌人都判定完
                         }
                     }
                 }

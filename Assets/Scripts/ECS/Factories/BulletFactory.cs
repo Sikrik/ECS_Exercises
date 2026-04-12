@@ -25,7 +25,6 @@ public static class BulletFactory
         bullet.AddComponent(new TraceComponent(position.x, position.y));
         
         // --- 2. 补充通用物理组件 ---
-        // 【核心修改】：移除硬编码的 0.2f，改为读取配方中的 HitRadius
         bullet.AddComponent(new CollisionComponent(recipe.HitRadius));
         bullet.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Enemy", "Player"))); 
         bullet.AddComponent(new NeedsPhysicsBakingTag());
@@ -52,6 +51,21 @@ public static class BulletFactory
         if (recipe.AOERadius > 0)
         {
             bullet.AddComponent(new AOEComponent(recipe.AOERadius));
+        }
+
+        // 👇 【修复 4】如果子弹配方包含穿透特性，赋予穿透组件
+        if (recipe.Traits != null)
+        {
+            foreach (var trait in recipe.Traits)
+            {
+                if (trait.StartsWith("Pierce:")) 
+                {
+                    if (int.TryParse(trait.Split(':')[1], out int maxPierces))
+                    {
+                        bullet.AddComponent(new PierceComponent(maxPierces));
+                    }
+                }
+            }
         }
 
         return bullet;
