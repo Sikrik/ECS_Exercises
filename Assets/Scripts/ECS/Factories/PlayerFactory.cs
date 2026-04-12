@@ -59,7 +59,6 @@ public static class PlayerFactory
         // ==========================================
         // 物理、机制与渲染基础组件
         // ==========================================
-        player.AddComponent(new BouncyTag());
         player.AddComponent(new ImpactFeedbackComponent(bounce: true, recovery: false));
         player.AddComponent(new FactionComponent(FactionType.Player));
         player.AddComponent(new NeedsPhysicsBakingTag());

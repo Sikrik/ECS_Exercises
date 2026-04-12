@@ -16,10 +16,6 @@ public class EnemyTag : Component { }
 /// </summary>
 public class BulletTag : Component { }
 
-/// <summary>
-/// 弹性碰撞标签组件，用于标记具有弹性碰撞行为的实体
-/// </summary>
-public class BouncyTag : Component { }
 
 /// <summary>
 /// 物理烘焙标签：标记实体需要初始化物理碰撞器数据 (交由 Simulation 组处理)

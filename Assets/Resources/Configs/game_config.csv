@@ -1,12 +1,4 @@
 ﻿Key,Value,Description
-PlayerMaxHealth,100,玩家最大血量
-PlayerMoveSpeed,6,玩家移动速度
-PlayerInvincibleDuration,1,玩家受击无敌时间
 CollisionPushDistance,0.2,碰撞挤压距离
 CollisionBounceForce,5,弹性碰撞反弹力度
 InitialSpawnInterval,2,初始刷怪间隔
-PlayerMass,100,玩家质量
-PlayerFireRate,0.2,玩家射击间隔
-PlayerDashSpeed,18,玩家冲刺速度
-PlayerDashDuration,0.2,玩家冲刺持续时间
-PlayerDashCD,1.5,玩家冲刺冷却时间
