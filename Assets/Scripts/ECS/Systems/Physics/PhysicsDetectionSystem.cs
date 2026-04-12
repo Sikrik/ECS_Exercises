@@ -47,7 +47,6 @@ public class PhysicsDetectionSystem : SystemBase
                         if (_castResults[j].collider != pPhys.Collider)
                         {
                             CreateEvent(entity, _castResults[j].collider.gameObject, _castResults[j].normal);
-                            // 👇 【修复 3】删除了这里的 break; 让电磁炮等穿透类子弹能把线上所有敌人都判定完
                         }
                     }
                 }
@@ -64,7 +63,6 @@ public class PhysicsDetectionSystem : SystemBase
                         ColliderDistance2D distInfo = pPhys.Collider.Distance(_overlapResults[j]);
                         if (distInfo.isOverlapped)
                         {
-                            // 传入正常的碰撞法线（从 B 指向 A）
                             CreateEvent(entity, _overlapResults[j].gameObject, distInfo.normal);
                         }
                     }
@@ -80,6 +78,18 @@ public class PhysicsDetectionSystem : SystemBase
         Entity target = ECSManager.Instance.GetEntityFromGameObject(targetGo);
         if (target != null && target.IsAlive && !target.HasComponent<PendingDestroyComponent>())
         {
+            // 👇 【核心修复】：在源头掐断穿透弹的重复碰撞事件
+            var pierce = source.GetComponent<PierceComponent>();
+            if (pierce != null)
+            {
+                // 如果已经击中过该敌人，或者穿透目标数已达上限，直接拒绝生成事件
+                if (pierce.HitHistory.Contains(target) || pierce.HitHistory.Count >= pierce.MaxPierces) 
+                    return;
+                
+                // 记录击中历史，防止同一帧或后续帧重复触发事件
+                pierce.HitHistory.Add(target);
+            }
+
             Entity eventEntity = ECSManager.Instance.CreateEntity();
             // 使用对象池获取事件组件
             eventEntity.AddComponent(EventPool.GetCollisionEvent(source, target, normal));

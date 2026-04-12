@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/Systems/GamePlay/DashPrepSystem.cs
+using System.Collections.Generic;
 
 public class DashPrepSystem : SystemBase
 {
@@ -12,9 +13,7 @@ public class DashPrepSystem : SystemBase
         {
             var e = preps[i];
 
-            // ==========================================
-            // 【新增】打断逻辑：如果死亡、受到硬直或被击退，中断蓄力
-            // ==========================================
+            // 打断逻辑：如果死亡、受到硬直或被击退，中断蓄力
             if (e.HasComponent<DeadTag>() || e.HasComponent<HitRecoveryComponent>() || e.HasComponent<KnockbackComponent>())
             {
                 e.RemoveComponent<DashPrepStateComponent>();
@@ -26,7 +25,13 @@ public class DashPrepSystem : SystemBase
             var prep = e.GetComponent<DashPrepStateComponent>();
             prep.Timer -= deltaTime;
             
-            // 蓄力期间强行停止移动
+            // 👇 【核心修复】：蓄力期间强行停止所有输入意图和速度，防止起步前漂移
+            if (e.HasComponent<MoveInputComponent>())
+            {
+                var input = e.GetComponent<MoveInputComponent>();
+                input.X = 0; input.Y = 0;
+            }
+            
             if (e.HasComponent<VelocityComponent>())
             {
                 var vel = e.GetComponent<VelocityComponent>();
