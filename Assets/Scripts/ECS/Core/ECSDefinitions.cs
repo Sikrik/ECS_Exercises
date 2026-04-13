@@ -80,3 +80,7 @@ public class MeleeDoubleHitPendingComponent : Component
         Timer = delay;
     }
 }
+// ==========================================
+// 标记子弹已经发生过碰撞的标签
+// ==========================================
+public class HitTag : Component { }

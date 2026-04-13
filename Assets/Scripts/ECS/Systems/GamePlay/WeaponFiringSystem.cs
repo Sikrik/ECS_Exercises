@@ -14,10 +14,7 @@ public class WeaponFiringSystem : SystemBase
         {
             var entity = firingEntities[i];
 
-            // ==========================================
-            // 【核心修复 2】：在这里拦截近战！
-            // 这样既保留了 UI 的丝滑转向，又绝对不会射出子弹！
-            // ==========================================
+            // 双重保险：就算近战不小心拿到了开火意图，也直接掐灭，绝不射出子弹！
             if (entity.HasComponent<MeleeCombatComponent>())
             {
                 entity.RemoveComponent<FireIntentComponent>();
@@ -62,6 +59,7 @@ public class WeaponFiringSystem : SystemBase
                 audioEvent.AddComponent(new AudioPlayEventComponent("Shoot"));
             }
 
+            // 射击完成，正常移除意图
             entity.RemoveComponent<FireIntentComponent>();
         }
     }
