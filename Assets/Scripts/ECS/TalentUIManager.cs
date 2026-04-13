@@ -1,33 +1,41 @@
 ﻿using UnityEngine;
 using TMPro;
 
+/// <summary>
+/// 局外天赋界面管理器
+/// 职责：根据 Talent_Config.csv 动态生成天赋升级格子，并刷新金币显示。
+/// </summary>
 public class TalentUIManager : MonoBehaviour
 {
     [Header("Global UI")]
-    public TextMeshProUGUI TotalGoldText;
+    public TextMeshProUGUI TotalGoldText; // 关联显示金币的文本
 
     [Header("Dynamic Talent Setup")]
-    public Transform TalentListRoot;      // 列表的父节点 (通常是 ScrollView 的 Content)
-    public GameObject TalentItemPrefab;   // 单个天赋条目的预制体
+    public Transform TalentListRoot;      // 关联 ScrollView 的 Content 节点
+    public GameObject TalentItemPrefab;   // 关联你制作的天赋格子预制体
 
     void OnEnable()
     {
-        UpdateAllUI();
+        UpdateAllUI(); // 界面打开时刷新
     }
 
     // 刷新整个天赋界面的显示
     public void UpdateAllUI()
     {
-        if (GameDataManager.Instance == null || ECSManager.Instance == null) return;
+        if (GameDataManager.Instance == null || ECSManager.Instance == null) 
+        {
+            Debug.LogError("[TalentUI] 错误：GameDataManager 或 ECSManager 实例为空！");
+            return;
+        }
 
-        // 1. 更新全局金币
+        // 1. 更新全局金币显示
         int currentGold = GameDataManager.Instance.SaveData.TotalGold;
         if (TotalGoldText != null)
         {
             TotalGoldText.text = $"当前金币: {currentGold}";
         }
 
-        // 2. 清理旧的天赋条目
+        // 2. 清理旧的天赋条目（防止重复生成）
         foreach (Transform child in TalentListRoot)
         {
             Destroy(child.gameObject);
@@ -36,23 +44,24 @@ public class TalentUIManager : MonoBehaviour
         // 3. 动态生成天赋条目
         var talentRecipes = ECSManager.Instance.Config.TalentRecipes;
 
+        // 🔍 调试：检查配置表是否成功加载
+        Debug.Log($"[TalentUI] 准备生成天赋，当前配置表中的条目数量: {talentRecipes.Count}");
+
         foreach (var talentKvp in talentRecipes)
         {
             TalentData talentData = talentKvp.Value;
-            int currentLevel = GameDataManager.Instance.GetTalentLevel(talentData.Id);
             
-            // 计算当前升级所需的金币消耗
-            int currentCost = talentData.CostBase + (currentLevel * talentData.CostIncrement);
-
-            // 实例化预制体
+            // 实例化预制体到 Content 下
             GameObject itemObj = Instantiate(TalentItemPrefab, TalentListRoot);
             
-            // 假设预制体上挂载了处理单一 UI 元素的脚本：TalentItemUI
-            // 此处通过 SendMessage 传递或者如果你实现了脚本可以直接 GetComponent调用
+            // 获取格子脚本并初始化
             var itemUI = itemObj.GetComponent<TalentItemUI>();
             if (itemUI != null)
             {
-                // 初始化该条目的 UI，并绑定点击回调闭包
+                int currentLevel = GameDataManager.Instance.GetTalentLevel(talentData.Id);
+                int currentCost = talentData.CostBase + (currentLevel * talentData.CostIncrement);
+
+                // 初始化 UI 表现，并绑定点击升级的回调
                 itemUI.Setup(
                     talentData, 
                     currentLevel, 
@@ -61,16 +70,19 @@ public class TalentUIManager : MonoBehaviour
                     () => OnUpgradeClick(talentData.Id, currentCost)
                 );
             }
+            else
+            {
+                Debug.LogWarning($"[TalentUI] 预制体 {TalentItemPrefab.name} 上缺少 TalentItemUI 脚本！");
+            }
         }
     }
 
-    // 处理任何天赋的升级点击逻辑
+    // 处理升级点击
     private void OnUpgradeClick(string talentId, int cost)
     {
         if (GameDataManager.Instance.TryUpgradeTalent(talentId, cost))
         {
-            // 升级成功后立刻刷新整个列表UI
-            UpdateAllUI(); 
+            UpdateAllUI(); // 升级成功后立刻刷新界面
         }
     }
 }

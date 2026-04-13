@@ -1,34 +1,46 @@
-﻿// 供你挂载在 TalentItemPrefab 上的辅助脚本
-using UnityEngine;
+﻿using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 
+/// <summary>
+/// 单个天赋格子的 UI 控制脚本
+/// </summary>
 public class TalentItemUI : MonoBehaviour
 {
+    [Header("UI References")]
     public TextMeshProUGUI NameText;
     public TextMeshProUGUI DescriptionText;
     public TextMeshProUGUI LevelText;
     public TextMeshProUGUI CostText;
     public Button UpgradeButton;
 
+    /// <summary>
+    /// 设置格子的数据并显示
+    /// </summary>
     public void Setup(TalentData data, int currentLevel, int currentCost, int currentGold, System.Action onClickAction)
     {
-        NameText.text = data.Name;
-        DescriptionText.text = data.Description;
-        LevelText.text = $"LV.{currentLevel} / {data.MaxLevel}";
+        if (NameText) NameText.text = data.Name;
+        if (DescriptionText) DescriptionText.text = data.Description;
+        if (LevelText) LevelText.text = $"等级: {currentLevel} / {data.MaxLevel}";
         
+        // 满级判定
         if (currentLevel >= data.MaxLevel)
         {
-            CostText.text = "已满级";
-            UpgradeButton.interactable = false;
+            if (CostText) CostText.text = "已满级";
+            if (UpgradeButton) UpgradeButton.interactable = false;
         }
         else
         {
-            CostText.text = $"消耗: {currentCost}";
-            UpgradeButton.interactable = currentGold >= currentCost;
+            if (CostText) CostText.text = $"消耗: {currentCost}";
+            // 金币不足时按钮变灰
+            if (UpgradeButton) UpgradeButton.interactable = currentGold >= currentCost;
         }
 
-        UpgradeButton.onClick.RemoveAllListeners();
-        UpgradeButton.onClick.AddListener(() => onClickAction?.Invoke());
+        // 绑定按钮事件
+        if (UpgradeButton)
+        {
+            UpgradeButton.onClick.RemoveAllListeners();
+            UpgradeButton.onClick.AddListener(() => onClickAction?.Invoke());
+        }
     }
 }

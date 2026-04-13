@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -83,12 +82,8 @@ public class UpgradeUIManager : MonoBehaviour
         {
             var modifiers = _targetPlayer.GetComponent<WeaponModifierComponent>();
             
-            // 提升该技能的等级
-            if (!modifiers.UpgradeLevels.ContainsKey(upgradeId))
-            {
-                modifiers.UpgradeLevels[upgradeId] = 0;
-            }
-            modifiers.UpgradeLevels[upgradeId]++;
+            // 修复报错：直接调用 WeaponModifierComponent 中定义好的增加等级方法
+            modifiers.AddModifier(upgradeId, 1);
         }
 
         UpgradePanel.SetActive(false);
