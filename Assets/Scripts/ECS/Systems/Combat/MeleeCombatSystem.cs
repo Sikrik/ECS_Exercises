@@ -126,7 +126,11 @@ public class MeleeCombatSystem : SystemBase
                 // 角度判定：如果是 360 度则直接命中，否则计算夹角
                 if (finalAngle >= 360f || Vector2.Angle(attackDir, toEnemy) <= finalAngle * 0.5f)
                 {
-                    float dmg = 35f; // 此处可接入 p.GetComponent<WeaponModifierComponent>().GlobalDamageMultiplier
+                    float dmg = 35f; 
+                    if (p.HasComponent<WeaponModifierComponent>())
+                    {
+                        dmg *= p.GetComponent<WeaponModifierComponent>().GlobalDamageMultiplier;
+                    }
 
                     // 将玩家 (p) 设为 Source，这样 DamageSystem 就能触发全局吸血
                     e.AddComponent(new DamageEventComponent { 
@@ -143,7 +147,8 @@ public class MeleeCombatSystem : SystemBase
         vfx.AddComponent(new VFXSpawnEventComponent { 
             VFXType = "MeleeSlash", 
             Position = new Vector3(pPos.X, pPos.Y, 0),
-            EndPosition = new Vector3(pPos.X + attackDir.x * finalRadius, pPos.Y + attackDir.y * finalRadius, 0)
+            EndPosition = new Vector3(pPos.X + attackDir.x * finalRadius, pPos.Y + attackDir.y * finalRadius, 0),
+            NumericParam = finalAngle // 【关键修改】：把算好的攻击角度传给表现层系统生成网格
         });
 
         // 移除当前挥砍意图

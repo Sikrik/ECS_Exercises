@@ -33,6 +33,7 @@ public class GameObject_PoolManager : MonoBehaviour
     public GameObject LightningChainVFX;
     public GameObject ExplosionVFXPrefab;
     public GameObject DashPreviewPrefab;
+    public GameObject MeleeSlashVFXPrefab;
 
     private Dictionary<GameObject, Stack<GameObject>> _pools = new Dictionary<GameObject, Stack<GameObject>>();
     private Dictionary<GameObject, Transform> _poolRoots = new Dictionary<GameObject, Transform>();

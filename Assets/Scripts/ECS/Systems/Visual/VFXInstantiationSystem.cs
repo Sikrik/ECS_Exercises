@@ -47,28 +47,44 @@ public class VFXInstantiationSystem : SystemBase
     // ==========================================
     private void SetupMeleeSlashVFX(VFXSpawnEventComponent evt)
     {
-        // 假设你在 GameObject_PoolManager 中预留了一个叫 MeleeSlashPrefab 的槽位
-        // 如果没有，你可以暂时借用 ExplosionVFXPrefab 或在 PoolManager 中新增引用
-        GameObject prefab = GameObject_PoolManager.Instance.ExplosionVFXPrefab; 
+        // 建议你在 GameObject_PoolManager 里专门加一个 MeleeSlashPrefab，
+        // 这里暂时用 ExplosionVFXPrefab 占位，记得去 Unity 编辑器里把 Prefab 换成挂了生成器和 Shader 的物体！
+        GameObject prefab = GameObject_PoolManager.Instance.MeleeSlashVFXPrefab;
         if (prefab == null) return;
 
-        // 在逻辑位置生成特效
         GameObject go = GameObject_PoolManager.Instance.Spawn(prefab, evt.Position, Quaternion.identity);
         
-        // 计算攻击方向以旋转特效
+        // 1. 获取半径和方向
         Vector2 direction = (evt.EndPosition - evt.Position).normalized;
+        float radius = Vector2.Distance(evt.Position, evt.EndPosition);
+
+        // 2. 旋转特效指向攻击方向
         if (direction.sqrMagnitude > 0.001f)
         {
-            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-            go.transform.rotation = Quaternion.Euler(0, 0, angle);
+            float lookAngle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+            go.transform.rotation = Quaternion.Euler(0, 0, lookAngle);
         }
 
-        // 自动管理生命周期：创建一个表现层实体来持有这个 GameObject
+        // ==========================================
+        // 3. 【关键修改】调用你写的网格生成器！
+        // ==========================================
+        var meshGenerator = go.GetComponent<MeleeSlashMeshGenerator>();
+        if (meshGenerator != null)
+        {
+            // 读取传过来的角度 (默认90度)
+            float angle = evt.NumericParam > 0 ? evt.NumericParam : 90f;
+            // 生成扇形网格 (半径, 角度, 分段数越高越圆滑)
+            meshGenerator.GenerateSlashMesh(radius, angle, 20);
+        }
+        else
+        {
+            Debug.LogWarning("VFX Prefab 上没有挂载 MeleeSlashMeshGenerator 脚本！");
+        }
+
+        // 4. 自动管理生命周期
         Entity slashVfxEntity = ECSManager.Instance.CreateEntity();
         slashVfxEntity.AddComponent(new ViewComponent(go, prefab));
-        
-        // 赋予短暂寿命（如 0.2 秒），随后由 LifetimeSystem 自动回收
-        slashVfxEntity.AddComponent(new LifetimeComponent { Duration = 0.2f });
+        slashVfxEntity.AddComponent(new LifetimeComponent { Duration = 0.2f }); // 刀光残留0.2秒
     }
 
     // ==========================================

@@ -16,12 +16,12 @@ public class AttachedVFXComponent : Component
 }
 public class VFXSpawnEventComponent : Component
 {
-    public string VFXType; // "Explosion", "Lightning" 等
+    public string VFXType;
     public Vector3 Position;
-    
-    // ======== 新增缺失的字段 ========
-    public Entity AttachTarget;  // 绑定的目标（如减速特效绑定在敌人身上）
-    public Vector3 EndPosition;  // 特效结束坐标（用于闪电链等需要两点的特效）
+    public Vector3 EndPosition;
+    public Entity AttachTarget;
+    // 【新增】通用参数，用来传递角度或特效特殊数值
+    public float NumericParam = 90f; 
 }
 // 用于记录实体当前正在显示的冲刺预警红框物体，方便表现层随时更新和回收它
 public class ActiveDashPreviewComponent : Component
