@@ -37,6 +37,17 @@ public class ECSManager : MonoBehaviour
 
     void Awake()
     {
+        // ==========================================
+        // 【核心修复】：单例冲突处理与场景净化
+        // 如果检测到内存中已经有一个 ECSManager，且不是当前这一个，说明发生了跨场景污染
+        // 我们强行销毁旧的，让当前战斗场景中这个全新的 ECSManager 接管控制权
+        // ==========================================
+        if (Instance != null && Instance != this)
+        {
+            Debug.LogWarning("[ECSManager] 检测到跨场景残留或重复的实例，已强制覆盖并销毁旧实例！请确保 ECSManager 预制体只放在战斗场景中。");
+            Destroy(Instance.gameObject);
+        }
+        
         Instance = this;
         
         // 在 Awake 阶段加载所有的 CSV 配置表
@@ -57,6 +68,11 @@ public class ECSManager : MonoBehaviour
         // 2. 初始化玩家与核心系统
         // ==========================================
         // 传入角色类型给 PlayerFactory 进行数据驱动的装配
+        if (PlayerPrefab == null)
+        {
+            Debug.LogError("[ECSManager] 严重错误：Inspector 面板上的 PlayerPrefab 丢失！请在战斗场景中重新挂载预制体。");
+        }
+        
         PlayerEntity = PlayerFactory.Create(SelectedCharacter, PlayerPrefab, Config);
         
         // 实例化系统引导程序并初始化全局网格索引
