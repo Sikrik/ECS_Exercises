@@ -38,12 +38,14 @@ public class ExperienceComponent : Component
     public float CurrentXP;
     public float MaxXP;
     public int Level;
+    public float ExpMultiplier; // 【新增】经验获取倍率
     
-    public ExperienceComponent(float maxXP = 50f) 
+    public ExperienceComponent(float maxXP = 50f, float multiplier = 1.0f) 
     { 
         MaxXP = maxXP; 
         CurrentXP = 0; 
         Level = 1; 
+        ExpMultiplier = multiplier; // 默认是 1.0 倍
     }
 }
 

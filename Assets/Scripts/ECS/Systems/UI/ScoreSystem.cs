@@ -1,5 +1,4 @@
-﻿// 路径: Assets/Scripts/ECS/Systems/UI/ScoreSystem.cs
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 public class ScoreSystem : SystemBase
 {
@@ -28,7 +27,9 @@ public class ScoreSystem : SystemBase
             foreach(var p in players)
             {
                 var exp = p.GetComponent<ExperienceComponent>();
-                exp.CurrentXP += totalAddedScore;
+                
+                // 【核心修改】：加经验时，乘以局外天赋带来的经验倍率！
+                exp.CurrentXP += totalAddedScore * exp.ExpMultiplier;
                 
                 // 尝试从字典获取当前等级升下一级所需的经验值
                 if (config.LevelExpRecipes.TryGetValue(exp.Level, out int requiredExp))

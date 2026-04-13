@@ -1,5 +1,4 @@
-﻿// 路径: Assets/Scripts/ECS/Factories/PlayerFactory.cs
-using System;
+﻿using System;
 using UnityEngine;
 
 public static class PlayerFactory
@@ -17,15 +16,35 @@ public static class PlayerFactory
             return null;
         }
 
+        // ==========================================
+        // 【核心新增】读取局外天赋数据，计算最终面板
+        // ==========================================
+        float finalMaxHealth = recipe.MaxHealth;
+        float finalMoveSpeed = recipe.MoveSpeed;
+        float expMultiplier = 1.0f; 
+
+        if (GameDataManager.Instance != null)
+        {
+            // 血量天赋：每级增加 20 点最大生命值
+            int healthLevel = GameDataManager.Instance.GetTalentLevel("HealthUp");
+            finalMaxHealth += healthLevel * 20f;
+
+            // 经验天赋：每级增加 15% 的经验获取率
+            int expLevel = GameDataManager.Instance.GetTalentLevel("ExpUp");
+            expMultiplier += expLevel * 0.15f;
+            
+            // 如果你以后加了速度天赋 (SpeedUp)，也可以直接在这里写：
+            // int speedLevel = GameDataManager.Instance.GetTalentLevel("SpeedUp");
+            // finalMoveSpeed *= (1f + speedLevel * 0.05f);
+        }
+
         // 2. 表现层实例化
         GameObject go = UnityEngine.Object.Instantiate(prefab, Vector3.zero, Quaternion.identity);
 
         // 3. 逻辑层创建并组装
         Entity player = ecs.CreateEntity();
         
-        // ==========================================
-        // 挂载 PlayerHUD 和 方向指示器 (纯 UI 与表现层)
-        // ==========================================
+        // UI 与表现层
         var hudView = go.GetComponent<PlayerHUDView>();
         if (hudView != null && hudView.HealthRing != null && hudView.FlashIcon != null)
         {
@@ -38,36 +57,32 @@ public static class PlayerFactory
             player.AddComponent(new DirectionIndicatorComponent(indicatorView.ArrowPivot, 6f));
         }
 
-        // ==========================================
-        // 核心组件装配 (彻底由 CSV 数据驱动)
-        // ==========================================
+        // 核心组件装配
         player.AddComponent(new PlayerTag());
         player.AddComponent(new PositionComponent(0, 0, 0));
         player.AddComponent(new ViewComponent(go, prefab));
         
-        // 动态数值：生命、速度、质量、无敌时间
-        player.AddComponent(new HealthComponent(recipe.MaxHealth));
-        player.AddComponent(new SpeedComponent(recipe.MoveSpeed)); 
+        // 【修改】：注入计算后的最终属性 (finalMaxHealth, finalMoveSpeed)
+        player.AddComponent(new HealthComponent(finalMaxHealth));
+        player.AddComponent(new SpeedComponent(finalMoveSpeed)); 
         player.AddComponent(new VelocityComponent(0, 0)); 
         player.AddComponent(new MassComponent(recipe.Mass)); 
         player.AddComponent(new DashAbilityComponent(recipe.DashSpeed, recipe.DashDuration, recipe.DashCD));
         
-        // 解析默认武器
         BulletType defaultBullet = Enum.TryParse<BulletType>(recipe.DefaultBullet, out var bType) ? bType : BulletType.Normal;
         player.AddComponent(new WeaponComponent(defaultBullet, recipe.FireRate));
 
-        // ==========================================
         // 物理、机制与渲染基础组件
-        // ==========================================
         player.AddComponent(new ImpactFeedbackComponent(bounce: true, recovery: false));
         player.AddComponent(new FactionComponent(FactionType.Player));
         player.AddComponent(new NeedsPhysicsBakingTag());
         player.AddComponent(new NeedsVisualBakingTag());
-        player.AddComponent(new CollisionFilterComponent(0)); // 0 代表与任何能撞的层级都交互
+        player.AddComponent(new CollisionFilterComponent(0)); 
         player.AddComponent(new UIHealthUpdateEvent()); 
-        // 在 PlayerFactory.Create 方法末尾，返回 player 前添加：
-        player.AddComponent(new ExperienceComponent(50f)); // 升1级需要50点
-        player.AddComponent(new WeaponModifierComponent()); // 初始修饰器（无额外buff）
+        
+        // 【修改】：注入经验倍率
+        player.AddComponent(new ExperienceComponent(50f, expMultiplier)); 
+        player.AddComponent(new WeaponModifierComponent()); 
 
         return player;
     }

@@ -35,7 +35,25 @@ public class UISyncSystem : SystemBase
         var gameOverEvents = GetEntitiesWith<GameOverEventComponent>();
         foreach (var entity in gameOverEvents)
         {
-            UIManager.Instance.ShowGameOver(ECSManager.Instance.Score);
+            int finalScore = ECSManager.Instance.Score;
+            int currentWave = ECSManager.Instance.CurrentWave;
+            
+            UIManager.Instance.ShowGameOver(finalScore);
+            
+            // 【新增】保存战斗记录和结算金币 (失败结算：分数 / 10)
+            if (GameDataManager.Instance != null)
+            {
+                int goldEarned = finalScore / 10;
+                GameDataManager.Instance.AddGold(goldEarned);
+                GameDataManager.Instance.AddMatchRecord(new MatchRecord {
+                    CharacterUsed = ECSManager.Instance.SelectedCharacter.ToString(),
+                    FinalScore = finalScore,
+                    WaveReached = currentWave,
+                    IsVictory = false,
+                    Date = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm")
+                });
+            }
+
             entity.AddComponent(new PendingDestroyComponent());
         }
 
@@ -45,8 +63,26 @@ public class UISyncSystem : SystemBase
         var victoryEvents = GetEntitiesWith<GameVictoryEventComponent>();
         foreach (var entity in victoryEvents)
         {
-            UIManager.Instance.ShowVictory(ECSManager.Instance.Score);
+            int finalScore = ECSManager.Instance.Score;
+            int currentWave = ECSManager.Instance.CurrentWave;
+            
+            UIManager.Instance.ShowVictory(finalScore);
             Time.timeScale = 0; // 胜利后暂停游戏时间
+            
+            // 【新增】保存战斗记录和结算金币 (通关给额外奖励 500)
+            if (GameDataManager.Instance != null)
+            {
+                int goldEarned = (finalScore / 10) + 500; 
+                GameDataManager.Instance.AddGold(goldEarned);
+                GameDataManager.Instance.AddMatchRecord(new MatchRecord {
+                    CharacterUsed = ECSManager.Instance.SelectedCharacter.ToString(),
+                    FinalScore = finalScore,
+                    WaveReached = currentWave,
+                    IsVictory = true,
+                    Date = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm")
+                });
+            }
+
             entity.AddComponent(new PendingDestroyComponent());
         }
 
