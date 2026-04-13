@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/Systems/GamePlay/WeaponFiringSystem.cs
+using System.Collections.Generic;
 using UnityEngine;
 
 public class WeaponFiringSystem : SystemBase
@@ -12,6 +13,17 @@ public class WeaponFiringSystem : SystemBase
         for (int i = firingEntities.Count - 1; i >= 0; i--)
         {
             var entity = firingEntities[i];
+
+            // ==========================================
+            // 【核心修复 2】：在这里拦截近战！
+            // 这样既保留了 UI 的丝滑转向，又绝对不会射出子弹！
+            // ==========================================
+            if (entity.HasComponent<MeleeCombatComponent>())
+            {
+                entity.RemoveComponent<FireIntentComponent>();
+                continue;
+            }
+
             var weapon = entity.GetComponent<WeaponComponent>();
             var intent = entity.GetComponent<FireIntentComponent>();
             var pos = entity.GetComponent<PositionComponent>();
@@ -27,11 +39,10 @@ public class WeaponFiringSystem : SystemBase
             {
                 Vector3 spawnPos = new Vector3(pos.X, pos.Y, 0);
                 
-                // 【重构】从动态字典中提取多重射击技能等级
                 int multiShotLevel = modifiers != null ? modifiers.GetLevel("MultiShot") : 0;
                 int projectileCount = 1 + multiShotLevel;
                 
-                float spreadAngle = 15f; // 每颗子弹之间的夹角
+                float spreadAngle = 15f; 
                 float startAngle = -spreadAngle * (projectileCount - 1) / 2f;
                 Vector2 baseDir = intent.AimDirection;
 
@@ -43,16 +54,10 @@ public class WeaponFiringSystem : SystemBase
                     BulletFactory.Create(weapon.CurrentBulletType, spawnPos, finalDir, faction, modifiers);
                 }
 
-                // 【重构】从动态字典中提取射速提升等级 (例如：每升一级缩短 10% 冷却)
                 float fireRateLevel = modifiers != null ? modifiers.GetLevel("FireRateUp") : 0f;
-                float cooldownReduction = Mathf.Min(0.8f, fireRateLevel * 0.1f); // 最多减免 80%
-                
+                float cooldownReduction = Mathf.Min(0.8f, fireRateLevel * 0.1f); 
                 weapon.CurrentCooldown = weapon.FireRate * (1f - cooldownReduction);
 
-                // ==========================================
-                // 【新增】发送开火音效事件
-                // 注意：不添加销毁标签，让它存活到表现层的 AudioSystem 去处理！
-                // ==========================================
                 Entity audioEvent = ECSManager.Instance.CreateEntity();
                 audioEvent.AddComponent(new AudioPlayEventComponent("Shoot"));
             }

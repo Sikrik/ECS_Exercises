@@ -15,20 +15,10 @@ public class PlayerAimingSystem : SystemBase
         for (int i = players.Count - 1; i >= 0; i--)
         {
             var player = players[i];
-
-            // ==========================================
-            // 【核心修复】：只要是近战角色，直接跳过！
-            // 彻底切断生成 FireIntentComponent，绝对不会再开枪！
-            // ==========================================
-            if (player.HasComponent<MeleeCombatComponent>()) continue;
-
             var input = player.GetComponent<ShootInputComponent>();
-            var pos = player.GetComponent<PositionComponent>();
-            var weapon = player.GetComponent<WeaponComponent>();
 
-            // CPU 优化：武器冷却中直接跳过索敌
-            if (weapon.CurrentCooldown > 0f) continue;
-
+            // 【核心修复 1】：去掉所有 Melee拦截 和 Cooldown拦截！
+            // 必须让系统每帧计算方向，UI 箭头和血量环才能丝滑跟随旋转！
             if (!player.HasComponent<FireIntentComponent>())
             {
                 Vector2? aimDir = CurrentAimStrategy.GetAimDirection(player, input, ECSManager.Instance.Grid);
