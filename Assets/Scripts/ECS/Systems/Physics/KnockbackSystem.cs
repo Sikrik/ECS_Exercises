@@ -7,13 +7,10 @@ public class KnockbackSystem : SystemBase
 
     public override void Update(float deltaTime) 
     {
-        // 1. 保留原本的怪物互挤 (虫群流动) 逻辑，防止怪物完全重叠 ... 
-        // (保持原有 hitEvents 互推逻辑不变)
-
-        // ==========================================
-        // 2. 处理击退滑行的平滑减速与【状态衔接】
-        // ==========================================
         var slidingOnes = GetEntitiesWith<KnockbackComponent>();
+        // 【动态配置】：读取全局滑行摩擦力
+        float friction = ECSManager.Instance.Config.KnockbackFriction;
+
         for (int i = slidingOnes.Count - 1; i >= 0; i--)
         {
             var e = slidingOnes[i];
@@ -23,9 +20,9 @@ public class KnockbackSystem : SystemBase
             var vel = e.GetComponent<VelocityComponent>();
             if (vel != null)
             {
-                // 丝滑减速，15f 是摩擦力系数
-                vel.VX = Mathf.Lerp(vel.VX, 0, deltaTime * 15f);
-                vel.VY = Mathf.Lerp(vel.VY, 0, deltaTime * 15f);
+                // 丝滑减速，使用配置表中的摩擦力系数
+                vel.VX = Mathf.Lerp(vel.VX, 0, deltaTime * friction);
+                vel.VY = Mathf.Lerp(vel.VY, 0, deltaTime * friction);
             }
 
             // 滑行时间结束，速度归零，转入硬直状态！

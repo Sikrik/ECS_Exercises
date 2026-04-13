@@ -14,16 +14,12 @@ public class GhostTrailSystem : SystemBase
         public float Alpha;
     }
     
-    // 内部对象池，防止频繁实例化销毁
     private Queue<GameObject> _ghostPool = new Queue<GameObject>();
     private List<ActiveGhost> _activeGhosts = new List<ActiveGhost>();
-    
-    // 用于收纳残影的统一父节点容器
     private Transform _ghostRootContainer;
 
     public GhostTrailSystem(List<Entity> entities) : base(entities) 
     { 
-        // 在系统初始化时创建一个空物体充当文件夹
         GameObject rootGo = new GameObject("[Pool] DashGhosts");
         _ghostRootContainer = rootGo.transform;
     }
@@ -47,11 +43,14 @@ public class GhostTrailSystem : SystemBase
             }
         }
 
+        // 【动态配置】：读取全局残影消散速度
+        float fadeSpeed = ECSManager.Instance.Config.GhostFadeSpeed;
+
         // 2. 更新已生成的残影淡出逻辑
         for (int i = _activeGhosts.Count - 1; i >= 0; i--) 
         {
             var ghost = _activeGhosts[i];
-            ghost.Alpha -= 3.5f * deltaTime; // 消失速度
+            ghost.Alpha -= fadeSpeed * deltaTime; // 动态控制消失速度
             
             if (ghost.Alpha <= 0) 
             {
@@ -84,7 +83,6 @@ public class GhostTrailSystem : SystemBase
             ghostGo = new GameObject("DashGhost_Item");
             ghostSr = ghostGo.AddComponent<SpriteRenderer>();
             
-            // 将新生成的残影直接放进专属文件夹里
             if (_ghostRootContainer != null)
             {
                 ghostGo.transform.SetParent(_ghostRootContainer);
@@ -99,11 +97,10 @@ public class GhostTrailSystem : SystemBase
         ghostSr.flipX = sourceSr.flipX;
         ghostSr.flipY = sourceSr.flipY;
         
-        // 设置初始颜色（带透明度）
-        float initialAlpha = 0.6f;
+        // 【动态配置】：读取全局残影初始透明度
+        float initialAlpha = ECSManager.Instance.Config.GhostInitialAlpha;
         ghostSr.color = new Color(sourceSr.color.r, sourceSr.color.g, sourceSr.color.b, initialAlpha);
         
-        // 渲染层级永远比本体低一级
         ghostSr.sortingLayerID = sourceSr.sortingLayerID;
         ghostSr.sortingOrder = sourceSr.sortingOrder - 1;
 

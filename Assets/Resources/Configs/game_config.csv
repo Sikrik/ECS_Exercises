@@ -5,3 +5,6 @@ InitialSpawnInterval,2,初始刷怪间隔
 EnemyHpGrowth,0.2,怪物每级血量成长(20%)
 EnemyDmgGrowth,0.15,怪物每级攻击力成长(15%)
 EnemySpeedGrowth,0.05,怪物每级速度成长(5%)
+KnockbackFriction,15.0,击退滑行的摩擦减速系数
+GhostFadeSpeed,3.5,冲刺残影的消失速度
+GhostInitialAlpha,0.6,冲刺残影的初始透明度

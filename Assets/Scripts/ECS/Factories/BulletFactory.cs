@@ -6,18 +6,25 @@ public static class BulletFactory
     {
         var ecs = ECSManager.Instance;
         
+        // 【提取动态配置】
+        if (!ecs.Config.BulletRecipes.TryGetValue(type.ToString(), out var recipe))
+        {
+            Debug.LogError($"[BulletFactory] 找不到子弹配置：{type}");
+            return null;
+        }
+
         GameObject prefab = GameObject_PoolManager.Instance.GetBulletPrefab(type);
         GameObject bulletGo = GameObject_PoolManager.Instance.Spawn(prefab, position, Quaternion.identity);
 
         Entity bullet = ecs.CreateEntity();
         
         // ==========================================
-        // 基础默认数值
+        // 基础默认数值 (已取消硬编码，全数由CSV提供)
         // ==========================================
-        float baseSpeed = 12f;
-        float baseDamage = 15f;
-        float baseHitRadius = 0.2f;
-        float baseLifeTime = 3f;
+        float baseSpeed = recipe.Speed;
+        float baseDamage = recipe.Damage;
+        float baseHitRadius = recipe.HitRadius;
+        float baseLifeTime = recipe.LifeTime;
 
         // --- 1. 基础组件装配 ---
         bullet.AddComponent(new BulletTag());
@@ -38,55 +45,46 @@ public static class BulletFactory
         // 3. 动态结算升级系统修饰器 (提取深度成长数值)
         // ==========================================
         float finalDamage = baseDamage;
-        bool causeRecovery = false;       // 【修改】子弹默认不再造成硬直
-        float stunDurationOverride = 0f;  // 【新增】默认无硬直覆盖时间
+        bool causeRecovery = false;       
+        float stunDurationOverride = 0f;  
 
         if (modifiers != null)
         {
-            // 攻击力提升 (每级+20%)
             int attackLevel = modifiers.GetLevel("AttackUp");
             finalDamage *= (1f + attackLevel * 0.2f);
 
-            // 减速附魔与强化
             if (modifiers.GetLevel("AddSlow") > 0)
             {
                 int slowEnhance = modifiers.GetLevel("SlowEnhance");
-                float ratio = Mathf.Min(0.5f + slowEnhance * 0.08f, 0.9f); // 最大90%减速
+                float ratio = Mathf.Min(0.5f + slowEnhance * 0.08f, 0.9f); 
                 float duration = 2f + slowEnhance * 0.5f;
                 bullet.AddComponent(new SlowEffectComponent(ratio, duration));
             }
                 
-            // 闪电附魔与强化
             if (modifiers.GetLevel("AddChain") > 0)
             {
                 int chainEnhance = modifiers.GetLevel("ChainEnhance");
-                int targets = 3 + chainEnhance * 2;          // 基础弹射3次，每级+2
-                float range = 5f + chainEnhance * 1.5f;      // 基础范围5米，每级+1.5
+                int targets = 3 + chainEnhance * 2;          
+                float range = 5f + chainEnhance * 1.5f;      
                 bullet.AddComponent(new ChainComponent(targets, range));
             }
                 
-            // 爆炸附魔与强化
             if (modifiers.GetLevel("AddAOE") > 0)
             {
                 int aoeEnhance = modifiers.GetLevel("AOEEnhance");
-                float radius = 2f + aoeEnhance * 0.8f;       // 基础半径2米，每级+0.8
+                float radius = 2f + aoeEnhance * 0.8f;       
                 bullet.AddComponent(new AOEComponent(radius));
             }
 
-            // 【新增】硬直附魔与强化
             if (modifiers.GetLevel("AddStun") > 0)
             {
                 causeRecovery = true;
                 int stunEnhance = modifiers.GetLevel("StunEnhance");
-                // 基础硬直 0.2 秒，每级增强 0.15 秒
                 stunDurationOverride = 0.2f + stunEnhance * 0.15f; 
             }
         }
 
-        // 挂载物理反馈意图 (带有算好的硬直配置)
         bullet.AddComponent(new ImpactFeedbackComponent(bounce: false, recovery: causeRecovery, stunDurationOverride));
-        
-        // 最后挂载计算后的最终伤害
         bullet.AddComponent(new DamageComponent(finalDamage));
 
         return bullet;

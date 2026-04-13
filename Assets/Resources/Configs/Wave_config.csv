@@ -8,4 +8,4 @@
 7,Tank:3:2|Charger:3:5|Fast:3:12|Ranged:3:6,0.6,5.0
 8,Fast:4:15|Ranged:4:8|Normal:3:25,0.5,5.0
 9,Tank:3:4|Charger:4:6|Normal:4:20|Ranged:4:10,0.4,5.0
-10,Tank:4:5|Charger:4:10|Fast:4:20|Ranged:4:15|Normal:4:30,0.3,0.0
+10,Boss:1:1|Tank:4:5|Charger:4:10|Fast:4:20|Ranged:4:15|Normal:4:30,0.3,0.0

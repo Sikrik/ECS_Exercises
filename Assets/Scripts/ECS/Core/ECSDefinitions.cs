@@ -4,9 +4,10 @@ using UnityEngine;
 
 public abstract class Component { }
 
+// 更新类型枚举
 public enum BulletType { Normal, Slow, ChainLightning, AOE }
-public enum EnemyType { Normal, Fast, Tank, Charger, Ranged } 
-public enum PlayerClass { Standard, Heavy, Agile }
+public enum EnemyType { Normal, Fast, Tank, Charger, Ranged, Boss } // 新增 Boss
+public enum PlayerClass { Standard, Heavy, Agile, Melee } // 新增 Melee
 
 public class ColorTintComponent : Component 
 {

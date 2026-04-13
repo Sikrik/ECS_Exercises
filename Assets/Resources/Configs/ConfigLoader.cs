@@ -7,7 +7,6 @@ using UnityEngine;
 /// </summary>
 public static class ConfigLoader
 {
-    // 主入口
     public static GameConfig Load()
     {
         GameConfig config = new GameConfig();
@@ -36,6 +35,11 @@ public static class ConfigLoader
         if (levelCsv != null) ParseLevelRecipes(config, levelCsv);
         else Debug.LogError("初始化失败：未找到 Resources/Level_Config.csv");
 
+        // 【新增】读取子弹配置
+        TextAsset bulletCsv = Resources.Load<TextAsset>("Configs/Bullet_Config");
+        if (bulletCsv != null) ParseBulletRecipes(config, bulletCsv);
+        else Debug.LogError("初始化失败：未找到 Resources/Configs/Bullet_Config.csv");
+
         return config;
     }
 
@@ -55,10 +59,13 @@ public static class ConfigLoader
                 case "CollisionPushDistance": config.CollisionPushDistance = ParseFloat(valueStr); break;
                 case "CollisionBounceForce": config.CollisionBounceForce = ParseFloat(valueStr); break;
                 case "InitialSpawnInterval": config.InitialSpawnInterval = ParseFloat(valueStr); break;
-                // 全局成长系数已废弃，可在此保留以防 game_config.csv 未删除报错
                 case "EnemyHpGrowth": config.EnemyHpGrowth = ParseFloat(valueStr); break;
                 case "EnemyDmgGrowth": config.EnemyDmgGrowth = ParseFloat(valueStr); break;
                 case "EnemySpeedGrowth": config.EnemySpeedGrowth = ParseFloat(valueStr); break;
+                // 【新增全局表现与物理参数】
+                case "KnockbackFriction": config.KnockbackFriction = ParseFloat(valueStr); break;
+                case "GhostFadeSpeed": config.GhostFadeSpeed = ParseFloat(valueStr); break;
+                case "GhostInitialAlpha": config.GhostInitialAlpha = ParseFloat(valueStr); break;
             }
         }
     }
@@ -69,7 +76,7 @@ public static class ConfigLoader
         for (int i = 1; i < lines.Length; i++)
         {
             string[] cols = lines[i].Split(',');
-            if (cols.Length < 10) continue; 
+            if (cols.Length < 9) continue; // 移除了 DefaultBullet 列，长度变为 9
 
             PlayerData data = new PlayerData
             {
@@ -81,8 +88,7 @@ public static class ConfigLoader
                 FireRate = ParseFloat(cols[5]),
                 DashSpeed = ParseFloat(cols[6]),
                 DashDuration = ParseFloat(cols[7]),
-                DashCD = ParseFloat(cols[8]),
-                DefaultBullet = cols[9].Trim()
+                DashCD = ParseFloat(cols[8])
             };
             config.PlayerRecipes[data.Id] = data;
         }
@@ -94,12 +100,12 @@ public static class ConfigLoader
         for (int i = 1; i < lines.Length; i++)
         {
             string[] cols = lines[i].Split(',');
-            if (cols.Length < 8) continue; // 增加了等级列，最少需要8列(到Traits)
+            if (cols.Length < 8) continue; 
 
             EnemyData data = new EnemyData
             {
                 Id = cols[0].Trim(),
-                Level = ParseInt(cols[1]), // 读取等级
+                Level = ParseInt(cols[1]), 
                 Health = ParseFloat(cols[2]),
                 Speed = ParseFloat(cols[3]),
                 Damage = ParseInt(cols[4]),
@@ -117,7 +123,6 @@ public static class ConfigLoader
                 SkillCD       = cols.Length > 16 ? ParseFloat(cols[16]) : 0f
             };
             
-            // 【核心修改】将字典的键改为 ID_Level 的组合键
             string key = $"{data.Id}_{data.Level}";
             config.EnemyRecipes[key] = data;
         }
@@ -172,7 +177,6 @@ public static class ConfigLoader
                 Id = cols[0].Trim(),
                 MaxLevel = ParseInt(cols[1]),
                 Description = cols[2].Trim(),
-                // 解析第四列(前置条件)，没有则留空
                 Prerequisite = cols.Length > 3 ? cols[3].Trim() : string.Empty 
             };
             config.UpgradeRecipes[data.Id] = data;
@@ -187,6 +191,33 @@ public static class ConfigLoader
             string[] cols = lines[i].Split(',');
             if (cols.Length < 2) continue;
             config.LevelExpRecipes[ParseInt(cols[0])] = ParseInt(cols[1]);
+        }
+    }
+
+    // 【新增】解析子弹配置表
+    private static void ParseBulletRecipes(GameConfig config, TextAsset csv)
+    {
+        string[] lines = csv.text.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 1; i < lines.Length; i++)
+        {
+            string[] cols = lines[i].Split(',');
+            if (cols.Length < 11) continue;
+
+            BulletData data = new BulletData
+            {
+                Id = cols[0].Trim(),
+                Speed = ParseFloat(cols[1]),
+                Damage = ParseFloat(cols[2]),
+                LifeTime = ParseFloat(cols[3]),
+                ShootInterval = ParseFloat(cols[4]),
+                SlowRatio = ParseFloat(cols[5]),
+                SlowDuration = ParseFloat(cols[6]),
+                ChainTargets = ParseInt(cols[7]),
+                ChainRange = ParseFloat(cols[8]),
+                AOERadius = ParseFloat(cols[9]),
+                HitRadius = ParseFloat(cols[10])
+            };
+            config.BulletRecipes[data.Id] = data;
         }
     }
 
