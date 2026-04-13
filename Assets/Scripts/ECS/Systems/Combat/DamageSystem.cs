@@ -1,77 +1,87 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/Systems/Combat/DamageSystem.cs
+using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// 纯粹的伤害结算系统 (高内聚改造版)
-/// 职责：只处理数值扣减，绝不插手任何物理击退逻辑或子弹销毁。
-/// </summary>
 public class DamageSystem : SystemBase
 {
     public DamageSystem(List<Entity> entities) : base(entities) { }
 
     public override void Update(float deltaTime)
     {
-        var hitEvents = GetEntitiesWith<CollisionEventComponent>();
+        // 获取所有正在受到伤害的实体
+        var victims = GetEntitiesWith<HealthComponent, DamageEventComponent>();
 
-        foreach (var entity in hitEvents)
+        for (int i = victims.Count - 1; i >= 0; i--)
         {
-            var evt = entity.GetComponent<CollisionEventComponent>();
-            var target = evt.Target;
-            var source = evt.Source;
-
-            if (target == null || !target.IsAlive || source == null || !source.IsAlive) continue;
+            var victim = victims[i];
+            var hp = victim.GetComponent<HealthComponent>();
+            var damageEvt = victim.GetComponent<DamageEventComponent>();
             
-            // 全局无敌帧保护
-            if (target.HasComponent<InvincibleComponent>()) continue; 
+            float actualDamage = damageEvt.DamageAmount;
 
-            // 阵营免伤保护
-            var sourceFac = source.GetComponent<FactionComponent>();
-            var targetFac = target.GetComponent<FactionComponent>();
-            if (sourceFac != null && targetFac != null && sourceFac.Value == targetFac.Value)
+            // ==========================================
+            // 1. 防御减伤结算 (Defense)
+            // ==========================================
+            if (victim.HasComponent<MeleeCombatComponent>())
             {
-                continue;
+                float def = victim.GetComponent<MeleeCombatComponent>().Defense;
+                // 减去防御力，但保证至少造成 1 点伤害
+                actualDamage = Mathf.Max(1f, actualDamage - def); 
             }
 
-            // 纯粹的扣血逻辑
-            if (target.HasComponent<HealthComponent>() && source.HasComponent<DamageComponent>())
+            // 执行扣血
+            hp.CurrentHealth -= actualDamage;
+
+            // ==========================================
+            // 2. 反伤结算 (Thorns)
+            // ==========================================
+            Entity attacker = damageEvt.Source; 
+            if (victim.HasComponent<MeleeCombatComponent>() && attacker != null && attacker.IsAlive)
             {
-                var hp = target.GetComponent<HealthComponent>();
-                var dmg = source.GetComponent<DamageComponent>();
-    
-                // 1. 扣除血量
-                hp.CurrentHealth -= dmg.Value;
-                Debug.Log($"{target} 扣除血量：{dmg.Value}");
-
-                // ==========================================
-                // 【新增】：发送打击音效事件
-                // 注意：不添加销毁标签，让它存活到表现层的 AudioSystem 去处理！
-                // ==========================================
-                Entity audioEvent = ECSManager.Instance.CreateEntity();
-                audioEvent.AddComponent(new AudioPlayEventComponent("Hit"));
-
-                // 2. 读取攻击源的物理反馈配置，判断是否该造成硬直，以及覆盖的硬直时间
-                bool causeRecovery = false;
-                float durationOverride = 0f;
-                var feedback = source.GetComponent<ImpactFeedbackComponent>();
-                if (feedback != null) 
+                var melee = victim.GetComponent<MeleeCombatComponent>();
+                if (melee.ThornDamage > 0)
                 {
-                    causeRecovery = feedback.CauseHitRecovery;
-                    durationOverride = feedback.HitRecoveryDurationOverride;
+                    var attackerHp = attacker.GetComponent<HealthComponent>();
+                    if (attackerHp != null)
+                    {
+                        attackerHp.CurrentHealth -= melee.ThornDamage;
+                        
+                        // 抛出反伤特效事件
+                        var pos = victim.GetComponent<PositionComponent>();
+                        if (pos != null) {
+                            Entity vfx = ECSManager.Instance.CreateEntity();
+                            vfx.AddComponent(new VFXSpawnEventComponent { 
+                                VFXType = "ThornReflect", 
+                                Position = new Vector3(pos.X, pos.Y, 0) 
+                            });
+                        }
+                    }
                 }
+            }
 
-                // 3. 防覆盖与内存泄漏处理（合并状态与时间）
-                var existingEvt = target.GetComponent<DamageTakenEventComponent>();
-                if (existingEvt != null)
+            // ==========================================
+            // 3. 全局吸血 (Global Life Steal)
+            // 只要伤害来源拥有 MeleeCombatComponent，任何伤害都能吸血 (包括子弹、AOE等)
+            // ==========================================
+            if (attacker != null && attacker.IsAlive && attacker.HasComponent<MeleeCombatComponent>())
+            {
+                var attackerMelee = attacker.GetComponent<MeleeCombatComponent>();
+                var attackerHp = attacker.GetComponent<HealthComponent>();
+                
+                if (attackerHp != null && attackerMelee.LifeStealRatio > 0 && actualDamage > 0)
                 {
-                    existingEvt.DamageAmount += dmg.Value;
-                    existingEvt.CauseHitRecovery = existingEvt.CauseHitRecovery || causeRecovery;
-                    // 取两者的最大硬直时间叠加
-                    existingEvt.RecoveryDurationOverride = Mathf.Max(existingEvt.RecoveryDurationOverride, durationOverride);
+                    float healAmount = actualDamage * attackerMelee.LifeStealRatio;
+                    attackerHp.CurrentHealth = Mathf.Min(attackerHp.MaxHealth, attackerHp.CurrentHealth + healAmount);
                 }
-                else
-                {
-                    target.AddComponent(EventPool.GetDamageEvent(dmg.Value, causeRecovery, durationOverride));
-                }
+            }
+
+            // 结算完毕，移除伤害事件
+            victim.RemoveComponent<DamageEventComponent>();
+            
+            // 死亡判定标签 (交由后续 DeathCleanupSystem 处理)
+            if (hp.CurrentHealth <= 0 && !victim.HasComponent<DeadTag>())
+            {
+                victim.AddComponent(new DeadTag());
             }
         }
     }

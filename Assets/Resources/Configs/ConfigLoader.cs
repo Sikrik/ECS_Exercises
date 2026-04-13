@@ -1,4 +1,5 @@
-﻿using System;
+﻿// 路径: Assets/Resources/Configs/ConfigLoader.cs
+using System;
 using System.Globalization;
 using UnityEngine;
 
@@ -13,34 +14,32 @@ public static class ConfigLoader
 
         TextAsset baseCsv = Resources.Load<TextAsset>("Configs/game_config");
         if (baseCsv != null) ParseBaseSettings(config, baseCsv);
-        else Debug.LogError("初始化失败：未找到 Resources/game_config.csv");
+        else Debug.LogError("初始化失败：未找到 Resources/Configs/game_config.csv");
 
         TextAsset playerCsv = Resources.Load<TextAsset>("Configs/Player_config");
         if (playerCsv != null) ParsePlayerRecipes(config, playerCsv);
-        else Debug.LogError("初始化失败：未找到 Resources/Player_config.csv");
+        else Debug.LogError("初始化失败：未找到 Resources/Configs/Player_config.csv");
 
         TextAsset enemyCsv = Resources.Load<TextAsset>("Configs/Enemy_config");
         if (enemyCsv != null) ParseEnemyRecipes(config, enemyCsv);
-        else Debug.LogError("初始化失败：未找到 Resources/Enemy_config.csv");
+        else Debug.LogError("初始化失败：未找到 Resources/Configs/Enemy_config.csv");
 
         TextAsset waveCsv = Resources.Load<TextAsset>("Configs/Wave_config");
         if (waveCsv != null) ParseWaveSettings(config, waveCsv);
-        else Debug.LogError("初始化失败：未找到 Resources/Wave_config.csv");
+        else Debug.LogError("初始化失败：未找到 Resources/Configs/Wave_config.csv");
 
         TextAsset upgradeCsv = Resources.Load<TextAsset>("Configs/Upgrade_Config");
         if (upgradeCsv != null) ParseUpgradeRecipes(config, upgradeCsv);
-        else Debug.LogError("初始化失败：未找到 Resources/Upgrade_Config.csv");
+        else Debug.LogError("初始化失败：未找到 Resources/Configs/Upgrade_Config.csv");
 
         TextAsset levelCsv = Resources.Load<TextAsset>("Configs/Level_Config");
         if (levelCsv != null) ParseLevelRecipes(config, levelCsv);
-        else Debug.LogError("初始化失败：未找到 Resources/Level_Config.csv");
+        else Debug.LogError("初始化失败：未找到 Resources/Configs/Level_Config.csv");
 
-        // 【新增】读取子弹配置
         TextAsset bulletCsv = Resources.Load<TextAsset>("Configs/Bullet_Config");
         if (bulletCsv != null) ParseBulletRecipes(config, bulletCsv);
         else Debug.LogError("初始化失败：未找到 Resources/Configs/Bullet_Config.csv");
 
-        // 【新增】读取局外天赋配置
         TextAsset talentCsv = Resources.Load<TextAsset>("Configs/Talent_Config");
         if (talentCsv != null) ParseTalentRecipes(config, talentCsv);
         else Debug.LogWarning("未找到 Resources/Configs/Talent_Config.csv，将没有天赋系统");
@@ -77,13 +76,14 @@ public static class ConfigLoader
     private static void ParsePlayerRecipes(GameConfig config, TextAsset csv)
     {
         string[] lines = csv.text.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-        for (int i = 1; i < lines.Length; i++)
+        for (int i = 1; i < lines.Length; i++) // 跳过表头
         {
             string[] cols = lines[i].Split(',');
-            if (cols.Length < 9) continue; // 移除了 DefaultBullet，现在只有 9 列
+            if (cols.Length < 9) continue; // 确保至少有 9 列
 
             PlayerData data = new PlayerData
             {
+                // 这里会动态读取出 "Melee" 等字符串
                 Id = cols[0].Trim(),
                 MaxHealth = ParseFloat(cols[1]),
                 MoveSpeed = ParseFloat(cols[2]),
@@ -178,6 +178,7 @@ public static class ConfigLoader
 
             UpgradeData data = new UpgradeData
             {
+                // 这里会动态加载诸如 "Melee_DoubleHit" 等所有新的升级ID
                 Id = cols[0].Trim(),
                 MaxLevel = ParseInt(cols[1]),
                 Description = cols[2].Trim(),

@@ -68,3 +68,15 @@ public class MeleeSwingIntentComponent : Component
     public float RadiusMultiplier = 1.0f; 
     public float AngleOverride = -1f; // -1 表示使用组件默认角度
 }
+// ==========================================
+// 用于控制二重连击延迟触发的计时器组件
+// ==========================================
+public class MeleeDoubleHitPendingComponent : Component
+{
+    public float Timer;
+
+    public MeleeDoubleHitPendingComponent(float delay)
+    {
+        Timer = delay;
+    }
+}

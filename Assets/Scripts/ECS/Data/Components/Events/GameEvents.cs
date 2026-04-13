@@ -48,3 +48,9 @@ public class DamageTakenEventComponent : Component
         RecoveryDurationOverride = durationOverride;
     }
 }
+public class DamageEventComponent : Component
+{
+    public float DamageAmount;
+    public Entity Source; // 【关键】记录伤害来源实体，用于触发吸血
+    public bool IsCritical;
+}
