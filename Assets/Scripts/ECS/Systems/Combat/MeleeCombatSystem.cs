@@ -18,36 +18,23 @@ public class MeleeCombatSystem : SystemBase
             var pos = p.GetComponent<PositionComponent>();
 
             // ==========================================
-            // 0. 动态同步升级配置 (将 UI 升级项转化为真实数值)
+            // 0. 动态同步升级配置
             // ==========================================
             if (p.HasComponent<WeaponModifierComponent>())
             {
                 var modifiers = p.GetComponent<WeaponModifierComponent>();
                 
-                // 二重连击开关
                 melee.HasDoubleHit = modifiers.GetLevel("Melee_DoubleHit") > 0;
-                
-                // 防御力：基础 10，每级 +5
                 melee.Defense = 10f + modifiers.GetLevel("Melee_Armor") * 5f; 
-                
-                // 反伤：根据防御力的 50% 转化
                 melee.ThornDamage = melee.Defense * 0.5f; 
-                
-                // 回血：基础 5，每级 +2
                 melee.HealthRegen = 5f + modifiers.GetLevel("Melee_Regen") * 2f; 
-                
-                // 吸血比率：基础 10%，每级 +5%
                 melee.LifeStealRatio = 0.1f + modifiers.GetLevel("Melee_LifeSteal") * 0.05f; 
-                
-                // 挥砍角度：初始 90°，每级 +45°，封顶 360°
                 melee.AttackAngle = Mathf.Min(360f, 90f + modifiers.GetLevel("Melee_RangeEnhance") * 45f);
-                
-                // 挥砍半径：初始 3，每级 +0.5
                 melee.AttackRadius = 3f + modifiers.GetLevel("Melee_RangeEnhance") * 0.5f;
             }
 
             // ==========================================
-            // 1. 初始自然回血 (Health Regen)
+            // 1. 初始自然回血 
             // ==========================================
             if (hp.CurrentHealth < hp.MaxHealth)
             {
@@ -63,7 +50,6 @@ public class MeleeCombatSystem : SystemBase
                 pending.Timer -= deltaTime;
                 if (pending.Timer <= 0)
                 {
-                    // 倒计时结束，触发第二刀
                     p.AddComponent(new MeleeSwingIntentComponent());
                     p.RemoveComponent<MeleeDoubleHitPendingComponent>();
                 }
@@ -96,19 +82,19 @@ public class MeleeCombatSystem : SystemBase
     {
         var intent = p.GetComponent<MeleeSwingIntentComponent>();
         
-        // 冲刺时会传入 RadiusMultiplier=1.5, AngleOverride=360
         float finalRadius = melee.AttackRadius * intent.RadiusMultiplier;
         float finalAngle = intent.AngleOverride >= 0 ? intent.AngleOverride : melee.AttackAngle;
 
         Vector2 currentPos = new Vector2(pPos.X, pPos.Y);
         Vector2 attackDir = Vector2.right; // 默认朝右
 
-        // 寻找最近敌人决定攻击朝向
+        // 寻找最近敌人决定攻击（刀光特效）的朝向
         Entity target = FindNearest(pPos, finalRadius);
         if (target != null)
         {
             var tPos = target.GetComponent<PositionComponent>();
             attackDir = (new Vector2(tPos.X, tPos.Y) - currentPos).normalized;
+            // 【移除】了所有修改 localScale 的代码，角色的模型旋转将重新由 MovementSystem 接管！
         }
 
         // 获取范围内所有敌人实现穿透群体攻击
@@ -132,7 +118,7 @@ public class MeleeCombatSystem : SystemBase
                         dmg *= p.GetComponent<WeaponModifierComponent>().GlobalDamageMultiplier;
                     }
 
-                    // 将玩家 (p) 设为 Source，这样 DamageSystem 就能触发全局吸血
+                    // 抛出伤害事件
                     e.AddComponent(new DamageEventComponent { 
                         DamageAmount = dmg, 
                         Source = p, 
@@ -142,25 +128,20 @@ public class MeleeCombatSystem : SystemBase
             }
         }
 
-        // 抛出挥砍 VFX 事件 (表现层)
+        // 抛出挥砍 VFX 事件 (带角度参数)
         Entity vfx = ECSManager.Instance.CreateEntity();
         vfx.AddComponent(new VFXSpawnEventComponent { 
             VFXType = "MeleeSlash", 
             Position = new Vector3(pPos.X, pPos.Y, 0),
             EndPosition = new Vector3(pPos.X + attackDir.x * finalRadius, pPos.Y + attackDir.y * finalRadius, 0),
-            NumericParam = finalAngle // 【关键修改】：把算好的攻击角度传给表现层系统生成网格
+            NumericParam = finalAngle 
         });
 
-        // 移除当前挥砍意图
         p.RemoveComponent<MeleeSwingIntentComponent>();
 
-        // ==========================================
         // 5. 判断是否触发二重连击
-        // (注：冲刺时的环形斩 RadiusMultiplier > 1，不触发二重连击)
-        // ==========================================
         if (melee.HasDoubleHit && intent.RadiusMultiplier == 1.0f && !p.HasComponent<MeleeDoubleHitPendingComponent>())
         {
-            // 0.15 秒后挥出第二刀
             p.AddComponent(new MeleeDoubleHitPendingComponent(0.15f)); 
         }
     }
