@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 敌人追踪系统
-/// 职责：计算敌人的移动意图和攻击意图，实现智能 AI 行为（追踪、预判、风筝、包围等）
+/// 敌人追踪系统 (Pro 版重构)
+/// 职责：计算敌人的移动意图和攻击意图，并针对特定战局提供自适应 AI
 /// </summary>
 public class EnemyTrackingSystem : SystemBase
 {
@@ -19,7 +19,9 @@ public class EnemyTrackingSystem : SystemBase
     private const float HESITATION_MOVEMENT_SCALE = 0.2f;
     private const float SEPARATION_RADIUS_SQR = 2.25f;
     private const float TOLERANCE_VARIATION_AMPLITUDE = 0.5f;
-    private const float FIRE_RANGE_BUFFER = 1f;
+    
+    // [Pro] 孤狼狂暴提速倍率
+    private const float EMERGENCY_SPEED_MULTIPLIER = 2.5f; 
 
     public EnemyTrackingSystem(List<Entity> entities) : base(entities) { }
 
@@ -33,36 +35,88 @@ public class EnemyTrackingSystem : SystemBase
         var playerPosition = player.GetComponent<PositionComponent>();
         var playerVelocity = player.GetComponent<VelocityComponent>();
 
+        // 1. [Pro] 一次遍历，同时完成存活计数与实体捕获，极低开销
+        int aliveCount = 0;
+        Entity lastEnemy = null;
+        for (int i = 0; i < enemies.Count; i++)
+        {
+            var e = enemies[i];
+            if (e.IsAlive && !e.HasComponent<DeadTag>() && !e.HasComponent<PendingDestroyComponent>())
+            {
+                aliveCount++;
+                lastEnemy = e;
+            }
+        }
+
+        // 2. 状态断言：是否满足“全场仅剩一人且在屏幕外”
+        bool isEmergencyMode = (aliveCount == 1 && lastEnemy != null && lastEnemy.HasComponent<OffScreenTag>());
+
         foreach (var enemy in enemies)
         {
-            if (!ShouldProcessEnemy(enemy)) continue;
+            bool isThisEmergencyTarget = isEmergencyMode && enemy == lastEnemy;
 
-            ProcessEnemyAI(enemy, player, playerPosition, playerVelocity);
+            // 3. 传入上下文状态，决定是否执行 AI
+            if (!ShouldProcessEnemy(enemy, isThisEmergencyTarget)) continue;
+
+            // 4. 路由：紧急入场逻辑 vs 常规战术逻辑
+            if (isThisEmergencyTarget)
+            {
+                ProcessEmergencyRecall(enemy, playerPosition);
+            }
+            else
+            {
+                ProcessEnemyAI(enemy, player, playerPosition, playerVelocity);
+            }
         }
     }
 
     /// <summary>
-    /// 判断是否应该处理该敌人的 AI 逻辑
+    /// 判断是否应该处理该敌人的 AI 逻辑 (重构版)
     /// </summary>
-    private bool ShouldProcessEnemy(Entity enemy)
+    private bool ShouldProcessEnemy(Entity enemy, bool isEmergencyTarget)
     {
-        // 硬控状态下停止思考
-        if (enemy.HasComponent<KnockbackComponent>() || enemy.HasComponent<HitRecoveryComponent>())
-            return false;
+        // 硬控与蓄力状态下，绝对停止思考 (不可覆盖)
+        if (enemy.HasComponent<KnockbackComponent>() || enemy.HasComponent<HitRecoveryComponent>()) return false;
+        if (enemy.HasComponent<ShootPrepStateComponent>() || enemy.HasComponent<DashPrepStateComponent>() || enemy.HasComponent<DashStateComponent>()) return false;
 
-        // 👇 【核心修复】：蓄力、瞄准、冲刺状态下，必须彻底停止寻路思考，防止在开火/冲锋前发生诡异的漂移
-        if (enemy.HasComponent<ShootPrepStateComponent>() || 
-            enemy.HasComponent<DashPrepStateComponent>() || 
-            enemy.HasComponent<DashStateComponent>())
-            return false;
-
-        // 降频优化：屏幕外降低寻路计算频率
-        if (enemy.HasComponent<OffScreenTag>() && Time.frameCount % OFF_SCREEN_UPDATE_INTERVAL != 0)
+        // [Pro] 关键优化：如果是紧急召回目标，强行绕过屏幕外降频限制，赋予其100%帧率的丝滑转向能力
+        if (!isEmergencyTarget && enemy.HasComponent<OffScreenTag>() && Time.frameCount % OFF_SCREEN_UPDATE_INTERVAL != 0)
             return false;
 
         return true;
     }
 
+    /// <summary>
+    /// [Pro] 孤狼紧急召回协议：剥离一切战术噪音，以绝对的最短路径全速突进
+    /// </summary>
+    private void ProcessEmergencyRecall(Entity enemy, PositionComponent playerPosition)
+    {
+        var enemyPosition = enemy.GetComponent<PositionComponent>();
+        Vector2 currentPosition = new Vector2(enemyPosition.X, enemyPosition.Y);
+        Vector2 targetPosition = new Vector2(playerPosition.X, playerPosition.Y);
+        
+        Vector2 toTarget = targetPosition - currentPosition;
+        
+        if (toTarget.sqrMagnitude > MIN_DISTANCE_THRESHOLD)
+        {
+            // 1. 绝对意图：忽略 Perlin 噪音抖动、同类排斥、风筝距离等所有参数，笔直逼近摄像机中心(玩家)
+            WriteMoveIntent(enemy, toTarget.normalized);
+
+            // 2. 无副作用提速：巧妙利用 ECS 管线执行顺序。
+            // 因为上一环节 StatusGatherSystem 已算出基础速度，此时我们覆写 CurrentSpeed，
+            // 效果仅在本帧生效，且能立刻被下一环节的 MovementSystem 消费。
+            // 一旦怪物踏入屏幕失去 OffScreenTag，提速效果会自动坍缩蒸发。
+            var speed = enemy.GetComponent<SpeedComponent>();
+            if (speed != null)
+            {
+                speed.CurrentSpeed *= EMERGENCY_SPEED_MULTIPLIER;
+            }
+        }
+    }
+
+    // ==========================================
+    // 下方的常规 AI 战术算法保持完全不变
+    // ==========================================
     private void ProcessEnemyAI(Entity enemy, Entity player, PositionComponent playerPosition, VelocityComponent playerVelocity)
     {
         var enemyPosition = enemy.GetComponent<PositionComponent>();
@@ -98,10 +152,7 @@ public class EnemyTrackingSystem : SystemBase
         Vector2 sideStepDirection = CalculateSideStepDirection(toTarget, distanceToTarget, entityHash, currentTime);
         bool isHesitating = Mathf.PerlinNoise(entityHash * 0.05f, currentTime * 0.2f) > HESITATION_THRESHOLD;
 
-        if (isHesitating)
-        {
-            return sideStepDirection * HESITATION_MOVEMENT_SCALE;
-        }
+        if (isHesitating) return sideStepDirection * HESITATION_MOVEMENT_SCALE;
 
         if (enemy.HasComponent<RangedAIComponent>())
         {
