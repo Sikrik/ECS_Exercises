@@ -182,11 +182,12 @@ public class UIManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 重新开始游戏（按钮事件）
+    /// 重新开始游戏/返回主菜单（按钮事件）
     /// </summary>
     public void OnRestartButtonClick()
     {
         HideAllPanels();
-        ECSManager.Instance.RestartGame();
+        // 改为调用返回主菜单的逻辑
+        ECSManager.Instance.ReturnToMainMenu();
     }
 }

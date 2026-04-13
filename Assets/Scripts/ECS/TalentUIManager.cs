@@ -36,7 +36,7 @@ public class TalentUIManager : MonoBehaviour
         int healthLevel = GameDataManager.Instance.GetTalentLevel("HealthUp");
         int currentHealthCost = _healthBaseCost + (healthLevel * 50); // 每升一级变贵 50
         
-        HealthLevelText.text = $"LV.{healthLevel}";
+        HealthLevelText.text = $"生命值LV.{healthLevel}";
         HealthCostText.text = $"消耗: {currentHealthCost}";
         HealthUpgradeBtn.interactable = currentGold >= currentHealthCost; // 金币不够则按钮置灰
 
@@ -44,7 +44,7 @@ public class TalentUIManager : MonoBehaviour
         int expLevel = GameDataManager.Instance.GetTalentLevel("ExpUp");
         int currentExpCost = _expBaseCost + (expLevel * 80);
         
-        ExpLevelText.text = $"LV.{expLevel}";
+        ExpLevelText.text = $"经验值LV.{expLevel}";
         ExpCostText.text = $"消耗: {currentExpCost}";
         ExpUpgradeBtn.interactable = currentGold >= currentExpCost;
     }

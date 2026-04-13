@@ -142,11 +142,13 @@ public class ECSManager : MonoBehaviour
     public Entity GetEntityFromGameObject(GameObject g) => (g != null && _gameObjectToEntity.TryGetValue(g.GetInstanceID(), out var e)) ? e : null;
 
     /// <summary>
-    /// 重启当前战斗关卡
+    /// 返回主菜单（替代原有的重启当前关卡逻辑）
     /// </summary>
-    public void RestartGame()
+    public void ReturnToMainMenu()
     {
         Time.timeScale = 1;
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        // 如果你的主菜单场景不叫 "MainMenu" 而是其他名字，请修改这里的字符串
+        // 或者如果主菜单在 Build Settings 里排第0个，也可以用 SceneManager.LoadScene(0);
+        SceneManager.LoadScene("MainMenu"); 
     }
 }

@@ -38,9 +38,7 @@ public class UISyncSystem : SystemBase
             int finalScore = ECSManager.Instance.Score;
             int currentWave = ECSManager.Instance.CurrentWave;
             
-            UIManager.Instance.ShowGameOver(finalScore);
-            
-            // 【新增】保存战斗记录和结算金币 (失败结算：分数 / 10)
+            // 【修改】在弹出结算UI前，先进行数据结算与保存
             if (GameDataManager.Instance != null)
             {
                 int goldEarned = finalScore / 10;
@@ -54,6 +52,9 @@ public class UISyncSystem : SystemBase
                 });
             }
 
+            // 结算完成后再弹出UI
+            UIManager.Instance.ShowGameOver(finalScore);
+
             entity.AddComponent(new PendingDestroyComponent());
         }
 
@@ -66,10 +67,7 @@ public class UISyncSystem : SystemBase
             int finalScore = ECSManager.Instance.Score;
             int currentWave = ECSManager.Instance.CurrentWave;
             
-            UIManager.Instance.ShowVictory(finalScore);
-            Time.timeScale = 0; // 胜利后暂停游戏时间
-            
-            // 【新增】保存战斗记录和结算金币 (通关给额外奖励 500)
+            // 【修改】在弹出结算UI前，先进行数据结算与保存
             if (GameDataManager.Instance != null)
             {
                 int goldEarned = (finalScore / 10) + 500; 
@@ -82,6 +80,10 @@ public class UISyncSystem : SystemBase
                     Date = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm")
                 });
             }
+
+            // 结算完成后再弹出UI并暂停游戏
+            UIManager.Instance.ShowVictory(finalScore);
+            Time.timeScale = 0; // 胜利后暂停游戏时间
 
             entity.AddComponent(new PendingDestroyComponent());
         }

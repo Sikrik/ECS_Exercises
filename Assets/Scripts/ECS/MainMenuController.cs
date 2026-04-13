@@ -1,7 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
-using System.Collections.Generic;
 
 public class MainMenuController : MonoBehaviour
 {
@@ -19,7 +18,23 @@ public class MainMenuController : MonoBehaviour
 
     void Start()
     {
-        // 初始状态：只显示主界面
+        // ==========================================
+        // 【核心修复：场景初始化安全锁】
+        // ==========================================
+        // 1. 强制恢复时间流动，防止按钮动画被冻结
+        Time.timeScale = 1f;
+
+        // 2. 强制解锁并显示鼠标指针
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
+
+        // 3. 强制关闭所有子级面板，防止透明背景拦截 UI 射线点击！
+        if (CharSelectPanel != null) CharSelectPanel.SetActive(false);
+        if (TalentPanel != null) TalentPanel.SetActive(false);
+        if (HistoryPanel != null) HistoryPanel.SetActive(false);
+        if (SettingsPanel != null) SettingsPanel.SetActive(false);
+
+        // 初始化完毕后，干净地打开主界面
         ShowPanel(MainPanel);
         
         // 确保 GameDataManager 已启动
@@ -49,13 +64,12 @@ public class MainMenuController : MonoBehaviour
     
     public void OnBackToMainClick() 
     {
-        // 确保所有可能打开的子页面强制设为非活跃
+        // 返回主菜单时同样强制清理一遍
         if (CharSelectPanel != null) CharSelectPanel.SetActive(false);
         if (TalentPanel != null) TalentPanel.SetActive(false);
         if (HistoryPanel != null) HistoryPanel.SetActive(false);
         if (SettingsPanel != null) SettingsPanel.SetActive(false);
 
-        // 强制打开主界面，并更新状态
         ShowPanel(MainPanel);
     }
 
@@ -71,10 +85,6 @@ public class MainMenuController : MonoBehaviour
     // 角色选择与场景跳转
     // ==========================================
 
-    /// <summary>
-    /// 选人界面按钮点击事件
-    /// </summary>
-    /// <param name="classIndex">0: Standard, 1: Heavy, 2: Agile</param>
     public void SelectCharacter(int classIndex)
     {
         if (GameDataManager.Instance == null) return;
@@ -85,7 +95,8 @@ public class MainMenuController : MonoBehaviour
 
         Debug.Log($"已选择角色: {selected}，准备进入战场...");
         
-        // 载入战斗场景
+        // 载入战斗场景前，再次确保时间正常
+        Time.timeScale = 1f;
         SceneManager.LoadScene(BattleSceneName);
     }
 }
