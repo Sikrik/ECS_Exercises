@@ -1,0 +1,5 @@
+﻿ID,Name,Description,TargetField,ValuePerLevel,MaxLevel,CostBase,CostIncrement
+HealthUp,生命强化,每级提升20点生命上限,Health,20,10,100,50
+ExpUp,经验汲取,每级提升15%经验获取率,Exp,0.15,10,150,80
+AttackUp,力量磨练,每级提升10%基础攻击力,Attack,0.1,10,200,100
+FireRateUp,急速射击,每级提升5%攻击速度,FireRate,0.05,10,200,100

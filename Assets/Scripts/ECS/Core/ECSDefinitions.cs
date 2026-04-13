@@ -55,14 +55,76 @@ public class LevelUpEventComponent : Component { }
 // ==========================================
 // 【重构】武器修饰器组件：使用字典追踪每个 Buff 的等级
 // ==========================================
-public class WeaponModifierComponent : Component
+/// <summary>
+/// 武器修饰组件
+/// 作用：挂载在玩家实体上，用于存储局外天赋带来的全局加成，以及局内吃升级卡牌带来的各种武器附魔等级。
+/// BulletFactory 在生成子弹时会读取此组件来决定子弹的最终形态与伤害。
+/// </summary>
+public class WeaponModifierComponent 
 {
-    // Key: Upgrade_Config 中的 ID, Value: 当前已升级的等级
-    public Dictionary<string, int> UpgradeLevels = new Dictionary<string, int>();
+    // ==========================================
+    // 局外天赋加成 (Metagame Talents)
+    // ==========================================
+    
+    /// <summary>
+    /// 全局伤害倍率 (由局外天赋系统计算并注入)
+    /// </summary>
+    public float GlobalDamageMultiplier = 1.0f;
 
-    // 辅助获取方法：如果没学过该技能则返回 0
-    public int GetLevel(string upgradeId)
+
+    // ==========================================
+    // 局内升级加成 (In-Game Upgrades)
+    // ==========================================
+    
+    /// <summary>
+    /// 存储局内获取的各项武器修饰/附魔等级
+    /// Key: 升级项的ID (如 "AttackUp", "AddSlow", "AddChain", "AddAOE", "AddStun" 等)
+    /// Value: 当前该修饰项的等级
+    /// </summary>
+    public Dictionary<string, int> Modifiers;
+
+    public WeaponModifierComponent()
     {
-        return UpgradeLevels.TryGetValue(upgradeId, out int level) ? level : 0;
+        Modifiers = new Dictionary<string, int>();
+        GlobalDamageMultiplier = 1.0f;
+    }
+
+    /// <summary>
+    /// 获取指定修饰项的等级
+    /// </summary>
+    /// <param name="modifierId">修饰项ID</param>
+    /// <returns>当前等级，若未拥有该修饰项则返回0</returns>
+    public int GetLevel(string modifierId)
+    {
+        if (Modifiers.TryGetValue(modifierId, out int level))
+        {
+            return level;
+        }
+        return 0; // 没有该项升级时默认返回0
+    }
+
+    /// <summary>
+    /// 增加指定修饰项的等级（当玩家在局内三选一界面选择了某项升级时调用）
+    /// </summary>
+    /// <param name="modifierId">修饰项ID</param>
+    /// <param name="levelToAdd">提升的等级数，默认为1</param>
+    public void AddModifier(string modifierId, int levelToAdd = 1)
+    {
+        if (Modifiers.ContainsKey(modifierId))
+        {
+            Modifiers[modifierId] += levelToAdd;
+        }
+        else
+        {
+            Modifiers[modifierId] = levelToAdd;
+        }
+    }
+
+    /// <summary>
+    /// 重置所有局内修饰项（用于玩家死亡或重新开始游戏时清理局内进度）
+    /// </summary>
+    public void ClearInGameModifiers()
+    {
+        Modifiers.Clear();
     }
 }

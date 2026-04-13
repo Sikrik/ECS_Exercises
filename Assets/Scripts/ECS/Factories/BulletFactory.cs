@@ -9,7 +9,7 @@ public static class BulletFactory
         // 【提取动态配置】
         if (!ecs.Config.BulletRecipes.TryGetValue(type.ToString(), out var recipe))
         {
-            Debug.LogError($"[BulletFactory] 找不到子弹配置：{type}");
+            Debug.LogError($"[BulletFactory] 找不到子弹配置：{type}，请检查 Bullet_Config.csv");
             return null;
         }
 
@@ -42,7 +42,7 @@ public static class BulletFactory
         bullet.AddComponent(new NeedsVisualBakingTag());
 
         // ==========================================
-        // 3. 动态结算升级系统修饰器 (提取深度成长数值)
+        // 3. 动态结算局内与局外的伤害修饰系统
         // ==========================================
         float finalDamage = baseDamage;
         bool causeRecovery = false;       
@@ -50,9 +50,14 @@ public static class BulletFactory
 
         if (modifiers != null)
         {
+            // 【核心计算】：应用局外天赋带来的全局攻击倍率
+            finalDamage *= modifiers.GlobalDamageMultiplier;
+
+            // 应用局内局内卡牌/升级带来的火力强化 (每级+20%)
             int attackLevel = modifiers.GetLevel("AttackUp");
             finalDamage *= (1f + attackLevel * 0.2f);
 
+            // 附魔：冰霜减速
             if (modifiers.GetLevel("AddSlow") > 0)
             {
                 int slowEnhance = modifiers.GetLevel("SlowEnhance");
@@ -61,6 +66,7 @@ public static class BulletFactory
                 bullet.AddComponent(new SlowEffectComponent(ratio, duration));
             }
                 
+            // 附魔：闪电链
             if (modifiers.GetLevel("AddChain") > 0)
             {
                 int chainEnhance = modifiers.GetLevel("ChainEnhance");
@@ -69,6 +75,7 @@ public static class BulletFactory
                 bullet.AddComponent(new ChainComponent(targets, range));
             }
                 
+            // 附魔：范围爆裂
             if (modifiers.GetLevel("AddAOE") > 0)
             {
                 int aoeEnhance = modifiers.GetLevel("AOEEnhance");
@@ -76,6 +83,7 @@ public static class BulletFactory
                 bullet.AddComponent(new AOEComponent(radius));
             }
 
+            // 附魔：重击硬直
             if (modifiers.GetLevel("AddStun") > 0)
             {
                 causeRecovery = true;
@@ -84,6 +92,7 @@ public static class BulletFactory
             }
         }
 
+        // 挂载物理反馈与最终伤害配置
         bullet.AddComponent(new ImpactFeedbackComponent(bounce: false, recovery: causeRecovery, stunDurationOverride));
         bullet.AddComponent(new DamageComponent(finalDamage));
 

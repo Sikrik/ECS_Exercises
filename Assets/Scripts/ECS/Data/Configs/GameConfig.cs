@@ -28,7 +28,7 @@ public class GameConfig
     public Dictionary<string, PlayerData> PlayerRecipes = new Dictionary<string, PlayerData>();
     public Dictionary<string, EnemyData> EnemyRecipes = new Dictionary<string, EnemyData>();
     public Dictionary<string, BulletData> BulletRecipes = new Dictionary<string, BulletData>(); // 新增子弹配方表
-    
+    public Dictionary<string, TalentData> TalentRecipes = new Dictionary<string, TalentData>();
     [Header("Upgrade & Level Settings")]
     public Dictionary<string, UpgradeData> UpgradeRecipes = new Dictionary<string, UpgradeData>();
     public Dictionary<int, int> LevelExpRecipes = new Dictionary<int, int>(); 

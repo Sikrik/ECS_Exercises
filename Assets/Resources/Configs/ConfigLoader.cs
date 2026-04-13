@@ -40,6 +40,11 @@ public static class ConfigLoader
         if (bulletCsv != null) ParseBulletRecipes(config, bulletCsv);
         else Debug.LogError("初始化失败：未找到 Resources/Configs/Bullet_Config.csv");
 
+        // 【新增】读取局外天赋配置
+        TextAsset talentCsv = Resources.Load<TextAsset>("Configs/Talent_Config");
+        if (talentCsv != null) ParseTalentRecipes(config, talentCsv);
+        else Debug.LogWarning("未找到 Resources/Configs/Talent_Config.csv，将没有天赋系统");
+
         return config;
     }
 
@@ -62,7 +67,6 @@ public static class ConfigLoader
                 case "EnemyHpGrowth": config.EnemyHpGrowth = ParseFloat(valueStr); break;
                 case "EnemyDmgGrowth": config.EnemyDmgGrowth = ParseFloat(valueStr); break;
                 case "EnemySpeedGrowth": config.EnemySpeedGrowth = ParseFloat(valueStr); break;
-                // 【新增全局表现与物理参数】
                 case "KnockbackFriction": config.KnockbackFriction = ParseFloat(valueStr); break;
                 case "GhostFadeSpeed": config.GhostFadeSpeed = ParseFloat(valueStr); break;
                 case "GhostInitialAlpha": config.GhostInitialAlpha = ParseFloat(valueStr); break;
@@ -76,7 +80,7 @@ public static class ConfigLoader
         for (int i = 1; i < lines.Length; i++)
         {
             string[] cols = lines[i].Split(',');
-            if (cols.Length < 9) continue; // 移除了 DefaultBullet 列，长度变为 9
+            if (cols.Length < 9) continue; // 移除了 DefaultBullet，现在只有 9 列
 
             PlayerData data = new PlayerData
             {
@@ -194,7 +198,6 @@ public static class ConfigLoader
         }
     }
 
-    // 【新增】解析子弹配置表
     private static void ParseBulletRecipes(GameConfig config, TextAsset csv)
     {
         string[] lines = csv.text.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
@@ -218,6 +221,28 @@ public static class ConfigLoader
                 HitRadius = ParseFloat(cols[10])
             };
             config.BulletRecipes[data.Id] = data;
+        }
+    }
+
+    private static void ParseTalentRecipes(GameConfig config, TextAsset csv)
+    {
+        string[] lines = csv.text.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 1; i < lines.Length; i++)
+        {
+            string[] cols = lines[i].Split(',');
+            if (cols.Length < 8) continue;
+
+            TalentData data = new TalentData {
+                Id = cols[0].Trim(),
+                Name = cols[1].Trim(),
+                Description = cols[2].Trim(),
+                TargetField = cols[3].Trim(),
+                ValuePerLevel = ParseFloat(cols[4]),
+                MaxLevel = ParseInt(cols[5]),
+                CostBase = ParseInt(cols[6]),
+                CostIncrement = ParseInt(cols[7])
+            };
+            config.TalentRecipes[data.Id] = data;
         }
     }
 
