@@ -6,8 +6,8 @@ public abstract class Component { }
 
 // 更新类型枚举
 public enum BulletType { Normal, Slow, ChainLightning, AOE }
-public enum EnemyType { Normal, Fast, Tank, Charger, Ranged, Boss } // 新增 Boss
-public enum PlayerClass { Standard, Heavy, Agile, Melee } // 新增 Melee
+public enum EnemyType { Normal, Fast, Tank, Charger, Ranged, Boss }
+public enum PlayerClass { Standard, Melee, Agile } // 将 Heavy 改为 Melee
 
 public class ColorTintComponent : Component 
 {
@@ -51,4 +51,20 @@ public class ExperienceComponent : Component
 }
 
 public class LevelUpEventComponent : Component { }
+public class MeleeCombatComponent : Component 
+{
+    public float AttackRadius = 3f;      // 基础攻击半径
+    public float AttackAngle = 90f;      // 基础攻击角度 (四分之一圆)
+    public float LifeStealRatio = 0.05f; // 基础 5% 吸血
+    public float HealthRegen = 2f;       // 每秒回血量
+    public float Defense = 0f;           // 固定防御力
+    public float ThornDamage = 0f;       // 反伤数值
+    public bool HasDoubleHit = false;    // 是否解锁二重连击
+}
 
+// 【新增】挥砍意图（瞬时事件）
+public class MeleeSwingIntentComponent : Component 
+{
+    public float RadiusMultiplier = 1.0f; 
+    public float AngleOverride = -1f; // -1 表示使用组件默认角度
+}

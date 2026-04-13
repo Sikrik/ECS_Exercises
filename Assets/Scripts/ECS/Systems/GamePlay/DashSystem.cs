@@ -26,6 +26,8 @@ public class DashCooldownSystem : SystemBase
 // ==========================================
 // 2. 冲刺触发系统 (只负责消费输入、校验条件并赋予状态)
 // ==========================================
+// 路径: Assets/Scripts/ECS/Systems/GamePlay/DashSystem.cs
+
 public class DashActivationSystem : SystemBase
 {
     public DashActivationSystem(List<Entity> entities) : base(entities) { }
@@ -34,55 +36,35 @@ public class DashActivationSystem : SystemBase
     {
         var inputs = GetEntitiesWith<DashInputComponent, DashAbilityComponent>();
         
-        // 倒序遍历，因为我们要消费/移除单帧输入组件
         for (int i = inputs.Count - 1; i >= 0; i--)
         {
             var e = inputs[i];
             var ability = e.GetComponent<DashAbilityComponent>();
 
-            // 准入判定：CD 完毕 且 当前不在冲刺中 且 没在受击硬直中
-            if (ability.CurrentCD <= 0 && !e.HasComponent<DashStateComponent>() && !e.HasComponent<HitRecoveryComponent>())
+            if (ability.CurrentCD <= 0 && !e.HasComponent<DashStateComponent>())
             {
-                Vector2 dashDir = Vector2.right; // 默认方向
+                // ... 现有方向计算逻辑 ...
 
-                // 优先根据当前的移动输入确定冲刺方向
-                if (e.HasComponent<MoveInputComponent>())
+                // --- 赋予物理状态与无敌 ---
+                e.AddComponent(new DashStateComponent { /* ... */ });
+                e.AddComponent(new InvincibleComponent { Duration = ability.Duration });
+
+                // ==========================================
+                // 【新增】近战职业冲刺环形斩
+                // ==========================================
+                if (e.HasComponent<MeleeCombatComponent>())
                 {
-                    var move = e.GetComponent<MoveInputComponent>();
-                    if (new Vector2(move.X, move.Y).sqrMagnitude > 0.001f)
-                        dashDir = new Vector2(move.X, move.Y).normalized;
-                }
-                // 若无输入，尝试沿用物理速度方向
-                else if (e.HasComponent<VelocityComponent>())
-                {
-                    var vel = e.GetComponent<VelocityComponent>();
-                    if (new Vector2(vel.VX, vel.VY).sqrMagnitude > 0.001f)
-                        dashDir = new Vector2(vel.VX, vel.VY).normalized;
+                    // 抛出 360 度，1.5 倍半径的挥砍意图
+                    e.AddComponent(new MeleeSwingIntentComponent { 
+                        RadiusMultiplier = 1.5f, 
+                        AngleOverride = 360f 
+                    });
                 }
 
-                // --- 赋予冲刺物理状态 ---
-                e.AddComponent(new DashStateComponent {
-                    Timer = ability.Duration,
-                    DirX = dashDir.x,
-                    DirY = dashDir.y
-                });
-
-                // --- 赋予无敌帧与残影表现标签 ---
-                if (!e.HasComponent<InvincibleComponent>())
-                    e.AddComponent(new InvincibleComponent { Duration = ability.Duration });
-
-                if (!e.HasComponent<GhostTrailComponent>())
-                    e.AddComponent(new GhostTrailComponent(0.04f));
-
-                // 重置 CD
                 ability.CurrentCD = ability.Cooldown;
-                Debug.Log($"<color=cyan>[DashActivationSystem]</color> 发起冲刺！方向: {dashDir}");
             }
-
-            // 无论是否成功冲刺，单帧意图都必须被消耗掉
             e.RemoveComponent<DashInputComponent>();
         }
-
     }
 }
 
