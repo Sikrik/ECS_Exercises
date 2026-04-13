@@ -42,6 +42,13 @@ public class DamageSystem : SystemBase
                 hp.CurrentHealth -= dmg.Value;
                 Debug.Log($"{target} 扣除血量：{dmg.Value}");
 
+                // ==========================================
+                // 【新增】：发送打击音效事件
+                // ==========================================
+                Entity audioEvent = ECSManager.Instance.CreateEntity();
+                audioEvent.AddComponent(new AudioPlayEventComponent("Hit"));
+                audioEvent.AddComponent(new PendingDestroyComponent());
+
                 // 2. 读取攻击源的物理反馈配置，判断是否该造成硬直，以及覆盖的硬直时间
                 bool causeRecovery = false;
                 float durationOverride = 0f;

@@ -1,5 +1,4 @@
-﻿// 路径: Assets/Scripts/ECS/Systems/GamePlay/WeaponFiringSystem.cs
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class WeaponFiringSystem : SystemBase
@@ -49,6 +48,13 @@ public class WeaponFiringSystem : SystemBase
                 float cooldownReduction = Mathf.Min(0.8f, fireRateLevel * 0.1f); // 最多减免 80%
                 
                 weapon.CurrentCooldown = weapon.FireRate * (1f - cooldownReduction);
+
+                // ==========================================
+                // 【新增】发送开火音效事件
+                // ==========================================
+                Entity audioEvent = ECSManager.Instance.CreateEntity();
+                audioEvent.AddComponent(new AudioPlayEventComponent("Shoot"));
+                audioEvent.AddComponent(new PendingDestroyComponent()); // 确保生命周期安全
             }
 
             entity.RemoveComponent<FireIntentComponent>();

@@ -1,5 +1,4 @@
-﻿// 路径: Assets/Scripts/ECS/UnityBridge/SystemBootstrap.cs
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class SystemBootstrap
@@ -41,7 +40,6 @@ public class SystemBootstrap
         simGroup.AddSystem(new KnockbackSystem(entities));        
         simGroup.AddSystem(new MovementSystem(entities));         
         
-        // 👇 【修复 1】将 ViewSyncSystem 移到这里，确保物理检测前 Transform 坐标已更新
         simGroup.AddSystem(new ViewSyncSystem(entities));         
         
         simGroup.AddSystem(new PhysicsDetectionSystem(entities)); 
@@ -77,8 +75,6 @@ public class SystemBootstrap
         presGroup.AddSystem(new CameraFollowSystem(entities));
         presGroup.AddSystem(new GhostTrailSystem(entities));      
         
-        // ❌ ViewSyncSystem 已从这里移除
-        
         presGroup.AddSystem(new DirectionIndicatorSystem(entities)); 
 
         // --- 渲染与颜色覆写 ---
@@ -89,6 +85,12 @@ public class SystemBootstrap
         presGroup.AddSystem(new VFXSystem(entities));             
         presGroup.AddSystem(new VFXCleanupSystem(entities));
         presGroup.AddSystem(new LightningRenderSystem(entities)); 
+        
+        // ==========================================
+        // 【新增】：音频播放系统 (处理逻辑层抛出的音效意图)
+        // ==========================================
+        presGroup.AddSystem(new AudioSystem(entities));           
+        
         presGroup.AddSystem(new UISyncSystem(entities));          
         _systemGroups.Add(presGroup);
     }
