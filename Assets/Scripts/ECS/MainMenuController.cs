@@ -49,15 +49,14 @@ public class MainMenuController : MonoBehaviour
     
     public void OnBackToMainClick() 
     {
-        // 简单粗暴：直接把所有可能打开的子页面强制设为非活跃
+        // 确保所有可能打开的子页面强制设为非活跃
         if (CharSelectPanel != null) CharSelectPanel.SetActive(false);
         if (TalentPanel != null) TalentPanel.SetActive(false);
         if (HistoryPanel != null) HistoryPanel.SetActive(false);
         if (SettingsPanel != null) SettingsPanel.SetActive(false);
 
         // 强制打开主界面，并更新状态
-        MainPanel.SetActive(true);
-        _currentPanel = MainPanel;
+        ShowPanel(MainPanel);
     }
 
     public void OnExitButtonClick()

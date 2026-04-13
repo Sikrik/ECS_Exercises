@@ -51,10 +51,10 @@ public class WeaponFiringSystem : SystemBase
 
                 // ==========================================
                 // 【新增】发送开火音效事件
+                // 注意：不添加销毁标签，让它存活到表现层的 AudioSystem 去处理！
                 // ==========================================
                 Entity audioEvent = ECSManager.Instance.CreateEntity();
                 audioEvent.AddComponent(new AudioPlayEventComponent("Shoot"));
-                audioEvent.AddComponent(new PendingDestroyComponent()); // 确保生命周期安全
             }
 
             entity.RemoveComponent<FireIntentComponent>();

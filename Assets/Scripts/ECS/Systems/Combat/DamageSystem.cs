@@ -44,10 +44,10 @@ public class DamageSystem : SystemBase
 
                 // ==========================================
                 // 【新增】：发送打击音效事件
+                // 注意：不添加销毁标签，让它存活到表现层的 AudioSystem 去处理！
                 // ==========================================
                 Entity audioEvent = ECSManager.Instance.CreateEntity();
                 audioEvent.AddComponent(new AudioPlayEventComponent("Hit"));
-                audioEvent.AddComponent(new PendingDestroyComponent());
 
                 // 2. 读取攻击源的物理反馈配置，判断是否该造成硬直，以及覆盖的硬直时间
                 bool causeRecovery = false;
