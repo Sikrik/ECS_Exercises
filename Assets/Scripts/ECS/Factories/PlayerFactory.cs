@@ -17,7 +17,7 @@ public static class PlayerFactory
         }
 
         // ==========================================
-        // 【核心新增】读取局外天赋数据，计算最终面板
+        // 读取局外天赋数据，计算最终面板
         // ==========================================
         float finalMaxHealth = recipe.MaxHealth;
         float finalMoveSpeed = recipe.MoveSpeed;
@@ -54,7 +54,8 @@ public static class PlayerFactory
         var indicatorView = go.GetComponent<DirectionIndicatorView>();
         if (indicatorView != null && indicatorView.ArrowPivot != null)
         {
-            player.AddComponent(new DirectionIndicatorComponent(indicatorView.ArrowPivot, 6f));
+            // 【核心修改点】：将 indicatorView.SyncPivots 数组传递给组件，并设置 1.5f 的浮游延迟转速
+            player.AddComponent(new DirectionIndicatorComponent(indicatorView.ArrowPivot, 6f, indicatorView.SyncPivots, 1.5f));
         }
 
         // 核心组件装配
@@ -62,7 +63,7 @@ public static class PlayerFactory
         player.AddComponent(new PositionComponent(0, 0, 0));
         player.AddComponent(new ViewComponent(go, prefab));
         
-        // 【修改】：注入计算后的最终属性 (finalMaxHealth, finalMoveSpeed)
+        // 注入计算后的最终属性 
         player.AddComponent(new HealthComponent(finalMaxHealth));
         player.AddComponent(new SpeedComponent(finalMoveSpeed)); 
         player.AddComponent(new VelocityComponent(0, 0)); 
@@ -80,7 +81,7 @@ public static class PlayerFactory
         player.AddComponent(new CollisionFilterComponent(0)); 
         player.AddComponent(new UIHealthUpdateEvent()); 
         
-        // 【修改】：注入经验倍率
+        // 注入经验倍率
         player.AddComponent(new ExperienceComponent(50f, expMultiplier)); 
         player.AddComponent(new WeaponModifierComponent()); 
 
