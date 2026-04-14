@@ -18,7 +18,14 @@ public class ImpactResolutionSystem : SystemBase
 
             if (attacker == null || !attacker.IsAlive || victim == null || !victim.IsAlive) 
                 continue;
-
+// ==========================================
+            // 【核心修复】：如果受击方处于无敌状态，直接丢弃碰撞解析！
+            // 阻断无限跳字与无限击退硬直
+            // ==========================================
+            if (victim.HasComponent<InvincibleComponent>())
+            {
+                continue; 
+            }
             // ==========================================
             // 【修复4：补充丢失的基础伤害逻辑！】
             // 将攻击者的基础 DamageComponent 传递给受害者的 DamageEventComponent

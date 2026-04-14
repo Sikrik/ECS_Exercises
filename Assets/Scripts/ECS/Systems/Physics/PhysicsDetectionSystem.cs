@@ -31,7 +31,7 @@ public class PhysicsDetectionSystem : SystemBase
             var col = entity.GetComponent<CollisionComponent>();
 
             // ==========================================
-            // 1. 连续碰撞检测 (主要用于子弹)
+            // 1. 连续碰撞检测 (主要用于高速子弹)
             // ==========================================
             if (trace != null && col != null) 
             {
@@ -48,14 +48,13 @@ public class PhysicsDetectionSystem : SystemBase
                     {
                         if (_castResults[j].collider != pPhys.Collider)
                         {
-                            // 【修复1】：子弹的击退方向应该完全遵循子弹的飞行方向，而不是敌人的表面法线
                             CreateEvent(entity, _castResults[j].collider.gameObject, dir.normalized);
                         }
                     }
                 }
             }
             // ==========================================
-            // 2. 离散碰撞检测 (主要用于肉体冲撞)
+            // 2. 离散碰撞检测 (主要用于肉体碰撞与穿模修复)
             // ==========================================
             else 
             {
@@ -67,14 +66,39 @@ public class PhysicsDetectionSystem : SystemBase
                         ColliderDistance2D distInfo = pPhys.Collider.Distance(_overlapResults[j]);
                         if (distInfo.isOverlapped)
                         {
-                            // 【修复2】：Unity的法线是从 Target 指向 Source。为了把 Target 推开，必须取反！
+                            // Unity法线从目标指向源，取反得到推开目标的方向
                             Vector2 pushNormal = -distInfo.normal; 
                             
                             if (pushNormal == Vector2.zero)
                             {
                                 pushNormal = new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f)).normalized;
                             }
-                            CreateEvent(entity, _overlapResults[j].gameObject, pushNormal);
+
+                            // 👇 【核心修复：防止穿模排斥】
+                            // 计算重叠深度 (-distance)
+                            float penetrationDepth = -distInfo.distance;
+                            
+                            // 确定权重：如果撞到的是墙（没有Velocity），自己退100%；如果是单位对撞，各退50%
+                            float moveRatio = 1.0f;
+                            Entity targetEnt = ECSManager.Instance.GetEntityFromGameObject(_overlapResults[j].gameObject);
+                            if (targetEnt != null && targetEnt.HasComponent<VelocityComponent>())
+                            {
+                                moveRatio = 0.5f;
+                            }
+
+                            // 立即修正坐标，解决“钻到底下”和“重叠”问题
+                            var pos = entity.GetComponent<PositionComponent>();
+                            if (pos != null)
+                            {
+                                pos.X += pushNormal.x * penetrationDepth * moveRatio;
+                                pos.Y += pushNormal.y * penetrationDepth * moveRatio;
+                            }
+
+                            // 只有在对方没有无敌帧时，才生成伤害事件 (防止无敌期间无限产生排斥力)
+                            if (targetEnt == null || !targetEnt.HasComponent<InvincibleComponent>())
+                            {
+                                CreateEvent(entity, _overlapResults[j].gameObject, pushNormal);
+                            }
                         }
                     }
                 }
@@ -92,13 +116,12 @@ public class PhysicsDetectionSystem : SystemBase
             // 防止敌人把子弹当成受害者
             if (source.HasComponent<EnemyTag>() && target.HasComponent<BulletTag>()) return;
 
-            // ==========================================
-            // 【核心修复 1】：同阵营物理碰撞免疫（解决子弹打自己、剑气打自己）
-            // ==========================================
+            // 同阵营免疫
             var sFac = source.GetComponent<FactionComponent>();
             var tFac = target.GetComponent<FactionComponent>();
             if (sFac != null && tFac != null && sFac.Value == tFac.Value) return;
 
+            // 穿透逻辑处理
             var pierce = source.GetComponent<PierceComponent>();
             if (pierce != null)
             {
@@ -107,6 +130,7 @@ public class PhysicsDetectionSystem : SystemBase
                 pierce.HitHistory.Add(target);
             }
 
+            // 生成碰撞事件实体
             Entity eventEntity = ECSManager.Instance.CreateEntity();
             var colEvt = EventPool<CollisionEventComponent>.Get();
             colEvt.Source = source;

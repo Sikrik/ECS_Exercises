@@ -66,37 +66,42 @@ public class SystemBootstrap
         simGroup.AddSystem(Grid);
         simGroup.AddSystem(new KnockbackSystem(entities));
         simGroup.AddSystem(new MovementSystem(entities));
-        simGroup.AddSystem(new ViewSyncSystem(entities)); // 确保位移后同步包围盒，再做物理检测
+        simGroup.AddSystem(new ViewSyncSystem(entities)); // 确保位移后同步包围盒
 
-        // [管线 2.3] ★ 物理碰撞与附魔反应 (极其关键) ★
-        // 这一步产生 CollisionEvent，各类系统必须在这里白嫖子弹数据！
+        // [管线 2.3] ★ 物理碰撞与附魔反应 ★
         simGroup.AddSystem(new PhysicsDetectionSystem(entities)); 
-        simGroup.AddSystem(new ImpactResolutionSystem(entities));
-        simGroup.AddSystem(new EnemyHitReactionSystem(entities));     // 读基础伤害
-        simGroup.AddSystem(new PlayerHitReactionSystem(entities));
-        simGroup.AddSystem(new BulletDOTReactionSystem(entities));    // 挂载燃烧/剧毒
-        simGroup.AddSystem(new SlowBulletReactionSystem(entities));   // 挂载减速
-        simGroup.AddSystem(new AOEBulletReactionSystem(entities));    // 触发范围爆炸
+        simGroup.AddSystem(new ImpactResolutionSystem(entities)); // 产生 DamageEvent (伤害意图)
+        
+        // --- 此处移除了原有的 HitReactionSystem ---
+        
+        simGroup.AddSystem(new BulletDOTReactionSystem(entities));    
+        simGroup.AddSystem(new SlowBulletReactionSystem(entities));   
+        simGroup.AddSystem(new AOEBulletReactionSystem(entities));    
         simGroup.AddSystem(new ChainLightningReactionSystem(entities));
         simGroup.AddSystem(new ExplosionSystem(entities));
-        simGroup.AddSystem(new DOTSystem(entities));                  // 将 DOT 转化为当帧的伤害事件
+        simGroup.AddSystem(new DOTSystem(entities));                  
 
-        // [管线 2.4] ★ 伤害结算与死亡判定 ★
-        simGroup.AddSystem(new DamageTextSystem(entities));           // 抢在扣血前，读取伤害数字并飘字！
-        simGroup.AddSystem(new DamageSystem(entities));               // 扣血，并【销毁】伤害事件组件
+        // [管线 2.4] ★ 伤害结算与受击反馈 ★
+        simGroup.AddSystem(new DamageSystem(entities));               // 核心修改：扣血并生成 DamageTakenEvent (确定的受击事实)
+        
+        // 👇 修复点：确保在 DamageSystem 之后执行，才能读取到当帧的 DamageTakenEventComponent
+        simGroup.AddSystem(new DamageTextSystem(entities));           // 根据事实飘字
+        simGroup.AddSystem(new EnemyHitReactionSystem(entities));     // 赋予怪物硬直
+        simGroup.AddSystem(new PlayerHitReactionSystem(entities));    // 赋予玩家无敌帧！
+        
         simGroup.AddSystem(new HitRecoverySystem(entities));
-        simGroup.AddSystem(new HealthSystem(entities));               // 判定血量，若<=0则标记死亡
+        simGroup.AddSystem(new HealthSystem(entities));               
 
         // [管线 2.5] 内存清理与实体销毁
         simGroup.AddSystem(new BountySystem(entities));
         simGroup.AddSystem(new PlayerDeathSystem(entities));
         simGroup.AddSystem(new ScoreSystem(entities));
         simGroup.AddSystem(new SlowEffectSystem(entities));
-        simGroup.AddSystem(new BulletDestroySystem(entities));        // 所有反应都完事了，放心销毁碰撞过的子弹
-        simGroup.AddSystem(new DeathCleanupSystem(entities));         // 销毁死去的怪物
+        simGroup.AddSystem(new BulletDestroySystem(entities));        
+        simGroup.AddSystem(new DeathCleanupSystem(entities));         
         simGroup.AddSystem(new LifetimeSystem(entities));
         
-        // 单帧事件组件的清理必须放在 Simulation 的最末尾！
+        // 单帧事件组件的清理
         simGroup.AddSystem(new GenericEventCleanupSystem<CollisionEventComponent>(entities));
         simGroup.AddSystem(new GenericEventCleanupSystem<DamageTakenEventComponent>(entities));
         simGroup.AddSystem(new GenericEventCleanupSystem<DashStartedEventComponent>(entities));
