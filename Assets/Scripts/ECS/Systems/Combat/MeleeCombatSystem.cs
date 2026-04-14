@@ -136,6 +136,12 @@ public class MeleeCombatSystem : SystemBase
             EndPosition = new Vector3(pPos.X + attackDir.x * finalRadius, pPos.Y + attackDir.y * finalRadius, 0),
             NumericParam = finalAngle 
         });
+        Entity audioEvent = ECSManager.Instance.CreateEntity();
+        audioEvent.AddComponent(new AudioPlayEventComponent(
+            "MeleeSwing", // 音效ID（需要在面板配置对应名称）
+            true,         // 开启空间音效 (距离越远声音越小)
+            new Vector3(pPos.X, pPos.Y, 0) // 发声位置
+        ));
 
         p.RemoveComponent<MeleeSwingIntentComponent>();
 

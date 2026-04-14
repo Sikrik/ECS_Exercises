@@ -1,5 +1,6 @@
 ﻿// 路径: Assets/Resources/Configs/ConfigLoader.cs
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using UnityEngine;
 
@@ -28,9 +29,13 @@ public static class ConfigLoader
         if (waveCsv != null) ParseWaveSettings(config, waveCsv);
         else Debug.LogError("初始化失败：未找到 Resources/Configs/Wave_config.csv");
 
-        TextAsset upgradeCsv = Resources.Load<TextAsset>("Configs/Upgrade_Config");
-        if (upgradeCsv != null) ParseUpgradeRecipes(config, upgradeCsv);
+        TextAsset upgradeRangedCsv = Resources.Load<TextAsset>("Configs/Upgrade_Config");
+        if (upgradeRangedCsv != null) ParseUpgradeRecipes(config.RangedUpgradeRecipes, upgradeRangedCsv);
         else Debug.LogError("初始化失败：未找到 Resources/Configs/Upgrade_Config.csv");
+
+        TextAsset upgradeMeleeCsv = Resources.Load<TextAsset>("Configs/Upgrade_Config_Melee");
+        if (upgradeMeleeCsv != null) ParseUpgradeRecipes(config.MeleeUpgradeRecipes, upgradeMeleeCsv);
+        else Debug.LogWarning("未找到 Resources/Configs/Upgrade_Config_Melee.csv，近战职业可能没有升级选项");
 
         TextAsset levelCsv = Resources.Load<TextAsset>("Configs/Level_Config");
         if (levelCsv != null) ParseLevelRecipes(config, levelCsv);
@@ -168,7 +173,7 @@ public static class ConfigLoader
         }
     }
 
-    private static void ParseUpgradeRecipes(GameConfig config, TextAsset csv)
+    private static void ParseUpgradeRecipes(Dictionary<string, UpgradeData> targetDict, TextAsset csv)
     {
         string[] lines = csv.text.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
         for (int i = 1; i < lines.Length; i++)
@@ -178,13 +183,13 @@ public static class ConfigLoader
 
             UpgradeData data = new UpgradeData
             {
-                // 这里会动态加载诸如 "Melee_DoubleHit" 等所有新的升级ID
                 Id = cols[0].Trim(),
                 MaxLevel = ParseInt(cols[1]),
                 Description = cols[2].Trim(),
                 Prerequisite = cols.Length > 3 ? cols[3].Trim() : string.Empty 
             };
-            config.UpgradeRecipes[data.Id] = data;
+            // 存入指定的字典中
+            targetDict[data.Id] = data;
         }
     }
 

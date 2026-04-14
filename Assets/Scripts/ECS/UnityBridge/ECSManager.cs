@@ -37,11 +37,6 @@ public class ECSManager : MonoBehaviour
 
     void Awake()
     {
-        // ==========================================
-        // 【核心修复】：单例冲突处理与场景净化
-        // 如果检测到内存中已经有一个 ECSManager，且不是当前这一个，说明发生了跨场景污染
-        // 我们强行销毁旧的，让当前战斗场景中这个全新的 ECSManager 接管控制权
-        // ==========================================
         if (Instance != null && Instance != this)
         {
             Debug.LogWarning("[ECSManager] 检测到跨场景残留或重复的实例，已强制覆盖并销毁旧实例！请确保 ECSManager 预制体只放在战斗场景中。");
@@ -50,8 +45,17 @@ public class ECSManager : MonoBehaviour
         
         Instance = this;
         
-        // 在 Awake 阶段加载所有的 CSV 配置表
-        Config = ConfigLoader.Load(); 
+        // 👇 【核心修改】：如果 GameDataManager 存在，直接拿它的配置。
+        // 如果是直接从战斗场景启动测试（GameDataManager不存在），则回退到临时加载配置。
+        if (GameDataManager.Instance != null)
+        {
+            Config = GameDataManager.Instance.Config;
+        }
+        else
+        {
+            Debug.LogWarning("未检测到 GameDataManager，使用 ConfigLoader 临时加载配置（建议从 MainMenu 启动游戏）。");
+            Config = ConfigLoader.Load(); 
+        }
     }
 
     void Start()

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/Systems/UI/UpgradeUIManager.cs
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,7 +9,7 @@ public class UpgradeUIManager : MonoBehaviour
     public static UpgradeUIManager Instance;
 
     public GameObject UpgradePanel;
-    public Button[] ChoiceButtons; // 拖入3个按钮
+    public Button[] ChoiceButtons; 
     
     private Entity _targetPlayer;
 
@@ -20,9 +21,13 @@ public class UpgradeUIManager : MonoBehaviour
         var modifiers = _targetPlayer.GetComponent<WeaponModifierComponent>();
         var config = ECSManager.Instance.Config;
 
+        // 👇【核心修改】：判定玩家是近战还是远程，选择对应的升级配方表
+        bool isMelee = _targetPlayer.HasComponent<MeleeCombatComponent>();
+        var activeRecipes = isMelee ? config.MeleeUpgradeRecipes : config.RangedUpgradeRecipes;
+
         // 1. 动态生成有效卡池
         List<string> validPool = new List<string>();
-        foreach (var kvp in config.UpgradeRecipes)
+        foreach (var kvp in activeRecipes)
         {
             string upgradeId = kvp.Key;
             int maxLevel = kvp.Value.MaxLevel;
@@ -42,7 +47,7 @@ public class UpgradeUIManager : MonoBehaviour
             }
         }
 
-        // 2. 防御判定：如果没有任何可升级项（全部满级且无新项可学），直接关闭面板恢复游戏
+        // 2. 防御判定：如果没有任何可升级项，直接关闭面板恢复游戏
         if (validPool.Count == 0)
         {
             Time.timeScale = 1;
@@ -57,7 +62,7 @@ public class UpgradeUIManager : MonoBehaviour
         {
             if (validPool.Count == 0) 
             {
-                ChoiceButtons[i].gameObject.SetActive(false); // 选项不足3个时隐藏多余按钮
+                ChoiceButtons[i].gameObject.SetActive(false); 
                 continue;
             }
             
@@ -67,8 +72,8 @@ public class UpgradeUIManager : MonoBehaviour
             string selectedId = validPool[randomIndex];
             validPool.RemoveAt(randomIndex); // 确保本次抽取的选项互不重复
 
-            // 读取 CSV 中的描述文本
-            ChoiceButtons[i].GetComponentInChildren<TextMeshProUGUI>().text = config.UpgradeRecipes[selectedId].Description;
+            // 👇【核心修改】：从 activeRecipes 中读取文本
+            ChoiceButtons[i].GetComponentInChildren<TextMeshProUGUI>().text = activeRecipes[selectedId].Description;
             
             // 绑定点击事件
             ChoiceButtons[i].onClick.RemoveAllListeners();
@@ -81,8 +86,6 @@ public class UpgradeUIManager : MonoBehaviour
         if (_targetPlayer != null && _targetPlayer.HasComponent<WeaponModifierComponent>())
         {
             var modifiers = _targetPlayer.GetComponent<WeaponModifierComponent>();
-            
-            // 修复报错：直接调用 WeaponModifierComponent 中定义好的增加等级方法
             modifiers.AddModifier(upgradeId, 1);
         }
 

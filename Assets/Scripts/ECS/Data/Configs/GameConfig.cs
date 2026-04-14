@@ -4,13 +4,12 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [Serializable]
-
 public class GameConfig
 {
     [Header("Physics & Bounce Settings")]
     public float CollisionPushDistance = 0.2f; 
     public float CollisionBounceForce = 5.0f;
-    public float KnockbackFriction = 15.0f; // 新增
+    public float KnockbackFriction = 15.0f; 
 
     [Header("Spawn Settings")]
     public float InitialSpawnInterval;
@@ -21,16 +20,20 @@ public class GameConfig
     public float EnemySpeedGrowth = 0.05f;
 
     [Header("Visual Settings")]
-    public float GhostFadeSpeed = 3.5f;     // 新增
-    public float GhostInitialAlpha = 0.6f;  // 新增
+    public float GhostFadeSpeed = 3.5f;     
+    public float GhostInitialAlpha = 0.6f;  
 
     [Header("Data Recipes")]
     public Dictionary<string, PlayerData> PlayerRecipes = new Dictionary<string, PlayerData>();
     public Dictionary<string, EnemyData> EnemyRecipes = new Dictionary<string, EnemyData>();
-    public Dictionary<string, BulletData> BulletRecipes = new Dictionary<string, BulletData>(); // 新增子弹配方表
+    public Dictionary<string, BulletData> BulletRecipes = new Dictionary<string, BulletData>(); 
     public Dictionary<string, TalentData> TalentRecipes = new Dictionary<string, TalentData>();
+    
     [Header("Upgrade & Level Settings")]
-    public Dictionary<string, UpgradeData> UpgradeRecipes = new Dictionary<string, UpgradeData>();
+    // 👇【核心修改】：拆分成远程和近战两个字典
+    public Dictionary<string, UpgradeData> RangedUpgradeRecipes = new Dictionary<string, UpgradeData>();
+    public Dictionary<string, UpgradeData> MeleeUpgradeRecipes = new Dictionary<string, UpgradeData>();
+    
     public Dictionary<int, int> LevelExpRecipes = new Dictionary<int, int>(); 
     
     [Header("Wave Settings")]

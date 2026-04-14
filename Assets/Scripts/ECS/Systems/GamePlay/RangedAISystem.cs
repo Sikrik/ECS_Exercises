@@ -8,7 +8,7 @@ public class RangedAISystem : SystemBase
 
     public override void Update(float deltaTime)
     {
-        var rangedEnemies = GetEntitiesWith<RangedAIComponent, PositionComponent>(); // 注意：不再强依赖 WeaponComponent
+        var rangedEnemies = GetEntitiesWith<RangedAIComponent, PositionComponent>(); 
         var player = ECSManager.Instance.PlayerEntity;
 
         if (player == null || !player.IsAlive) return;
@@ -28,8 +28,10 @@ public class RangedAISystem : SystemBase
             var ai = enemy.GetComponent<RangedAIComponent>();
             var weapon = enemy.GetComponent<WeaponComponent>();
             
-            // 【核心修复】：增加 weapon != null 的判空，防止崩溃切断ECS循环
-            if (weapon != null && weapon.CurrentCooldown > 0) continue; 
+            // ==========================================
+            // 👇 【核心修复】：逻辑纠正！没有武器 (null) 必须被拦截跳过！
+            // ==========================================
+            if (weapon == null || weapon.CurrentCooldown > 0) continue; 
 
             var ePos = enemy.GetComponent<PositionComponent>();
             Vector2 toPlayer = new Vector2(pPos.X - ePos.X, pPos.Y - ePos.Y);
@@ -43,7 +45,7 @@ public class RangedAISystem : SystemBase
 
                 enemy.AddComponent(new ShootPrepStateComponent(ai.PrepDuration, aimDir));
                 
-                // 赋予红外线射线（若射线太细，可把 0.1f 改成 0.2f）
+                // 赋予红外线射线（告知表现层：瞄准方向，长度 15 米，宽度 0.1 米）
                 enemy.AddComponent(new DashPreviewIntentComponent(aimDir, 15f, 0.1f));
 
                 if (enemy.HasComponent<MoveInputComponent>())
