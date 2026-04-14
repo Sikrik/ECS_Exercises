@@ -1,130 +1,104 @@
-﻿// 路径: Assets/Scripts/ECS/UnityBridge/SystemBootstrap.cs
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
-public class SystemBootstrap
+/// <summary>
+/// ECS 系统启动与装配中心
+/// 负责初始化所有系统并将其加入执行管线
+/// </summary>
+public class SystemBootstrap : MonoBehaviour
 {
-    private List<SystemGroup> _systemGroups = new List<SystemGroup>();
-    public GridSystem Grid { get; private set; }
+    private SystemGroup _inputGroup;      // 输入层
+    private SystemGroup _simulationGroup; // 逻辑层
+    private SystemGroup _presentationGroup; // 表现层
 
-    public SystemBootstrap(List<Entity> entities)
+    void Awake()
     {
-        // 初始化网格系统 (2米一个格子)
-        Grid = new GridSystem(2f, entities);
+        // 1. 初始化系统组
+        _inputGroup = new SystemGroup();
+        _simulationGroup = new SystemGroup();
+        _presentationGroup = new SystemGroup();
+
+        var entities = ECSManager.Instance.Entities;
 
         // ==========================================
-        // 1. 初始化组 (数据捕捉与状态收集)
+        // 2. 装配【输入层】
         // ==========================================
-        var initGroup = new InitializationSystemGroup(entities);
-        initGroup.AddSystem(new InputCaptureSystem(entities));    
-        initGroup.AddSystem(new StatusGatherSystem(entities));    
-        _systemGroups.Add(initGroup);
+        _inputGroup.AddSystem(new InputCaptureSystem(entities));
+        _inputGroup.AddSystem(new PlayerAimingSystem(entities));
 
         // ==========================================
-        // 2. 模拟组 (纯逻辑计算 - 包含物理与位置同步)
+        // 3. 装配【逻辑与战斗层】
         // ==========================================
-        var simGroup = new SimulationSystemGroup(entities);
         
-        // 【核心修复1】：加回物理烘焙系统，为所有需要的实体生成 PhysicsColliderComponent
-        simGroup.AddSystem(new PhysicsBakingSystem(entities));
-
-        // --- 技能与冷却 ---
-        simGroup.AddSystem(new WeaponCooldownSystem(entities));   
-        simGroup.AddSystem(new DashCooldownSystem(entities)); 
-
-        // --- 意图生成层 (AI决策) ---
-        simGroup.AddSystem(new PlayerAimingSystem(entities));     
-        simGroup.AddSystem(new EnemySpawnSystem(entities));       
-        simGroup.AddSystem(new EnemyTrackingSystem(entities));  
-        simGroup.AddSystem(new SwarmSeparationSystem(entities)); 
-        simGroup.AddSystem(new ChargerAISystem(entities));        
-        simGroup.AddSystem(new RangedAISystem(entities));   
-        simGroup.AddSystem(new MeleeTargetingSystem(entities));  
-
-        // --- 状态与动作前摇 ---
-        simGroup.AddSystem(new DashPrepSystem(entities));         
-        simGroup.AddSystem(new ShootPrepSystem(entities));     
-
-        // --- 核心动作触发 ---
-        simGroup.AddSystem(new DashActivationSystem(entities));             
-        simGroup.AddSystem(new MeleeDashReactionSystem(entities)); 
-        simGroup.AddSystem(new MeleeExecutionSystem(entities));    
-        simGroup.AddSystem(new WeaponFiringSystem(entities));      
-        simGroup.AddSystem(new DashStateSystem(entities));         
-
-        // --- 【核心顺序优化】位移管线 ---
-        // 先更新网格，再处理位移
-        simGroup.AddSystem(Grid);                                 
-        simGroup.AddSystem(new KnockbackSystem(entities));        
-        simGroup.AddSystem(new MovementSystem(entities));         // 唯一仲裁者，算出实体这一帧最终的逻辑 X, Y
-
-        // 【核心修复2】：将 ViewSyncSystem 提前到物理检测之前，确保碰撞盒位置与逻辑坐标严格同步！
-        simGroup.AddSystem(new ViewSyncSystem(entities)); 
-
-        // --- 碰撞与结算管线 (基于 Movement 算出的最新位置，且 Unity Transform 已同步) ---
-        simGroup.AddSystem(new PhysicsDetectionSystem(entities)); // 纯数学碰撞检测 + Unity 物理检测
-        simGroup.AddSystem(new ImpactResolutionSystem(entities)); 
-        simGroup.AddSystem(new BulletDestroySystem(entities));
-        simGroup.AddSystem(new SlowBulletReactionSystem(entities));
-        simGroup.AddSystem(new AOEBulletReactionSystem(entities));
-        simGroup.AddSystem(new ChainLightningReactionSystem(entities));
-        simGroup.AddSystem(new ExplosionSystem(entities));       
-        simGroup.AddSystem(new DamageSystem(entities));          
-        simGroup.AddSystem(new DOTSystem(entities));
-        // --- 死亡与生命值 ---
-        simGroup.AddSystem(new EnemyHitReactionSystem(entities)); 
-        simGroup.AddSystem(new PlayerHitReactionSystem(entities)); 
-        simGroup.AddSystem(new HitRecoverySystem(entities));      
-        simGroup.AddSystem(new HealthSystem(entities));           
-        simGroup.AddSystem(new BountySystem(entities));           
-        simGroup.AddSystem(new PlayerDeathSystem(entities));      
-        simGroup.AddSystem(new DeathCleanupSystem(entities));     
-        simGroup.AddSystem(new ScoreSystem(entities));            
-        simGroup.AddSystem(new SlowEffectSystem(entities));       
+        // --- AI 与 移动 ---
+        _simulationGroup.AddSystem(new EnemyTrackingSystem(entities));
+        _simulationGroup.AddSystem(new ChargerAISystem(entities));
+        _simulationGroup.AddSystem(new RangedAISystem(entities));
+        _simulationGroup.AddSystem(new MovementSystem(entities));
         
-        // --- 内存清理 ---
-        simGroup.AddSystem(new LifetimeSystem(entities));         
-        simGroup.AddSystem(new GenericEventCleanupSystem<CollisionEventComponent>(entities));
-        simGroup.AddSystem(new GenericEventCleanupSystem<DamageTakenEventComponent>(entities));
-        simGroup.AddSystem(new GenericEventCleanupSystem<DashStartedEventComponent>(entities));
-        simGroup.AddSystem(new EntityCleanupSystem(entities));    
-        _systemGroups.Add(simGroup);
+        // --- 技能预热与触发 ---
+        _simulationGroup.AddSystem(new DashPrepSystem(entities));
+        _simulationGroup.AddSystem(new DashSystem(entities));
+        _simulationGroup.AddSystem(new ShootPrepSystem(entities));
+        _simulationGroup.AddSystem(new WeaponFiringSystem(entities));
+        _simulationGroup.AddSystem(new WeaponCooldownSystem(entities));
+
+        // --- 物理与碰撞检测 ---
+        _simulationGroup.AddSystem(new PhysicsDetectionSystem(entities));
+        _simulationGroup.AddSystem(new GridSystem(entities));
+
+        // --- 核心战斗反应 (五行与特技逻辑在此处) ---
+        // 注意：ReactionSystem 必须在 DamageSystem 之前执行，用于给敌人挂载组件
+        _simulationGroup.AddSystem(new BulletDOTReactionSystem(entities));    // 五行 DOT 挂载（火、木等）
+        _simulationGroup.AddSystem(new SlowBulletReactionSystem(entities));    // 冰霜减速挂载
+        _simulationGroup.AddSystem(new ChainLightningReactionSystem(entities));// 闪电连锁
+        _simulationGroup.AddSystem(new AOEBulletReactionSystem(entities));     // 爆炸范围伤害
+        _simulationGroup.AddSystem(new ImpactResolutionSystem(entities));      // 物理反弹结算
+        _simulationGroup.AddSystem(new DOTSystem(entities));                   // DOT 每秒跳血逻辑
+
+        // --- 伤害与生命周期结算 ---
+        _simulationGroup.AddSystem(new MeleeExecutionSystem(entities));        // 近战斩杀与剑气发射
+        _simulationGroup.AddSystem(new DamageSystem(entities));                // 最终扣血计算
+        _simulationGroup.AddSystem(new HealthSystem(entities));                // 血量检查与死亡判定
+        _simulationGroup.AddSystem(new BountySystem(entities));                // 击杀奖励计算
+        
+        // --- 清理 ---
+        _simulationGroup.AddSystem(new BulletDestroySystem(entities));         // 销毁已碰撞子弹
+        _simulationGroup.AddSystem(new DeathCleanupSystem(entities));          // 销毁死亡实体
+        _simulationGroup.AddSystem(new LifetimeSystem(entities));              // 销毁过时实体
+        _simulationGroup.AddSystem(new GenericEventCleanupSystem(entities));   // 清理单帧事件组件
 
         // ==========================================
-        // 3. 表现组 (渲染同步)
+        // 4. 装配【表现与 UI 层】
         // ==========================================
-        var presGroup = new PresentationSystemGroup(entities);
         
-        // --- A. 首先处理相机的逻辑位移 ---
-        presGroup.AddSystem(new CameraFollowSystem(entities));    // 必须用 SmoothDamp + deltaTime
+        // --- 特效实例化与清理 ---
+        _presentationGroup.AddSystem(new VFXInstantiationSystem(entities));    // 生成特效物体
+        _presentationGroup.AddSystem(new VFXCleanupSystem(entities));          // 销毁已结束特效
         
-        // --- B. 同步视觉对象 ---
-        // (注：ViewSyncSystem 已经移动到上方的 PhysicsDetectionSystem 之前)
+        // --- 视觉反馈 ---
+        _presentationGroup.AddSystem(new ViewSyncSystem(entities));            // 同步位置到 GameObject
+        _presentationGroup.AddSystem(new HitFeedbackVisualSystem(entities));   // 受击闪红
+        _presentationGroup.AddSystem(new InvincibleVisualSystem(entities));    // 无敌透明效果
+        _presentationGroup.AddSystem(new DirectionIndicatorSystem(entities));  // 方向指示器
         
-        // --- C. 其他表现层 ---
-        presGroup.AddSystem(new VFXInstantiationSystem(entities)); 
-        presGroup.AddSystem(new VisualBakingSystem(entities));    
-        presGroup.AddSystem(new CameraCullingSystem(entities));   
-        presGroup.AddSystem(new GhostTrailSystem(entities));      
-        presGroup.AddSystem(new DirectionIndicatorSystem(entities)); 
-        presGroup.AddSystem(new RenderSyncSystem(entities));        
-        presGroup.AddSystem(new HitFeedbackVisualSystem(entities)); 
-        presGroup.AddSystem(new InvincibleVisualSystem(entities));  
-        presGroup.AddSystem(new VFXSystem(entities));             
-        presGroup.AddSystem(new VFXCleanupSystem(entities));
-        presGroup.AddSystem(new LightningRenderSystem(entities)); 
-        presGroup.AddSystem(new AttackPreviewRenderSystem(entities));
-        presGroup.AddSystem(new AudioSystem(entities));           
-        presGroup.AddSystem(new UISyncSystem(entities));          
+        // --- UI 同步 ---
+        _presentationGroup.AddSystem(new DamageTextSystem(entities));          // 伤害飘字 UI 弹出
+        _presentationGroup.AddSystem(new UISyncSystem(entities));              // 同步血条 HUD
+        _presentationGroup.AddSystem(new ScoreSystem(entities));               // 分数更新
         
-        _systemGroups.Add(presGroup);
+        // --- 音效与摄像机 ---
+        _presentationGroup.AddSystem(new AudioSystem(entities));
+        _presentationGroup.AddSystem(new CameraFollowSystem(entities));
     }
 
-    public void Update(float deltaTime)
+    void Update()
     {
-        for (int i = 0; i < _systemGroups.Count; i++)
-        {
-            _systemGroups[i].Update(deltaTime);
-        }
+        float deltaTime = Time.deltaTime;
+
+        // 严格按照层级顺序更新
+        _inputGroup.Update(deltaTime);
+        _simulationGroup.Update(deltaTime);
+        _presentationGroup.Update(deltaTime);
     }
 }

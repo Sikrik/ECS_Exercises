@@ -34,6 +34,9 @@ public class GameObject_PoolManager : MonoBehaviour
     public GameObject ExplosionVFXPrefab;
     public GameObject DashPreviewPrefab;
     public GameObject MeleeSlashVFXPrefab;
+    [Header("Status Effect VFXs")]
+    public GameObject BurnVFXPrefab;
+    public GameObject PoisonVFXPrefab;
 
     private Dictionary<GameObject, Stack<GameObject>> _pools = new Dictionary<GameObject, Stack<GameObject>>();
     private Dictionary<GameObject, Transform> _poolRoots = new Dictionary<GameObject, Transform>();

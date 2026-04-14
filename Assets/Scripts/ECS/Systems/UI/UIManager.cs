@@ -190,4 +190,23 @@ public class UIManager : MonoBehaviour
         // 改为调用返回主菜单的逻辑
         BattleManager.Instance.ReturnToMainMenu();
     }
+    // 供 DamageTextSystem 调用的飘字接口
+    public void ShowDamageText(Vector2 worldPosition, float damageAmount, bool isCritical)
+    {
+        // 如果你还没有做飘字预制体，可以先用 Debug 打印代替，保证代码能跑：
+        // Debug.Log($"在 {worldPosition} 弹出伤害: {Mathf.CeilToInt(damageAmount)} (暴击: {isCritical})");
+
+        // ----- 如果你有飘字预制体，取消下面这段注释并根据你的代码调整 -----
+        /*
+        if (DamageTextPrefab == null) return;
+
+        // 实例化或从池中取出飘字 UI
+        GameObject textObj = Instantiate(DamageTextPrefab, worldPosition, Quaternion.identity);
+        var textUI = textObj.GetComponent<DamageTextUI>(); // 假设你有这个脚本
+        if (textUI != null)
+        {
+            textUI.Initialize(damageAmount, isCritical);
+        }
+        */
+    }
 }
