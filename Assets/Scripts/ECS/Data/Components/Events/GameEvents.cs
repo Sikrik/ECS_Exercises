@@ -1,65 +1,70 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/Data/Components/Events/GameEvents.cs
 using UnityEngine;
 
 /// <summary>
-/// 物理碰撞事件组件，用于在实体间传递碰撞信息
+/// 物理碰撞事件
 /// </summary>
-public class CollisionEventComponent : Component 
+public class CollisionEventComponent : Component, IPooledEvent 
 {
     public Entity Source;
     public Entity Target;
     public Vector2 Normal;
     
-    public CollisionEventComponent() { }
-
-    public CollisionEventComponent(Entity src, Entity target, Vector2 normal) 
+    public void Clear() 
     {
-        Source = src; 
-        Target = target; 
-        Normal = normal;
+        Source = null; 
+        Target = null; 
+        Normal = Vector2.zero;
     }
 }
 
 /// <summary>
-/// 加分事件组件，用于触发分数增加逻辑
+/// 伤害承受事件
 /// </summary>
-public class ScoreEventComponent : Component
-{
-    public int Amount;
-    public ScoreEventComponent(int amount) => Amount = amount;
-}
-
-/// <summary>
-/// 伤害承受事件组件，用于在实体受到伤害时传递伤害信息
-/// </summary>
-public class DamageTakenEventComponent : Component
+public class DamageTakenEventComponent : Component, IPooledEvent
 {
     public float DamageAmount;
     public bool CauseHitRecovery;
-    // 新增：传递给受击者的最终硬直覆盖时间
     public float RecoveryDurationOverride; 
     
-    public DamageTakenEventComponent() { }
-    
-    public DamageTakenEventComponent(float amt, bool causeRecovery, float durationOverride = 0f) 
-    { 
-        DamageAmount = amt; 
-        CauseHitRecovery = causeRecovery;
-        RecoveryDurationOverride = durationOverride;
+    public void Clear()
+    {
+        DamageAmount = 0;
+        CauseHitRecovery = false;
+        RecoveryDurationOverride = 0;
     }
 }
-public class DamageEventComponent : Component
+
+/// <summary>
+/// 伤害事件
+/// </summary>
+public class DamageEventComponent : Component, IPooledEvent
 {
     public float DamageAmount;
-    public Entity Source; // 【关键】记录伤害来源实体，用于触发吸血
+    public Entity Source; 
     public bool IsCritical;
+
+    public void Clear()
+    {
+        DamageAmount = 0;
+        Source = null; // 【关键】释放实体引用
+        IsCritical = false;
+    }
 }
+
 /// <summary>
-/// 冲刺开始瞬时事件。用于解耦冲刺逻辑与其他管线（如战斗管线的冲刺斩、特效管线的残影等）
+/// 冲刺开始瞬时事件
 /// </summary>
-public class DashStartedEventComponent : Component
+public class DashStartedEventComponent : Component, IPooledEvent
 {
-    // 如果未来需要知道往哪个方向冲刺，可以加 public Vector2 DashDir; 
-    // 目前仅作为触发信号，留空即可。
-    public DashStartedEventComponent() { }
+    public void Clear() { } // 没有数据，直接留空即可
+}
+
+/// <summary>
+/// 加分事件
+/// </summary>
+public class ScoreEventComponent : Component, IPooledEvent
+{
+    public int Amount;
+    public void Clear() { Amount = 0; }
 }

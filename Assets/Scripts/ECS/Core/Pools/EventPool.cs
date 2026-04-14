@@ -1,55 +1,27 @@
 ﻿// 路径: Assets/Scripts/ECS/Core/Pools/EventPool.cs
 using System.Collections.Generic;
-using UnityEngine;
 
-// ==========================================
-// 高频事件特供对象池 (白嫖级 0 GC 优化)
-// ==========================================
-public static class EventPool 
+// 1. 定义事件清理接口
+public interface IPooledEvent
 {
-    private static Stack<DamageTakenEventComponent> _damagePool = new Stack<DamageTakenEventComponent>();
-    private static Stack<CollisionEventComponent> _collisionPool = new Stack<CollisionEventComponent>();
-    
-    // 👇【新增 1】：冲刺开始事件的对象池栈
-    private static Stack<DashStartedEventComponent> _dashStartedPool = new Stack<DashStartedEventComponent>();
+    // 回收前调用，用于清空自身数据（如引用类型设为 null，防止内存泄漏）
+    void Clear();
+}
 
-    public static DamageTakenEventComponent GetDamageEvent(float amount, bool causeHitRecovery, float durationOverride = 0f)
+// 2. 通用泛型事件对象池
+// 约束 T 必须是 Component，必须实现 IPooledEvent，且必须有无参构造函数 new()
+public static class EventPool<T> where T : Component, IPooledEvent, new()
+{
+    private static readonly Stack<T> _pool = new Stack<T>();
+
+    public static T Get()
     {
-        var evt = _damagePool.Count > 0 ? _damagePool.Pop() : new DamageTakenEventComponent();
-        evt.DamageAmount = amount;
-        evt.CauseHitRecovery = causeHitRecovery; 
-        evt.RecoveryDurationOverride = durationOverride; 
-        return evt;
+        return _pool.Count > 0 ? _pool.Pop() : new T();
     }
 
-    public static void Return(DamageTakenEventComponent evt) => _damagePool.Push(evt);
-
-    public static CollisionEventComponent GetCollisionEvent(Entity src, Entity target, Vector2 normal)
+    public static void Return(T evt)
     {
-        var evt = _collisionPool.Count > 0 ? _collisionPool.Pop() : new CollisionEventComponent();
-        evt.Source = src;
-        evt.Target = target;
-        evt.Normal = normal;
-        return evt;
-    }
-
-    public static void Return(CollisionEventComponent evt)
-    {
-        evt.Source = null; 
-        evt.Target = null; 
-        _collisionPool.Push(evt);
-    }
-
-    // ==========================================
-    // 👇【新增 2】：冲刺开始事件的 Get 和 Return 方法
-    // ==========================================
-    public static DashStartedEventComponent GetDashStartedEvent()
-    {
-        return _dashStartedPool.Count > 0 ? _dashStartedPool.Pop() : new DashStartedEventComponent();
-    }
-
-    public static void Return(DashStartedEventComponent evt)
-    {
-        _dashStartedPool.Push(evt);
+        evt.Clear(); // 强制洗干净再放入池子
+        _pool.Push(evt);
     }
 }

@@ -84,7 +84,7 @@ public class DashActivationSystem : SystemBase
                 // 不再硬编码判断 MeleeCombatComponent，
                 // 而是让其他关心的系统（如 MeleeDashReactionSystem）自己去监听这个事件。
                 // ==========================================
-                e.AddComponent(EventPool.GetDashStartedEvent());
+                e.AddComponent(EventPool<DashStartedEventComponent>.Get());
 
                 // 进入冷却
                 ability.CurrentCD = ability.Cooldown;

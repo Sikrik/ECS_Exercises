@@ -79,7 +79,9 @@ public class SystemBootstrap
         
         // --- 生命周期与内存清理 ---
         simGroup.AddSystem(new LifetimeSystem(entities));         
-        simGroup.AddSystem(new EventCleanupSystem(entities));     // 清理所有单帧事件 (含DashEvent)
+        simGroup.AddSystem(new GenericEventCleanupSystem<CollisionEventComponent>(entities));
+        simGroup.AddSystem(new GenericEventCleanupSystem<DamageTakenEventComponent>(entities));
+        simGroup.AddSystem(new GenericEventCleanupSystem<DashStartedEventComponent>(entities));
         simGroup.AddSystem(new EntityCleanupSystem(entities));    
         _systemGroups.Add(simGroup);
 
