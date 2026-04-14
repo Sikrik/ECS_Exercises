@@ -37,7 +37,7 @@ public class TalentUIManager : MonoBehaviour
         }
 
         // 👇 【核心修改2】：从 GameDataManager 中读取天赋配表
-        var talentRecipes = GameDataManager.Instance.Config.TalentRecipes;
+        var talentRecipes = ConfigManager.Instance.Config.TalentRecipes;
 
         Debug.Log($"[TalentUI] 准备生成天赋，当前配置表中的条目数量: {talentRecipes.Count}");
 

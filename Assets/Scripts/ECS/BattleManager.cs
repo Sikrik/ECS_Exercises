@@ -25,7 +25,7 @@ public class BattleManager : MonoBehaviour
         // 获取配置和选人信息
         if (GameDataManager.Instance != null)
         {
-            Config = GameDataManager.Instance.Config;
+            Config = ConfigManager.Instance.Config;
             SelectedCharacter = GameDataManager.Instance.SelectedCharacter;
         }
         else

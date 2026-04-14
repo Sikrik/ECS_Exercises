@@ -1,34 +1,21 @@
 ﻿// 路径: Assets/Scripts/ECS/GameDataManager.cs
 using System;
 using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
 
+// ==========================================
+// 数据模型定义（建议后期单独抽离到 GameSaveModels.cs）
+// ==========================================
 [Serializable]
-public class MatchRecord
-{
-    public string CharacterUsed;
-    public int FinalScore;       
-    public int WaveReached;      
-    public bool IsVictory;       
-    public string Date;          
-}
-
+public class MatchRecord { public string CharacterUsed; public int FinalScore; public int WaveReached; public bool IsVictory; public string Date; }
 [Serializable]
-public class TalentRecord
-{
-    public string TalentId;
-    public int Level;
-}
-
+public class TalentRecord { public string TalentId; public int Level; }
 [Serializable]
-public class GameSaveData
-{
-    public int TotalGold;
-    public List<TalentRecord> SavedTalents = new List<TalentRecord>();
-    public List<MatchRecord> History = new List<MatchRecord>();
-}
+public class GameSaveData { public int TotalGold; public List<TalentRecord> SavedTalents = new List<TalentRecord>(); public List<MatchRecord> History = new List<MatchRecord>(); }
 
+// ==========================================
+// 纯净的局外数据管理器
+// ==========================================
 public class GameDataManager : MonoBehaviour
 {
     public static GameDataManager Instance { get; private set; }
@@ -37,23 +24,13 @@ public class GameDataManager : MonoBehaviour
     public Dictionary<string, int> TalentDict { get; private set; } = new Dictionary<string, int>();
     public PlayerClass SelectedCharacter = PlayerClass.Standard;
 
-    // 👇 【核心修改1】：把配置表存放到全局管理器中
-    public GameConfig Config { get; private set; }
-
-    private string _saveFilePath;
-
     void Awake()
     {
         if (Instance == null)
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
-            
-            // 👇 【核心修改2】：游戏一启动就加载配置
-            Config = ConfigLoader.Load(); 
-
-            _saveFilePath = Path.Combine(Application.persistentDataPath, "GameSave.json");
-            LoadData();
+            InitializeData();
         }
         else
         {
@@ -61,25 +38,10 @@ public class GameDataManager : MonoBehaviour
         }
     }
 
-    public void LoadData()
+    private void InitializeData()
     {
-        if (File.Exists(_saveFilePath))
-        {
-            try
-            {
-                string json = File.ReadAllText(_saveFilePath);
-                SaveData = JsonUtility.FromJson<GameSaveData>(json);
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"存档读取失败，已重置存档: {e.Message}");
-                SaveData = new GameSaveData();
-            }
-        }
-        else
-        {
-            SaveData = new GameSaveData();
-        }
+        // 向 SaveManager 请求数据
+        SaveData = SaveManager.Load();
 
         TalentDict.Clear();
         foreach (var t in SaveData.SavedTalents)
@@ -90,21 +52,19 @@ public class GameDataManager : MonoBehaviour
 
     public void SaveGame()
     {
+        // 整理当前内存数据
         SaveData.SavedTalents.Clear();
         foreach (var kvp in TalentDict)
         {
             SaveData.SavedTalents.Add(new TalentRecord { TalentId = kvp.Key, Level = kvp.Value });
         }
-
-        string json = JsonUtility.ToJson(SaveData, true);
-        File.WriteAllText(_saveFilePath, json);
-        Debug.Log($"游戏已保存至: {_saveFilePath}");
+        // 委托 SaveManager 写入磁盘
+        SaveManager.Save(SaveData);
     }
 
-    public int GetTalentLevel(string talentId)
-    {
-        return TalentDict.TryGetValue(talentId, out int level) ? level : 0;
-    }
+    // --- 以下为纯粹的业务逻辑接口 ---
+
+    public int GetTalentLevel(string talentId) => TalentDict.TryGetValue(talentId, out int level) ? level : 0;
 
     public bool TryUpgradeTalent(string talentId, int cost)
     {
@@ -129,10 +89,7 @@ public class GameDataManager : MonoBehaviour
     public void AddMatchRecord(MatchRecord record)
     {
         SaveData.History.Insert(0, record); 
-        if (SaveData.History.Count > 50)
-        {
-            SaveData.History.RemoveAt(SaveData.History.Count - 1);
-        }
+        if (SaveData.History.Count > 50) SaveData.History.RemoveAt(SaveData.History.Count - 1);
         SaveGame();
     }
 }
