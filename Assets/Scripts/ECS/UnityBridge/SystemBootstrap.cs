@@ -40,7 +40,8 @@ public class SystemBootstrap
         simGroup.AddSystem(new KnockbackSystem(entities));        
         simGroup.AddSystem(new MovementSystem(entities));         
         // 在 SystemBootstrap 构造函数中：
-        simGroup.AddSystem(new MeleeCombatSystem(entities)); // 放在 MovementSystem 附近
+        simGroup.AddSystem(new MeleeTargetingSystem(entities));
+        simGroup.AddSystem(new MeleeExecutionSystem(entities)); // 放在 MovementSystem 附近
         simGroup.AddSystem(new ViewSyncSystem(entities));         
         
         simGroup.AddSystem(new PhysicsDetectionSystem(entities)); 

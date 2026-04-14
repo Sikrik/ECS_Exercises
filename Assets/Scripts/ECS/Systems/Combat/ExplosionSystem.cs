@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/Systems/Combat/ExplosionSystem.cs
+using System.Collections.Generic;
 
 public class ExplosionSystem : SystemBase
 {
@@ -24,7 +25,7 @@ public class ExplosionSystem : SystemBase
 
             foreach (var t in targets)
             {
-                // 加入无敌判断
+                // 加入无敌判断，无敌状态下不受到爆炸伤害
                 if (!t.IsAlive || !t.HasComponent<EnemyTag>() || t.HasComponent<InvincibleComponent>()) continue;
                 
                 var tPos = t.GetComponent<PositionComponent>();
@@ -32,19 +33,20 @@ public class ExplosionSystem : SystemBase
 
                 if (d2 <= rSq)
                 {
-                    // 👇 [核心修复]：真实扣除血量
-                    var hp = t.GetComponent<HealthComponent>();
-                    if (hp != null) hp.CurrentHealth -= intent.Damage;
-
-                    // 👇 [核心修复]：累加防覆盖
-                    var existingEvt = t.GetComponent<DamageTakenEventComponent>();
-                    if (existingEvt != null)
+                    // 👇 【高内聚改造】：剥夺直接扣血的权力，改为抛出标准的伤害意图
+                    var existingDmg = t.GetComponent<DamageEventComponent>();
+                    if (existingDmg != null)
                     {
-                        existingEvt.DamageAmount += intent.Damage;
+                        // 累加伤害，防止同帧内被多个爆炸波及导致伤害覆盖
+                        existingDmg.DamageAmount += intent.Damage;
                     }
                     else
                     {
-                        t.AddComponent(EventPool.GetDamageEvent(intent.Damage, false));
+                        t.AddComponent(new DamageEventComponent { 
+                            DamageAmount = intent.Damage, 
+                            Source = null, // 注意：如果爆炸需要触发玩家吸血，这里可以传入产生爆炸的源头实体
+                            IsCritical = false 
+                        });
                     }
                 }
             }

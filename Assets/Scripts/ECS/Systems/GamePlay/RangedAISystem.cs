@@ -47,13 +47,6 @@ public class RangedAISystem : SystemBase
                 
                 // 赋予红外线射线（告知表现层：瞄准方向，长度 15 米，宽度 0.1 米）
                 enemy.AddComponent(new DashPreviewIntentComponent(aimDir, 15f, 0.1f));
-
-                if (enemy.HasComponent<MoveInputComponent>())
-                {
-                    var moveInput = enemy.GetComponent<MoveInputComponent>();
-                    moveInput.X = 0; 
-                    moveInput.Y = 0;
-                }
             }
         }
     }

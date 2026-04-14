@@ -57,14 +57,7 @@ public class ChargerAISystem : SystemBase
                 
                 // 2. 赋予预览意图组件 (告知表现层：长度使用真实计算距离，宽 1.2 米)
                 enemy.AddComponent(new DashPreviewIntentComponent(dashDir, actualDashDistance, 1.2f));
-
-                // 3. 停止当前常规寻路移动
-                if (enemy.HasComponent<MoveInputComponent>())
-                {
-                    var moveInput = enemy.GetComponent<MoveInputComponent>();
-                    moveInput.X = 0;
-                    moveInput.Y = 0;
-                }
+                
             }
         }
 

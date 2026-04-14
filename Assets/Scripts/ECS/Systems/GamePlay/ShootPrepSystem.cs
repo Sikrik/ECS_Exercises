@@ -13,7 +13,7 @@ public class ShootPrepSystem : SystemBase
         {
             var e = preps[i];
 
-            // 打断逻辑：如果死亡、受到硬直或被击退，中断射击蓄力
+            // 打断逻辑
             if (e.HasComponent<DeadTag>() || e.HasComponent<HitRecoveryComponent>() || e.HasComponent<KnockbackComponent>())
             {
                 e.RemoveComponent<ShootPrepStateComponent>();
@@ -24,26 +24,13 @@ public class ShootPrepSystem : SystemBase
             var prep = e.GetComponent<ShootPrepStateComponent>();
             prep.Timer -= deltaTime;
             
-            // 👇 【核心修复】：蓄力期间强行清空移动意图和物理速度，焊死在原地
-            if (e.HasComponent<MoveInputComponent>())
-            {
-                var input = e.GetComponent<MoveInputComponent>();
-                input.X = 0; input.Y = 0;
-            }
-            
-            if (e.HasComponent<VelocityComponent>())
-            {
-                var vel = e.GetComponent<VelocityComponent>();
-                vel.VX = 0; vel.VY = 0;
-            }
+            // 👇【高内聚改造】：删除了强行清空 MoveInput 和 Velocity 的越权代码
+            // 刹车逻辑已全部移交 MovementSystem 仲裁！
 
             if (prep.Timer <= 0)
             {
-                // 蓄力结束，移除蓄力和红外线预览
                 e.RemoveComponent<ShootPrepStateComponent>();
                 e.RemoveComponent<DashPreviewIntentComponent>();
-                
-                // 下发标准的开火意图
                 e.AddComponent(new FireIntentComponent(prep.TargetDir)); 
             }
         }

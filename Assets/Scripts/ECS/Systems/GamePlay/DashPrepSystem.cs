@@ -13,41 +13,22 @@ public class DashPrepSystem : SystemBase
         {
             var e = preps[i];
 
-            // 打断逻辑：如果死亡、受到硬直或被击退，中断蓄力
             if (e.HasComponent<DeadTag>() || e.HasComponent<HitRecoveryComponent>() || e.HasComponent<KnockbackComponent>())
             {
                 e.RemoveComponent<DashPrepStateComponent>();
                 e.RemoveComponent<DashPreviewIntentComponent>();
-                // 被打断了，直接跳过本帧，且不再赋予 DashInputComponent
                 continue;
             }
 
             var prep = e.GetComponent<DashPrepStateComponent>();
             prep.Timer -= deltaTime;
             
-            // 👇 【核心修复】：蓄力期间强行停止所有输入意图和速度，防止起步前漂移
-            if (e.HasComponent<MoveInputComponent>())
-            {
-                var input = e.GetComponent<MoveInputComponent>();
-                input.X = 0; input.Y = 0;
-            }
-            
-            if (e.HasComponent<VelocityComponent>())
-            {
-                var vel = e.GetComponent<VelocityComponent>();
-                vel.VX = 0; vel.VY = 0;
-            }
+            // 👇【高内聚改造】：同理，删除了越权操作 Velocity 和 MoveInput 的代码
 
             if (prep.Timer <= 0)
             {
-                if (e.HasComponent<MoveInputComponent>())
-                {
-                    var move = e.GetComponent<MoveInputComponent>();
-                    move.X = prep.TargetDir.x;
-                    move.Y = prep.TargetDir.y;
-                }
-
-                // 蓄力结束，移除蓄力和预览，下达正式冲刺指令
+                // 👇【高内聚改造】：甚至不需要在这里伪造 MoveInput 了！
+                // 因为 DashActivationSystem 本来就会优先读取 DashPrepStateComponent.TargetDir
                 e.RemoveComponent<DashPrepStateComponent>();
                 e.RemoveComponent<DashPreviewIntentComponent>();
                 e.AddComponent(new DashInputComponent()); 

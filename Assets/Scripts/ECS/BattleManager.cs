@@ -22,15 +22,24 @@ public class BattleManager : MonoBehaviour
     {
         Instance = this;
         
-        // 获取配置和选人信息
+        // 1. 获取选人信息（独立判断 GameDataManager）
         if (GameDataManager.Instance != null)
         {
-            Config = ConfigManager.Instance.Config;
             SelectedCharacter = GameDataManager.Instance.SelectedCharacter;
         }
         else
         {
-            Debug.LogWarning("未检测到 GameDataManager，使用 ConfigLoader 临时加载配置。");
+            Debug.LogWarning("未检测到 GameDataManager，将使用默认角色。");
+        }
+
+        // 2. 获取配置信息（独立判断 ConfigManager）
+        if (ConfigManager.Instance != null)
+        {
+            Config = ConfigManager.Instance.Config;
+        }
+        else
+        {
+            Debug.LogWarning("未检测到 ConfigManager，使用 ConfigLoader 临时加载配置。");
             Config = ConfigLoader.Load(); 
         }
     }

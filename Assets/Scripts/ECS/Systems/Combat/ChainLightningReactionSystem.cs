@@ -1,9 +1,7 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/Systems/Combat/ChainLightningReactionSystem.cs
+using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// 闪电链子弹反应系统（原子化）
-/// </summary>
 public class ChainLightningReactionSystem : SystemBase
 {
     public ChainLightningReactionSystem(List<Entity> entities) : base(entities) { }
@@ -38,7 +36,6 @@ public class ChainLightningReactionSystem : SystemBase
                 var nearby = ECSManager.Instance.Grid.GetNearbyEnemies(curPos.X, curPos.Y);
                 foreach (var candidate in nearby)
                 {
-                    // 加入无敌状态过滤
                     if (!candidate.IsAlive || !candidate.HasComponent<EnemyTag>() || 
                         hitHistory.Contains(candidate) || candidate.HasComponent<InvincibleComponent>()) 
                         continue;
@@ -56,22 +53,19 @@ public class ChainLightningReactionSystem : SystemBase
                 {
                     hitHistory.Add(nextTarget);
                     
-                    // 👇 [核心修复]：直接扣除血量
-                    var nextHp = nextTarget.GetComponent<HealthComponent>();
-                    if (nextHp != null)
+                    // 👇 【高内聚改造】：剥夺直接扣血的权力，统一抛出伤害意图
+                    var existingDmg = nextTarget.GetComponent<DamageEventComponent>();
+                    if (existingDmg != null)
                     {
-                        nextHp.CurrentHealth -= dmg.Value;
-                    }
-                    
-                    // 👇 [核心修复]：防覆盖合并，避免和子弹直击伤害互相顶替
-                    var existingEvt = nextTarget.GetComponent<DamageTakenEventComponent>();
-                    if (existingEvt != null)
-                    {
-                        existingEvt.DamageAmount += dmg.Value;
+                        existingDmg.DamageAmount += dmg.Value;
                     }
                     else
                     {
-                        nextTarget.AddComponent(EventPool.GetDamageEvent(dmg.Value, causeHitRecovery: false));
+                        nextTarget.AddComponent(new DamageEventComponent { 
+                            DamageAmount = dmg.Value, 
+                            Source = bullet, // 传入子弹作为源头，DamageSystem 会顺藤摸瓜处理
+                            IsCritical = false 
+                        });
                     }
 
                     var nPos = nextTarget.GetComponent<PositionComponent>();
