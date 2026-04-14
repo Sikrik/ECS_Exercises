@@ -24,14 +24,10 @@ public class SystemBootstrap
         // ==========================================
         var simGroup = new SimulationSystemGroup(entities);
 
-        // 物理烘焙系统
         simGroup.AddSystem(new PhysicsBakingSystem(entities));
-
-        // --- 技能与冷却 ---
         simGroup.AddSystem(new WeaponCooldownSystem(entities));
         simGroup.AddSystem(new DashCooldownSystem(entities));
 
-        // --- 意图生成层 (AI决策) ---
         simGroup.AddSystem(new PlayerAimingSystem(entities));
         simGroup.AddSystem(new EnemySpawnSystem(entities));
         simGroup.AddSystem(new EnemyTrackingSystem(entities));
@@ -40,44 +36,41 @@ public class SystemBootstrap
         simGroup.AddSystem(new RangedAISystem(entities));
         simGroup.AddSystem(new MeleeTargetingSystem(entities));
 
-        // --- 状态与动作前摇 ---
         simGroup.AddSystem(new DashPrepSystem(entities));
         simGroup.AddSystem(new ShootPrepSystem(entities));
-
-        // --- 核心动作触发 ---
         simGroup.AddSystem(new DashActivationSystem(entities));
         simGroup.AddSystem(new MeleeDashReactionSystem(entities));
         simGroup.AddSystem(new MeleeExecutionSystem(entities));
         simGroup.AddSystem(new WeaponFiringSystem(entities));
         simGroup.AddSystem(new DashStateSystem(entities));
 
-        // --- 位移管线 ---
         simGroup.AddSystem(Grid);
         simGroup.AddSystem(new KnockbackSystem(entities));
         simGroup.AddSystem(new MovementSystem(entities));
-
-        // 确保碰撞盒位置与逻辑坐标严格同步
         simGroup.AddSystem(new ViewSyncSystem(entities));
 
-        // --- 碰撞与结算管线 ---
+        // --- 1. 物理碰撞 ---
         simGroup.AddSystem(new PhysicsDetectionSystem(entities)); 
         simGroup.AddSystem(new ImpactResolutionSystem(entities));
-        simGroup.AddSystem(new BulletDestroySystem(entities));
         
-        // --- 元素与反应 (五行与特技逻辑在此处) ---
-        simGroup.AddSystem(new BulletDOTReactionSystem(entities));    // 新增：五行 DOT 传染
+        // --- 2. 核心反应 (必须在子弹销毁前读取数据!) ---
+        simGroup.AddSystem(new EnemyHitReactionSystem(entities));     // 读取子弹基础伤害
+        simGroup.AddSystem(new PlayerHitReactionSystem(entities));
+        simGroup.AddSystem(new BulletDOTReactionSystem(entities));    // 挂载五行 DOT
         simGroup.AddSystem(new SlowBulletReactionSystem(entities));
         simGroup.AddSystem(new AOEBulletReactionSystem(entities));
         simGroup.AddSystem(new ChainLightningReactionSystem(entities));
         simGroup.AddSystem(new ExplosionSystem(entities));
         
-        // --- 伤害结算 ---
-        simGroup.AddSystem(new DOTSystem(entities));                  // 新增：DOT 每秒跳血
-        simGroup.AddSystem(new DamageSystem(entities));
+        simGroup.AddSystem(new DOTSystem(entities));                  // 每秒生成 DOT 伤害事件
         
-        // --- 死亡与生命值 ---
-        simGroup.AddSystem(new EnemyHitReactionSystem(entities));
-        simGroup.AddSystem(new PlayerHitReactionSystem(entities));
+        // --- 3. 伤害表现 (必须在 DamageSystem 消耗事件前执行!) ---
+        simGroup.AddSystem(new DamageTextSystem(entities));           // <--- 移到这里！抢在扣血前读数字
+
+        // --- 4. 扣血结算 ---
+        simGroup.AddSystem(new DamageSystem(entities));               // 扣除血量，并删除 DamageEvent
+        
+        // --- 5. 状态与死亡判定 ---
         simGroup.AddSystem(new HitRecoverySystem(entities));
         simGroup.AddSystem(new HealthSystem(entities));
         simGroup.AddSystem(new BountySystem(entities));
@@ -85,6 +78,9 @@ public class SystemBootstrap
         simGroup.AddSystem(new DeathCleanupSystem(entities));
         simGroup.AddSystem(new ScoreSystem(entities));
         simGroup.AddSystem(new SlowEffectSystem(entities));
+
+        // --- 6. 销毁子弹 (等所有反应都白嫖完子弹数据后，再销毁它) ---
+        simGroup.AddSystem(new BulletDestroySystem(entities));        // <--- 移到这里！
 
         // --- 内存清理 ---
         simGroup.AddSystem(new LifetimeSystem(entities));
@@ -99,10 +95,7 @@ public class SystemBootstrap
         // ==========================================
         var presGroup = new PresentationSystemGroup(entities);
 
-        // 相机跟随
         presGroup.AddSystem(new CameraFollowSystem(entities));
-        
-        // 特效与视觉反馈
         presGroup.AddSystem(new VFXInstantiationSystem(entities));
         presGroup.AddSystem(new VisualBakingSystem(entities));
         presGroup.AddSystem(new CameraCullingSystem(entities));
@@ -117,9 +110,6 @@ public class SystemBootstrap
         presGroup.AddSystem(new AttackPreviewRenderSystem(entities));
         presGroup.AddSystem(new AudioSystem(entities));
         presGroup.AddSystem(new UISyncSystem(entities));
-        
-        // 新增：伤害跳字 UI
-        presGroup.AddSystem(new DamageTextSystem(entities));
 
         _systemGroups.Add(presGroup);
     }
