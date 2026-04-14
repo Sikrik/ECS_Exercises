@@ -1,4 +1,6 @@
-﻿/// <summary>
+﻿using System.Numerics;
+
+/// <summary>
 /// 生命周期组件：管理实体的存活时长，用于自动清理过期实体。
 /// 适用场景：子弹飞行、特效播放、临时增益效果等具有明确生存时间的游戏对象。
 /// </summary>
@@ -19,3 +21,31 @@ public class LifetimeComponent : Component
 /// </summary>
 public class PendingDestroyComponent : Component { }
 
+
+
+public class AimLineIntentComponent : Component
+{
+    public Vector2 Direction;
+    public float Length;
+    public float Width;
+
+    public AimLineIntentComponent(Vector2 dir, float len, float width)
+    {
+        Direction = dir;
+        Length = len;
+        Width = width;
+    }
+}
+public class DashPreviewIntentComponent : Component
+{
+    public Vector2 Direction;
+    public float Length;
+    public float Width;
+
+    public DashPreviewIntentComponent(Vector2 dir, float len, float width)
+    {
+        Direction = dir;
+        Length = len;
+        Width = width;
+    }
+}

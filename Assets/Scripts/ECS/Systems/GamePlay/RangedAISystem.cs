@@ -46,7 +46,9 @@ public class RangedAISystem : SystemBase
                 enemy.AddComponent(new ShootPrepStateComponent(ai.PrepDuration, aimDir));
                 
                 // 赋予红外线射线（告知表现层：瞄准方向，长度 15 米，宽度 0.1 米）
-                enemy.AddComponent(new DashPreviewIntentComponent(aimDir, 15f, 0.1f));
+                // 旧代码：enemy.AddComponent(new DashPreviewIntentComponent(aimDir, 15f, 0.1f));
+// 👇 替换为：
+                enemy.AddComponent(new AimLineIntentComponent(aimDir, 15f, 0.05f)); // 0.05f 让激光细一点更好看
             }
         }
     }

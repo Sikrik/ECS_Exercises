@@ -106,7 +106,7 @@ public class SystemBootstrap
         presGroup.AddSystem(new VFXSystem(entities));             
         presGroup.AddSystem(new VFXCleanupSystem(entities));
         presGroup.AddSystem(new LightningRenderSystem(entities)); 
-        
+        presGroup.AddSystem(new AttackPreviewRenderSystem(entities));
         // --- 音频与UI ---
         presGroup.AddSystem(new AudioSystem(entities));           
         presGroup.AddSystem(new UISyncSystem(entities));          

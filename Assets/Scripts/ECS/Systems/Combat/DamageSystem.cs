@@ -34,7 +34,6 @@ public class DamageSystem : SystemBase
 
             if (attacker != null && attacker.IsAlive)
             {
-                // 获取攻击者的硬直配置（用于向下游传递）
                 if (attacker.HasComponent<ImpactFeedbackComponent>())
                 {
                     var feedback = attacker.GetComponent<ImpactFeedbackComponent>();
@@ -75,16 +74,17 @@ public class DamageSystem : SystemBase
                 }
             }
 
-            // ==========================================
-            // 【核心修复】：向下游抛出受击反应事件
-            // 确保玩家能获得无敌帧，怪物能触发受击硬直！
-            // ==========================================
             victim.RemoveComponent<DamageEventComponent>();
 
             if (!victim.HasComponent<DamageTakenEventComponent>())
             {
-                // 从事件池取出一个反应事件并挂载
-                victim.AddComponent(EventPool.GetDamageEvent(actualDamage, causeRecovery, durationOverride));
+                // 👇 【修复】：使用泛型对象池获取，并手动赋值
+                var newEvt = EventPool<DamageTakenEventComponent>.Get();
+                newEvt.DamageAmount = actualDamage;
+                newEvt.CauseHitRecovery = causeRecovery;
+                newEvt.RecoveryDurationOverride = durationOverride;
+                
+                victim.AddComponent(newEvt);
             }
             else
             {

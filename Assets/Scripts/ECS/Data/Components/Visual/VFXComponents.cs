@@ -33,3 +33,8 @@ public class ActiveDashPreviewComponent : Component
         PreviewObject = go;
     }
 }
+public class AttackPreviewVisualComponent : Component
+{
+    public LineRenderer Line;
+    public AttackPreviewVisualComponent(LineRenderer line) => Line = line;
+}

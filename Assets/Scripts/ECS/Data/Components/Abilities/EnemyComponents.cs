@@ -27,22 +27,7 @@ public class DashPrepStateComponent : Component
     }
 }
 
-/// <summary>
-/// 范围预览意图：表现层看到此组件后，会生成红框预览
-/// </summary>
-public class DashPreviewIntentComponent : Component
-{
-    public Vector2 Direction;
-    public float Distance;
-    public float Width;
 
-    public DashPreviewIntentComponent(Vector2 dir, float dist, float width)
-    {
-        Direction = dir;
-        Distance = dist;
-        Width = width;
-    }
-}
 
 // 1. 预判走位 AI（适合敏捷型/刺客型敌人，不直接瞄准玩家当前位置，而是预判玩家未来的位置）
 public class PredictiveAIComponent : Component

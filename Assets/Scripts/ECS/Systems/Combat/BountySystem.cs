@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/Systems/Combat/BountySystem.cs
+using System.Collections.Generic;
 
 public class BountySystem : SystemBase
 {
@@ -14,12 +15,13 @@ public class BountySystem : SystemBase
             var entity = entities[i];
             var bounty = entity.GetComponent<BountyComponent>();
             
-            // 产生加分事件
-            entity.AddComponent(new ScoreEventComponent(bounty.Score));
+            // 👇 【修复】：不再 new，而是从泛型对象池中获取并赋值
+            var scoreEvt = EventPool<ScoreEventComponent>.Get();
+            scoreEvt.Amount = bounty.Score;
+            entity.AddComponent(scoreEvt);
             
             // 剥夺悬赏组件，防止下一帧重复发钱
             entity.RemoveComponent<BountyComponent>();
         }
-        
     }
 }

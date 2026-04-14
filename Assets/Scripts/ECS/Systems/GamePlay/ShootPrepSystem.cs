@@ -17,7 +17,7 @@ public class ShootPrepSystem : SystemBase
             if (e.HasComponent<DeadTag>() || e.HasComponent<HitRecoveryComponent>() || e.HasComponent<KnockbackComponent>())
             {
                 e.RemoveComponent<ShootPrepStateComponent>();
-                e.RemoveComponent<DashPreviewIntentComponent>();
+                e.RemoveComponent<AimLineIntentComponent>();
                 continue;
             }
 
@@ -30,7 +30,7 @@ public class ShootPrepSystem : SystemBase
             if (prep.Timer <= 0)
             {
                 e.RemoveComponent<ShootPrepStateComponent>();
-                e.RemoveComponent<DashPreviewIntentComponent>();
+                e.RemoveComponent<AimLineIntentComponent>();
                 e.AddComponent(new FireIntentComponent(prep.TargetDir)); 
             }
         }

@@ -30,7 +30,6 @@ public class PhysicsDetectionSystem : SystemBase
             var trace = entity.GetComponent<TraceComponent>();
             var col = entity.GetComponent<CollisionComponent>();
 
-            // 1. 高速物体（子弹）使用射线检测防穿透
             if (trace != null && col != null) 
             {
                 var pos = entity.GetComponent<PositionComponent>();
@@ -51,7 +50,6 @@ public class PhysicsDetectionSystem : SystemBase
                     }
                 }
             }
-            // 2. 普通物体（玩家/敌人）使用重叠检测
             else 
             {
                 int hitCount = pPhys.Collider.OverlapCollider(contactFilter, _overlapResults);
@@ -59,7 +57,6 @@ public class PhysicsDetectionSystem : SystemBase
                 {
                     if (_overlapResults[j] != pPhys.Collider)
                     {
-                        // 获取两个碰撞体之间的最短距离信息
                         ColliderDistance2D distInfo = pPhys.Collider.Distance(_overlapResults[j]);
                         if (distInfo.isOverlapped)
                         {
@@ -78,21 +75,23 @@ public class PhysicsDetectionSystem : SystemBase
         Entity target = ECSManager.Instance.GetEntityFromGameObject(targetGo);
         if (target != null && target.IsAlive && !target.HasComponent<PendingDestroyComponent>())
         {
-            // 👇 【核心修复】：在源头掐断穿透弹的重复碰撞事件
             var pierce = source.GetComponent<PierceComponent>();
             if (pierce != null)
             {
-                // 如果已经击中过该敌人，或者穿透目标数已达上限，直接拒绝生成事件
                 if (pierce.HitHistory.Contains(target) || pierce.HitHistory.Count >= pierce.MaxPierces) 
                     return;
-                
-                // 记录击中历史，防止同一帧或后续帧重复触发事件
                 pierce.HitHistory.Add(target);
             }
 
             Entity eventEntity = ECSManager.Instance.CreateEntity();
-            // 使用对象池获取事件组件
-            eventEntity.AddComponent(EventPool.GetCollisionEvent(source, target, normal));
+            
+            // 👇 【修复】：使用泛型对象池获取，并手动赋值
+            var colEvt = EventPool<CollisionEventComponent>.Get();
+            colEvt.Source = source;
+            colEvt.Target = target;
+            colEvt.Normal = normal;
+            
+            eventEntity.AddComponent(colEvt);
             eventEntity.AddComponent(new PendingDestroyComponent()); 
         }
     }
