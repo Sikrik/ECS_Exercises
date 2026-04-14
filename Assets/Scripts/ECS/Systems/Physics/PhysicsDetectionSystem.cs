@@ -30,6 +30,9 @@ public class PhysicsDetectionSystem : SystemBase
             var trace = entity.GetComponent<TraceComponent>();
             var col = entity.GetComponent<CollisionComponent>();
 
+            // ==========================================
+            // 1. 连续碰撞检测 (主要用于子弹)
+            // ==========================================
             if (trace != null && col != null) 
             {
                 var pos = entity.GetComponent<PositionComponent>();
@@ -45,11 +48,15 @@ public class PhysicsDetectionSystem : SystemBase
                     {
                         if (_castResults[j].collider != pPhys.Collider)
                         {
-                            CreateEvent(entity, _castResults[j].collider.gameObject, _castResults[j].normal);
+                            // 【修复1】：子弹的击退方向应该完全遵循子弹的飞行方向，而不是敌人的表面法线
+                            CreateEvent(entity, _castResults[j].collider.gameObject, dir.normalized);
                         }
                     }
                 }
             }
+            // ==========================================
+            // 2. 离散碰撞检测 (主要用于肉体冲撞)
+            // ==========================================
             else 
             {
                 int hitCount = pPhys.Collider.OverlapCollider(contactFilter, _overlapResults);
@@ -60,15 +67,13 @@ public class PhysicsDetectionSystem : SystemBase
                         ColliderDistance2D distInfo = pPhys.Collider.Distance(_overlapResults[j]);
                         if (distInfo.isOverlapped)
                         {
-                            Vector2 pushNormal = distInfo.normal;
+                            // 【修复2】：Unity的法线是从 Target 指向 Source。为了把 Target 推开，必须取反！
+                            Vector2 pushNormal = -distInfo.normal; 
                             
-                            // 【核心修复】：如果两个怪物在同一坐标出生，法线会是 0，导致永远挤不开。
-                            // 这里强制给一个随机方向，让它们炸开
                             if (pushNormal == Vector2.zero)
                             {
                                 pushNormal = new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f)).normalized;
                             }
-                            
                             CreateEvent(entity, _overlapResults[j].gameObject, pushNormal);
                         }
                     }
@@ -84,6 +89,9 @@ public class PhysicsDetectionSystem : SystemBase
         Entity target = ECSManager.Instance.GetEntityFromGameObject(targetGo);
         if (target != null && target.IsAlive && !target.HasComponent<PendingDestroyComponent>())
         {
+            // 【修复3】：防止敌人主动把“子弹”当成受害者，反向给子弹施加硬直和击退！
+            if (source.HasComponent<EnemyTag>() && target.HasComponent<BulletTag>()) return;
+
             var pierce = source.GetComponent<PierceComponent>();
             if (pierce != null)
             {
@@ -93,8 +101,6 @@ public class PhysicsDetectionSystem : SystemBase
             }
 
             Entity eventEntity = ECSManager.Instance.CreateEntity();
-            
-            // 👇 【修复】：使用泛型对象池获取，并手动赋值
             var colEvt = EventPool<CollisionEventComponent>.Get();
             colEvt.Source = source;
             colEvt.Target = target;
