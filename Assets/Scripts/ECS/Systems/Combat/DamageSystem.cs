@@ -75,7 +75,7 @@ public class DamageSystem : SystemBase
             }
 
             victim.RemoveComponent<DamageEventComponent>();
-
+            EventPool<DamageEventComponent>.Return(damageEvt);
             if (!victim.HasComponent<DamageTakenEventComponent>())
             {
                 // 👇 【修复】：使用泛型对象池获取，并手动赋值

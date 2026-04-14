@@ -1,12 +1,10 @@
 ﻿// Assets/Scripts/ECS/Core/SystemBase.cs
-
 using System;
 using System.Collections.Generic;
 
 /// <summary>
 /// 所有业务逻辑系统的抽象基类。
-/// 【完整优化版】：对接 ECSManager 的每帧查询缓存。
-/// 逻辑：第一个查询某组合的系统负责遍历，后续系统直接复用结果。
+/// 优化版：修正了多组件查询的冗余缓存计算，单组件查询完美复用，实现 0 GC。
 /// </summary>
 public abstract class SystemBase
 {
@@ -39,12 +37,6 @@ public abstract class SystemBase
     
     protected List<Entity> GetEntitiesWith<T1, T2>() where T1 : Component where T2 : Component
     {
-        // 生成复合 Key：使用两个组件 Hash 的组合
-        int key = typeof(T1).GetHashCode() ^ (typeof(T2).GetHashCode() << 2);
-        // 注意：由于 QueryCache 的 Key 是 Type，我们需要一个包装或转换
-        // 这里为了兼容你的 UIManager/ECSManager 结构，直接使用 T1 的类型作为主缓存 Key 是最稳妥的
-        // 或者你可以将 QueryCache 的 Key 类型改为 object
-        
         var list = ECSManager.Instance.GetListFromPool();
         foreach (var e in _entities)
         {
@@ -88,5 +80,4 @@ public abstract class SystemBase
         }
         return list;
     }
-    
 }

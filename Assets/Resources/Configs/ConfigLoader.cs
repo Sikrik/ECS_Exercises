@@ -175,8 +175,9 @@ public static class ConfigLoader
                         string eId = kv[0].Trim();
                         int level = ParseInt(kv[1]);
                         int count = ParseInt(kv[2]);
+                        
+                        // 【优化】删除了无用的 TotalSpawnCount 累加代码
                         data.SpawnList.Add(new EnemySpawnInfo { Id = eId, Level = level, Count = count });
-                        data.TotalSpawnCount += count; 
                     }
                 }
             }

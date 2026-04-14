@@ -16,7 +16,8 @@ public class WaveData
     
     // 存储本波的生成配方列表 (支持同一个怪物不同等级)
     public List<EnemySpawnInfo> SpawnList = new List<EnemySpawnInfo>(); 
-    public int TotalSpawnCount;  // 解析时自动计算总数
+    
+    // 【优化】移除了未被消费的冗余字段 TotalSpawnCount
     
     public float SpawnInterval;  // 本波敌人的生成间隔
     public float NextWaveDelay;  // 清空后距下一波的等待时间
