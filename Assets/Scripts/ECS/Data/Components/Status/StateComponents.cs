@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿// 路径: Assets/Scripts/ECS/Data/Components/Status/StateComponents.cs
+using UnityEngine;
+using System.Collections.Generic;
 
 // --- 基础生命周期与标记 ---
 public class LifetimeComponent : Component { public float Duration; }
@@ -39,18 +41,16 @@ public class BulletDOTPayloadComponent : Component
 // DOT 效果 (用于实体正在受到的伤害)
 public class DOTEffectComponent : Component 
 {
-    public float DamagePerSecond;
-    public float Duration;
-    public float TickTimer;
-    public string VfxName;
-
-    public DOTEffectComponent(float dps, float duration, string vfxName)
+    public class DOTState 
     {
-        DamagePerSecond = dps;
-        Duration = duration;
-        TickTimer = 0.5f; 
-        VfxName = vfxName;
+        public float DamagePerSecond;
+        public float Duration;
+        public float TickTimer;
+        public string VfxName;
     }
+    
+    // 用字典同时存储多种 DOT（Key 为 VfxName 如 "BurnVFX", "PoisonVFX"）
+    public Dictionary<string, DOTState> ActiveDOTs = new Dictionary<string, DOTState>();
 }
 
 // 特效清理标记

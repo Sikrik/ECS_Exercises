@@ -13,9 +13,18 @@ public class DamageSystem : SystemBase
         for (int i = victims.Count - 1; i >= 0; i--)
         {
             var victim = victims[i];
-            var hp = victim.GetComponent<HealthComponent>();
             var damageEvt = victim.GetComponent<DamageEventComponent>();
-            
+
+            // 【修复1：拦截无敌状态】
+            // 如果实体处于无敌状态，直接丢弃该伤害事件并跳过结算
+            if (victim.HasComponent<InvincibleComponent>())
+            {
+                victim.RemoveComponent<DamageEventComponent>();
+                EventPool<DamageEventComponent>.Return(damageEvt);
+                continue;
+            }
+
+            var hp = victim.GetComponent<HealthComponent>();
             float actualDamage = damageEvt.DamageAmount;
 
             // 1. 防御减伤结算
@@ -76,9 +85,9 @@ public class DamageSystem : SystemBase
 
             victim.RemoveComponent<DamageEventComponent>();
             EventPool<DamageEventComponent>.Return(damageEvt);
+            
             if (!victim.HasComponent<DamageTakenEventComponent>())
             {
-                // 👇 【修复】：使用泛型对象池获取，并手动赋值
                 var newEvt = EventPool<DamageTakenEventComponent>.Get();
                 newEvt.DamageAmount = actualDamage;
                 newEvt.CauseHitRecovery = causeRecovery;

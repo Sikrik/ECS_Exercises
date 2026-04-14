@@ -17,47 +17,54 @@ public class MeleeExecutionSystem : SystemBase
             var intent = p.GetComponent<MeleeSwingIntentComponent>();
             var modifiers = p.HasComponent<WeaponModifierComponent>() ? p.GetComponent<WeaponModifierComponent>() : null;
             
+            // 提取攻击参数
+            float radius = melee.AttackRadius * intent.RadiusMultiplier;
+            float angle = intent.AngleOverride > 0 ? intent.AngleOverride : melee.AttackAngle;
+            
             int executeLvl = modifiers != null ? modifiers.GetLevel("Melee_Execute") : 0;
             int waveLvl = modifiers != null ? modifiers.GetLevel("Melee_Wave") : 0;
 
-            // 获取面向方向 (如果没移动，默认朝右)
-            Vector2 aimDir = Vector2.right;
+            // 获取玩家当前朝向 (根据最后一次输入)
+            Vector2 forwardDir = Vector2.right;
             if (p.HasComponent<MoveInputComponent>())
             {
                 var input = p.GetComponent<MoveInputComponent>();
-                if (Mathf.Abs(input.X) > 0.01f || Mathf.Abs(input.Y) > 0.01f) 
-                    aimDir = new Vector2(input.X, input.Y).normalized;
+                Vector2 aimDir = new Vector2(input.X, input.Y);
+                if (aimDir.sqrMagnitude > 0.001f) forwardDir = aimDir.normalized;
             }
 
-            // 读取冲刺意图覆盖的半径和角度 (360度大回旋斩)
-            float attackAngle = intent != null && intent.AngleOverride > 0 ? intent.AngleOverride : melee.AttackAngle;
-            float actualRadius = intent != null ? melee.AttackRadius * intent.RadiusMultiplier : melee.AttackRadius;
+            // ==========================================
+            // 1. 触发特效表现
+            // ==========================================
+            Entity vfxEvent = ECSManager.Instance.CreateEntity();
+            vfxEvent.AddComponent(new VFXSpawnEventComponent {
+                VFXType = "MeleeSlash",
+                Position = new Vector3(pPos.X, pPos.Y, 0),
+                EndPosition = new Vector3(pPos.X + forwardDir.x * radius, pPos.Y + forwardDir.y * radius, 0),
+                NumericParam = angle // 将扇形角度传递给特效网格生成器
+            });
 
-            // 1. 本体范围挥砍判定
-            var targets = ECSManager.Instance.Grid.GetNearbyEntities(pPos.X, pPos.Y, Mathf.CeilToInt(actualRadius));
+            // ==========================================
+            // 2. 扇形范围挥砍判定与结算
+            // ==========================================
+            var targets = ECSManager.Instance.Grid.GetNearbyEntities(pPos.X, pPos.Y, Mathf.CeilToInt(radius));
             foreach (var e in targets)
             {
                 if (!e.IsAlive || !e.HasComponent<EnemyTag>()) continue;
                 
-                // ==========================================
-                // 【核心修复 3】：精确的扇形与距离物理判定
-                // ==========================================
-                var tPos = e.GetComponent<PositionComponent>();
-                Vector2 toTarget = new Vector2(tPos.X - pPos.X, tPos.Y - pPos.Y);
+                var ePos = e.GetComponent<PositionComponent>();
+                Vector2 toEnemy = new Vector2(ePos.X - pPos.X, ePos.Y - pPos.Y);
                 
-                // 距离判断
-                if (toTarget.sqrMagnitude > actualRadius * actualRadius) continue;
-                
-                // 角度判定 (如果是360度旋风斩则忽略)
-                if (attackAngle < 360f)
-                {
-                    float angleToTarget = Vector2.Angle(aimDir, toTarget);
-                    if (angleToTarget > attackAngle / 2f) continue; 
-                }
+                // 【核心修复】：角度过滤，排除背后的敌人（除非是360度大风车）
+                if (angle < 360f && Vector2.Angle(forwardDir, toEnemy) > angle / 2f) 
+                    continue;
 
-                float dmg = 35f * (modifiers != null ? modifiers.GlobalDamageMultiplier : 1f);
+                // 伤害计算
+                float damageBonus = modifiers != null ? (1f + modifiers.GetLevel("Melee_IncreaseDamage") * 0.2f) : 1f;
+                float dmg = 35f * damageBonus * (modifiers != null ? modifiers.GlobalDamageMultiplier : 1f);
                 bool isCrit = false;
 
+                // 斩杀逻辑
                 if (executeLvl > 0 && e.HasComponent<HealthComponent>())
                 {
                     var hp = e.GetComponent<HealthComponent>();
@@ -67,26 +74,24 @@ public class MeleeExecutionSystem : SystemBase
                         isCrit = true; 
                     }
                 }
+                
+                // 击退逻辑增强
+                if (modifiers != null && modifiers.GetLevel("Melee_Knockback") > 0)
+                {
+                    // 给玩家自身贴上反馈组件，DamageSystem 结算时会提取并施加给受害者
+                    p.AddComponent(new ImpactFeedbackComponent(true, true));
+                    p.AddComponent(new BounceForceComponent(8f + modifiers.GetLevel("Melee_Knockback") * 2f));
+                }
 
-                // ==========================================
-                // 【核心修复 4】：伤害累加，防止吞没同帧子弹伤害
-                // ==========================================
-                var existingDmg = e.GetComponent<DamageEventComponent>();
-                if (existingDmg != null)
-                {
-                    existingDmg.DamageAmount += dmg;
-                }
-                else
-                {
-                    e.AddComponent(new DamageEventComponent { DamageAmount = dmg, Source = p, IsCritical = isCrit });
-                }
+                e.AddComponent(new DamageEventComponent { DamageAmount = dmg, Source = p, IsCritical = isCrit });
             }
 
-            // 2. 触发剑气纵横
+            // ==========================================
+            // 3. 剑气纵横 (发射穿透子弹)
+            // ==========================================
             if (waveLvl > 0)
             {
-                Entity waveBullet = BulletFactory.Create(BulletType.Normal, new Vector3(pPos.X, pPos.Y, 0), aimDir, FactionType.Player, modifiers);
-                
+                Entity waveBullet = BulletFactory.Create(BulletType.Normal, new Vector3(pPos.X, pPos.Y, 0), forwardDir, FactionType.Player, modifiers);
                 if (waveBullet != null)
                 {
                     waveBullet.AddComponent(new PierceComponent(1 + waveLvl * 2)); 
@@ -94,7 +99,12 @@ public class MeleeExecutionSystem : SystemBase
                 }
             }
 
+            // ==========================================
+            // 4. 状态清理
+            // ==========================================
             p.RemoveComponent<MeleeSwingIntentComponent>();
+            if (p.HasComponent<ImpactFeedbackComponent>()) p.RemoveComponent<ImpactFeedbackComponent>();
+            if (p.HasComponent<BounceForceComponent>()) p.RemoveComponent<BounceForceComponent>();
         }
     }
 }

@@ -1,5 +1,4 @@
-﻿// 路径: Assets/Scripts/ECS/Systems/GamePlay/MeleeTargetingSystem.cs
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class MeleeTargetingSystem : SystemBase
@@ -24,18 +23,19 @@ public class MeleeTargetingSystem : SystemBase
             {
                 var modifiers = p.GetComponent<WeaponModifierComponent>();
                 
-                // 现有的近战能力
-                melee.HasDoubleHit = modifiers.GetLevel("Melee_DoubleHit") > 0;
-                melee.Defense = 10f + modifiers.GetLevel("Melee_Armor") * 5f; 
-                melee.ThornDamage = melee.Defense * 0.5f; 
-                melee.HealthRegen = 5f + modifiers.GetLevel("Melee_Regen") * 2f; 
-                melee.LifeStealRatio = 0.1f + modifiers.GetLevel("Melee_LifeSteal") * 0.05f; 
-                melee.AttackAngle = Mathf.Min(360f, 90f + modifiers.GetLevel("Melee_RangeEnhance") * 45f);
-                melee.AttackRadius = 3f + modifiers.GetLevel("Melee_RangeEnhance") * 0.5f;
+                // 【修复】全面对齐 Upgrade_Config_Melee.csv
+                melee.HasDoubleHit = modifiers.GetLevel("Melee_AddCombo") > 0;
+                
+                // 吸血机制：有基础吸血项才开启，配合强化项提升比例
+                int lifestealBase = modifiers.GetLevel("Melee_AddLifesteal") > 0 ? 1 : 0;
+                melee.LifeStealRatio = (lifestealBase > 0 ? 0.05f : 0f) + modifiers.GetLevel("Melee_LifestealEnhance") * 0.02f; 
+                
+                // 攻击范围与角度
+                melee.AttackAngle = Mathf.Min(360f, 90f + modifiers.GetLevel("Melee_IncreaseRadius") * 45f);
+                melee.AttackRadius = 3f + modifiers.GetLevel("Melee_IncreaseRadius") * 0.5f;
 
-                // 👇【新增】狂风剑法：攻速提升 (通过降低 Weapon 的 FireRate 实现)
+                // 狂风剑法：攻速提升 (通过降低 Weapon 的 FireRate 实现)
                 float speedBonus = modifiers.GetLevel("Melee_AttackSpeed") * 0.1f; // 每级减少 10% 攻击间隔
-                // 假设近战基础攻速为 0.8 秒一刀，封顶最快攻速为 0.2 秒一刀
                 weapon.FireRate = Mathf.Max(0.2f, 0.8f * (1f - speedBonus));
             }
 
@@ -56,6 +56,7 @@ public class MeleeTargetingSystem : SystemBase
                 pending.Timer -= deltaTime;
                 if (pending.Timer <= 0)
                 {
+                    // 计时结束，抛出第二击意图
                     p.AddComponent(new MeleeSwingIntentComponent());
                     p.RemoveComponent<MeleeDoubleHitPendingComponent>();
                 }
@@ -63,30 +64,21 @@ public class MeleeTargetingSystem : SystemBase
             else if (weapon.CurrentCooldown <= 0)
             {
                 // 普通索敌
-                var nearby = ECSManager.Instance.Grid.GetNearbyEntities(pos.X, pos.Y, Mathf.CeilToInt(melee.AttackRadius));
-                bool foundEnemy = false;
-
-                // 【核心修复 2】：确保网格内的实体是敌人，并且在真实攻击距离内
-                foreach (var target in nearby)
+                var nearby = ECSManager.Instance.Grid.GetNearbyEntities(pos.X, pos.Y, (int)melee.AttackRadius);
+                if (nearby.Count > 0)
                 {
-                    if (target.IsAlive && target.HasComponent<EnemyTag>())
-                    {
-                        var tPos = target.GetComponent<PositionComponent>();
-                        float distSq = (tPos.X - pos.X) * (tPos.X - pos.X) + (tPos.Y - pos.Y) * (tPos.Y - pos.Y);
-                        if (distSq <= melee.AttackRadius * melee.AttackRadius)
-                        {
-                            foundEnemy = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (foundEnemy)
-                {
+                    // 发现敌人，抛出挥砍意图
                     p.AddComponent(new MeleeSwingIntentComponent());
+                    // 进入冷却
                     weapon.CurrentCooldown = weapon.FireRate;
+
+                    // 如果拥有连击技能，预约下一次挥砍
+                    if (melee.HasDoubleHit)
+                    {
+                        p.AddComponent(new MeleeDoubleHitPendingComponent(0.2f)); 
+                    }
                 }
             }
         }
     }
-}   
+}

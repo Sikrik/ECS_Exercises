@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿// 路径: Assets/Scripts/ECS/Factories/BulletFactory.cs
+using UnityEngine;
 
 public static class BulletFactory 
 {
@@ -51,7 +52,9 @@ public static class BulletFactory
             // 穿透 (PierceComponent 已存在于 BulletAbilityComponents.cs)
             if (modifiers.GetLevel("AddPierce") > 0)
             {
-                bullet.AddComponent(new PierceComponent(1 + modifiers.GetLevel("PierceEnhance")));
+                // 【修复3：修正穿透次数的数学逻辑】
+                // 基础的 "AddPierce" 代表子弹能多穿透1个敌人（总共命中2个），所以基数应为 2
+                bullet.AddComponent(new PierceComponent(2 + modifiers.GetLevel("PierceEnhance")));
             }
 
             // 燃烧 (火)

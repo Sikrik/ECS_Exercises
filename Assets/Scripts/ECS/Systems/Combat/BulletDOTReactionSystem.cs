@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/Systems/Combat/BulletDOTReactionSystem.cs
+using System.Collections.Generic;
 
 public class BulletDOTReactionSystem : SystemBase
 {
@@ -21,21 +22,29 @@ public class BulletDOTReactionSystem : SystemBase
 
             var payload = bullet.GetComponent<BulletDOTPayloadComponent>();
 
-            // 如果敌人身上已经有 DOT，刷新时间或叠加伤害（这里采取覆盖刷新机制）
-            if (target.HasComponent<DOTEffectComponent>())
+            // 赋予 DOTEffectComponent（如果没有的话）
+            if (!target.HasComponent<DOTEffectComponent>())
             {
-                var existingDot = target.GetComponent<DOTEffectComponent>();
-                // 如果是同类型 DOT，刷新持续时间
-                if (existingDot.VfxName == payload.VfxName) 
-                {
-                    existingDot.Duration = payload.Duration;
-                    existingDot.DamagePerSecond = payload.DPS; // 以最新伤害为准
-                }
+                target.AddComponent(new DOTEffectComponent());
+            }
+            var dotComp = target.GetComponent<DOTEffectComponent>();
+
+            // 独立刷新或叠加不同类型的 DOT
+            if (dotComp.ActiveDOTs.ContainsKey(payload.VfxName))
+            {
+                var existingDot = dotComp.ActiveDOTs[payload.VfxName];
+                existingDot.Duration = payload.Duration;
+                existingDot.DamagePerSecond = payload.DPS; // 以最新伤害为准
             }
             else
             {
-                // 给敌人挂上持续掉血状态
-                target.AddComponent(new DOTEffectComponent(payload.DPS, payload.Duration, payload.VfxName));
+                dotComp.ActiveDOTs[payload.VfxName] = new DOTEffectComponent.DOTState 
+                {
+                    DamagePerSecond = payload.DPS,
+                    Duration = payload.Duration,
+                    TickTimer = 0.5f,
+                    VfxName = payload.VfxName
+                };
 
                 // 呼叫表现层生成特效 (燃烧/中毒)
                 Entity vfxEvent = ECSManager.Instance.CreateEntity();

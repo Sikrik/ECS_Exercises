@@ -1,5 +1,4 @@
-﻿// 路径: Assets/Scripts/ECS/Systems/GamePlay/WeaponFiringSystem.cs
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class WeaponFiringSystem : SystemBase
@@ -36,7 +35,8 @@ public class WeaponFiringSystem : SystemBase
             {
                 Vector3 spawnPos = new Vector3(pos.X, pos.Y, 0);
                 
-                int multiShotLevel = modifiers != null ? modifiers.GetLevel("MultiShot") : 0;
+                // 【修复】正确读取散弹数量
+                int multiShotLevel = modifiers != null ? modifiers.GetLevel("AddProjectile") : 0;
                 int projectileCount = 1 + multiShotLevel;
                 
                 float spreadAngle = 15f; 
@@ -51,7 +51,8 @@ public class WeaponFiringSystem : SystemBase
                     BulletFactory.Create(weapon.CurrentBulletType, spawnPos, finalDir, faction, modifiers);
                 }
 
-                float fireRateLevel = modifiers != null ? modifiers.GetLevel("FireRateUp") : 0f;
+                // 【修复】正确读取攻速提升
+                float fireRateLevel = modifiers != null ? modifiers.GetLevel("IncreaseFireRate") : 0f;
                 float cooldownReduction = Mathf.Min(0.8f, fireRateLevel * 0.1f); 
                 weapon.CurrentCooldown = weapon.FireRate * (1f - cooldownReduction);
 
