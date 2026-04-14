@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+﻿using UnityEngine;
 
 /// <summary>
 /// 生命周期组件：管理实体的存活时长，用于自动清理过期实体。

@@ -1,4 +1,5 @@
-﻿using System;
+﻿// 路径: Assets/Scripts/ECS/Systems/Visual/VFXInstantiationSystem.cs
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -18,7 +19,7 @@ public class VFXInstantiationSystem : SystemBase
             { "SlowVFX", SetupSlowVFX },
             { "Explosion", SetupExplosionVFX },
             { "LightningChain", SetupLightningChainVFX },
-            { "MeleeSlash", SetupMeleeSlashVFX } // 【新增】近战挥砍特效策略
+            { "MeleeSlash", SetupMeleeSlashVFX } // 近战挥砍特效策略
         };
     }
 
@@ -38,17 +39,17 @@ public class VFXInstantiationSystem : SystemBase
                 evtEntity.AddComponent(new PendingDestroyComponent());
         }
 
-        // 2. 处理蓄力/范围预测可视化 (保持原有的红框逻辑)
+        // 2. 处理蓄力/范围预测可视化
         UpdateDashPreviews();
     }
 
     // ==========================================
-    // 【新增】：近战挥砍 VFX 生成策略
+    // 特效生成策略
     // ==========================================
+
     private void SetupMeleeSlashVFX(VFXSpawnEventComponent evt)
     {
-        // 建议你在 GameObject_PoolManager 里专门加一个 MeleeSlashPrefab，
-        // 这里暂时用 ExplosionVFXPrefab 占位，记得去 Unity 编辑器里把 Prefab 换成挂了生成器和 Shader 的物体！
+        // 确保 GameObject_PoolManager 里有 MeleeSlashVFXPrefab
         GameObject prefab = GameObject_PoolManager.Instance.MeleeSlashVFXPrefab;
         if (prefab == null) return;
 
@@ -65,15 +66,11 @@ public class VFXInstantiationSystem : SystemBase
             go.transform.rotation = Quaternion.Euler(0, 0, lookAngle);
         }
 
-        // ==========================================
-        // 3. 【关键修改】调用你写的网格生成器！
-        // ==========================================
+        // 3. 调用网格生成器
         var meshGenerator = go.GetComponent<MeleeSlashMeshGenerator>();
         if (meshGenerator != null)
         {
-            // 读取传过来的角度 (默认90度)
             float angle = evt.NumericParam > 0 ? evt.NumericParam : 90f;
-            // 生成扇形网格 (半径, 角度, 分段数越高越圆滑)
             meshGenerator.GenerateSlashMesh(radius, angle, 20);
         }
         else
@@ -86,10 +83,6 @@ public class VFXInstantiationSystem : SystemBase
         slashVfxEntity.AddComponent(new ViewComponent(go, prefab));
         slashVfxEntity.AddComponent(new LifetimeComponent { Duration = 0.2f }); // 刀光残留0.2秒
     }
-
-    // ==========================================
-    // 现有策略 (保持不变)
-    // ==========================================
 
     private void SetupLightningChainVFX(VFXSpawnEventComponent evt) 
     {
@@ -152,14 +145,20 @@ public class VFXInstantiationSystem : SystemBase
             if (activePreview.PreviewObject != null)
             {
                 Transform t = activePreview.PreviewObject.transform;
+                
                 // 动态调整预警红框的缩放与位置
                 float radius = e.HasComponent<CollisionComponent>() ? e.GetComponent<CollisionComponent>().Radius : 0.5f;
-                float totalVisualLength = previewIntent.Distance + (radius * 2f);
+                
+                // 👇 使用 Length 而不是 Distance
+                float totalVisualLength = previewIntent.Length + (radius * 2f);
+                
+                // 👇 使用 Unity 原生的 .x 和 .y
                 Vector3 dashDir = new Vector3(previewIntent.Direction.x, previewIntent.Direction.y, 0);
 
                 t.localScale = new Vector3(totalVisualLength, previewIntent.Width, 1f);
                 t.position = view.GameObject.transform.position + (dashDir * ((totalVisualLength * 0.5f) - radius));
                 
+                // 👇 使用 Unity 原生的 .x 和 .y
                 float angle = Mathf.Atan2(previewIntent.Direction.y, previewIntent.Direction.x) * Mathf.Rad2Deg;
                 t.rotation = Quaternion.Euler(0, 0, angle);
             }

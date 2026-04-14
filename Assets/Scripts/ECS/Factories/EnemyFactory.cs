@@ -90,7 +90,12 @@ public static class EnemyFactory
         {
             enemy.AddComponent(new DirectionIndicatorComponent(indicatorView.ArrowPivot, 3f));
         }
-
+        var previewView = go.GetComponent<AttackPreviewView>();
+        if (previewView != null && previewView.PreviewLine != null)
+        {
+            // 把 LineRenderer 包装成数据组件塞给实体
+            enemy.AddComponent(new AttackPreviewVisualComponent(previewView.PreviewLine));
+        }
         return enemy;
     }
 }
