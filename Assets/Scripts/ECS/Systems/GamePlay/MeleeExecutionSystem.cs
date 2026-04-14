@@ -48,7 +48,8 @@ public class MeleeExecutionSystem : SystemBase
 
         foreach (var e in targets)
         {
-            if (!e.IsAlive || e.HasComponent<DeadTag>()) continue;
+            // 【修复】：只对 EnemyTag 的实体进行伤害结算，防止打到自己或其他非敌对实体
+            if (!e.IsAlive || e.HasComponent<DeadTag>() || !e.HasComponent<EnemyTag>()) continue;
 
             var ePos = e.GetComponent<PositionComponent>();
             Vector2 toEnemy = new Vector2(ePos.X - pPos.X, ePos.Y - pPos.Y);
@@ -95,8 +96,12 @@ public class MeleeExecutionSystem : SystemBase
         Entity nearest = null;
         float minDist = float.MaxValue;
         Vector2 myPos = new Vector2(pPos.X, pPos.Y);
+        
         foreach (var e in enemies)
         {
+            // 【修复】：寻找最近目标时，也必须过滤掉非敌人（如玩家自身）
+            if (!e.IsAlive || e.HasComponent<DeadTag>() || !e.HasComponent<EnemyTag>()) continue;
+
             var ePos = e.GetComponent<PositionComponent>();
             float d = (myPos.x - ePos.X) * (myPos.x - ePos.X) + (myPos.y - ePos.Y) * (myPos.y - ePos.Y);
             if (d < minDist) { minDist = d; nearest = e; }

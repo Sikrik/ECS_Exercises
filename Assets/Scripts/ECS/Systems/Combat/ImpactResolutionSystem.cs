@@ -18,16 +18,10 @@ public class ImpactResolutionSystem : SystemBase
             if (source == null || !source.IsAlive) continue;
             if (target == null || !target.IsAlive) continue;
 
-            // 1. 阵营过滤
-            if (source.HasComponent<FactionComponent>() && target.HasComponent<FactionComponent>())
-            {
-                if (source.GetComponent<FactionComponent>().Value == target.GetComponent<FactionComponent>().Value)
-                {
-                    continue; 
-                }
-            }
-
-            // 2. 物理防重叠 (挤压分离)
+            // ==========================================
+            // 1. 物理防重叠 (挤压分离)
+            // 必须放在阵营判断之前！这样同阵营的怪物互相挤压也会生效，防止穿模
+            // ==========================================
             if (!source.HasComponent<BulletTag>())
             {
                 var sourcePos = source.GetComponent<PositionComponent>();
@@ -41,7 +35,20 @@ public class ImpactResolutionSystem : SystemBase
                 }
             }
 
+            // ==========================================
+            // 2. 阵营过滤 (决定是否造成伤害和击退)
+            // ==========================================
+            if (source.HasComponent<FactionComponent>() && target.HasComponent<FactionComponent>())
+            {
+                if (source.GetComponent<FactionComponent>().Value == target.GetComponent<FactionComponent>().Value)
+                {
+                    continue; // 同阵营不互相造成伤害和击退
+                }
+            }
+
+            // ==========================================
             // 3. 弹性击退反馈 (Knockback)
+            // ==========================================
             if (source.HasComponent<ImpactFeedbackComponent>())
             {
                 var feedback = source.GetComponent<ImpactFeedbackComponent>();
@@ -63,7 +70,9 @@ public class ImpactResolutionSystem : SystemBase
                 }
             }
 
+            // ==========================================
             // 4. 产生伤害事件
+            // ==========================================
             if (source.HasComponent<DamageComponent>() && target.HasComponent<HealthComponent>())
             {
                 if (target.HasComponent<InvincibleComponent>()) continue;
