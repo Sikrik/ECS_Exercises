@@ -1,4 +1,6 @@
-﻿/// <summary>
+﻿using System.Collections.Generic;
+
+/// <summary>
 /// 无敌状态组件：使实体在指定时间内免疫所有伤害。
 /// 适用场景：角色复活保护、技能无敌帧、道具触发短暂无敌等。
 /// </summary>

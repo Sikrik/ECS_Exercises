@@ -70,7 +70,7 @@ public class SystemBootstrap
         simGroup.AddSystem(new ChainLightningReactionSystem(entities));
         simGroup.AddSystem(new ExplosionSystem(entities));       
         simGroup.AddSystem(new DamageSystem(entities));          
-        
+        simGroup.AddSystem(new DOTSystem(entities));
         // --- 死亡与生命值 ---
         simGroup.AddSystem(new EnemyHitReactionSystem(entities)); 
         simGroup.AddSystem(new PlayerHitReactionSystem(entities)); 

@@ -1,4 +1,4 @@
-﻿// 路径: Assets/Scripts/ECS/Systems/Combat/MeleeTargetingSystem.cs
+﻿// 路径: Assets/Scripts/ECS/Systems/GamePlay/MeleeTargetingSystem.cs
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -23,6 +23,8 @@ public class MeleeTargetingSystem : SystemBase
             if (p.HasComponent<WeaponModifierComponent>())
             {
                 var modifiers = p.GetComponent<WeaponModifierComponent>();
+                
+                // 现有的近战能力
                 melee.HasDoubleHit = modifiers.GetLevel("Melee_DoubleHit") > 0;
                 melee.Defense = 10f + modifiers.GetLevel("Melee_Armor") * 5f; 
                 melee.ThornDamage = melee.Defense * 0.5f; 
@@ -30,6 +32,11 @@ public class MeleeTargetingSystem : SystemBase
                 melee.LifeStealRatio = 0.1f + modifiers.GetLevel("Melee_LifeSteal") * 0.05f; 
                 melee.AttackAngle = Mathf.Min(360f, 90f + modifiers.GetLevel("Melee_RangeEnhance") * 45f);
                 melee.AttackRadius = 3f + modifiers.GetLevel("Melee_RangeEnhance") * 0.5f;
+
+                // 👇【新增】狂风剑法：攻速提升 (通过降低 Weapon 的 FireRate 实现)
+                float speedBonus = modifiers.GetLevel("Melee_AttackSpeed") * 0.1f; // 每级减少 10% 攻击间隔
+                // 假设近战基础攻速为 0.8 秒一刀，封顶最快攻速为 0.2 秒一刀
+                weapon.FireRate = Mathf.Max(0.2f, 0.8f * (1f - speedBonus));
             }
 
             // ==========================================
@@ -62,9 +69,10 @@ public class MeleeTargetingSystem : SystemBase
                 {
                     // 发现敌人，抛出挥砍意图
                     p.AddComponent(new MeleeSwingIntentComponent());
+                    // 进入冷却
                     weapon.CurrentCooldown = weapon.FireRate;
                 }
             }
         }
     }
-}
+}   

@@ -10,3 +10,11 @@ FireRateUp,5,快速装填: 攻击速度提升10%,
 AttackUp,5,火力强化: 玩家基础攻击力提升20%,
 AddStun,1,重击附魔: 子弹附带基础受击硬直效果,
 StunEnhance,5,震荡冲击: 提升受击硬直的持续时间,AddStun
+AddPierce,1,金石附魔: 子弹获得基础穿透能力(金),
+PierceEnhance,5,无坚不摧: 进一步提升子弹穿透敌人次数,AddPierce
+AddCrit,1,弱点洞察: 子弹获得10%基础暴击率,
+CritEnhance,5,致命一击: 提升暴击率与暴击伤害倍率,AddCrit
+AddBurn,1,烈焰附魔: 子弹使敌人点燃，造成持续伤害(火),
+BurnEnhance,5,星星之火: 提升燃烧伤害与持续时间,AddBurn
+AddPoison,1,剧毒附魔: 子弹使敌人中毒，降低移速并受到伤害(木),
+PoisonEnhance,5,万毒噬心: 提升毒素伤害并允许毒性传染,AddPoison
