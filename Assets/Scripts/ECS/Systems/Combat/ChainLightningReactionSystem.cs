@@ -33,7 +33,7 @@ public class ChainLightningReactionSystem : SystemBase
                 float minDistSq = chain.Range * chain.Range;
                 var curPos = currentTarget.GetComponent<PositionComponent>();
 
-                var nearby = ECSManager.Instance.Grid.GetNearbyEnemies(curPos.X, curPos.Y);
+                var nearby = ECSManager.Instance.Grid.GetNearbyEntities(curPos.X, curPos.Y);
                 foreach (var candidate in nearby)
                 {
                     if (!candidate.IsAlive || !candidate.HasComponent<EnemyTag>() || 

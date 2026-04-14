@@ -57,7 +57,7 @@ public class MeleeTargetingSystem : SystemBase
             else if (weapon.CurrentCooldown <= 0)
             {
                 // 普通索敌
-                var nearby = ECSManager.Instance.Grid.GetNearbyEnemies(pos.X, pos.Y, (int)melee.AttackRadius);
+                var nearby = ECSManager.Instance.Grid.GetNearbyEntities(pos.X, pos.Y, (int)melee.AttackRadius);
                 if (nearby.Count > 0)
                 {
                     // 发现敌人，抛出挥砍意图

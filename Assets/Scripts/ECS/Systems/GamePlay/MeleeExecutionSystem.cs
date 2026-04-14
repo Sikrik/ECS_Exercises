@@ -43,7 +43,7 @@ public class MeleeExecutionSystem : SystemBase
             attackDir = (new Vector2(tPos.X, tPos.Y) - currentPos).normalized;
         }
 
-        var targets = ECSManager.Instance.Grid.GetNearbyEnemies(pPos.X, pPos.Y, Mathf.CeilToInt(finalRadius));
+        var targets = ECSManager.Instance.Grid.GetNearbyEntities(pPos.X, pPos.Y, Mathf.CeilToInt(finalRadius));
         float finalRadiusSqr = finalRadius * finalRadius; // 【优化】缓存半径平方
 
         foreach (var e in targets)
@@ -91,7 +91,7 @@ public class MeleeExecutionSystem : SystemBase
 
     private Entity FindNearest(PositionComponent pPos, float radius)
     {
-        var enemies = ECSManager.Instance.Grid.GetNearbyEnemies(pPos.X, pPos.Y, Mathf.CeilToInt(radius));
+        var enemies = ECSManager.Instance.Grid.GetNearbyEntities(pPos.X, pPos.Y, Mathf.CeilToInt(radius));
         Entity nearest = null;
         float minDist = float.MaxValue;
         Vector2 myPos = new Vector2(pPos.X, pPos.Y);

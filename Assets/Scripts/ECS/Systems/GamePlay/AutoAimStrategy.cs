@@ -31,7 +31,7 @@ public class AutoAimStrategy : IAimStrategy
     private Entity FindNearestInGrid(float x, float y, int radius, GridSystem grid)
     {
         if (grid == null) return null;
-        var enemies = grid.GetNearbyEnemies(x, y, radius);
+        var enemies = grid.GetNearbyEntities(x, y, radius);
         Entity nearest = null;
         float minDistSq = float.MaxValue;
         foreach (var e in enemies)

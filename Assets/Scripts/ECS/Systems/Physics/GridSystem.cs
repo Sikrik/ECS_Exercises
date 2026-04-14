@@ -26,7 +26,7 @@ public class GridSystem : SystemBase
     /// </summary>
     public override void Update(float deltaTime)
     {
-        // 1. 回收上一帧网格内部使用的所有 List 到内部池
+        // 1. 回收列表... (保持不变)
         foreach (var list in Grid.Values)
         {
             list.Clear();
@@ -34,49 +34,29 @@ public class GridSystem : SystemBase
         }
         Grid.Clear();
 
-        // 2. 扫描所有敌人并放入网格（目前主要用于玩家索敌和怪物互挤）
-        var enemies = GetEntitiesWith<EnemyTag, PositionComponent>();
-        foreach (var e in enemies)
+        // 2. 【核心修改】扫描所有拥有 CollisionComponent 的实体！不再局限于 EnemyTag
+        var colliders = GetEntitiesWith<CollisionComponent, PositionComponent>();
+        foreach (var e in colliders)
         {
-            // 只有活着的实体才进网格
-            if (!e.IsAlive) continue;
-            
+            if (!e.IsAlive) continue; // 只有活着的实体才进网格
+        
             var pos = e.GetComponent<PositionComponent>();
             Vector2Int key = GetKey(pos.X, pos.Y);
-            
+        
             if (!Grid.ContainsKey(key)) 
             {
-                // 从内部池拿 List，如果池空了则新建
                 Grid[key] = _internalListPool.Count > 0 ? _internalListPool.Pop() : new List<Entity>();
             }
             Grid[key].Add(e);
         }
-        
-        // 注意：这里不需要手动回收 enemies 列表，SystemBase 已通过 ECSManager 跨系统处理
     }
 
-    /// <summary>
-    /// 坐标转网格 Key
-    /// </summary>
-    public Vector2Int GetKey(float x, float y) 
+// 3. 【修改方法名】因为现在网格里什么都有了，改名叫 GetNearbyEntities
+    public List<Entity> GetNearbyEntities(float x, float y, int radius = 1)
     {
-        return new Vector2Int(Mathf.FloorToInt(x / CellSize), Mathf.FloorToInt(y / CellSize));
-    }
-
-    /// <summary>
-    /// 获取指定坐标附近的实体列表
-    /// 优化：从 ECSManager.GetListFromPool 借用临时列表，实现查询 0 GC
-    /// </summary>
-    /// <param name="x">中心点 X</param>
-    /// <param name="y">中心点 Y</param>
-    /// <param name="radius">搜索深度：1表示周围 3x3 个格，2表示 5x5 个格</param>
-    /// <returns>返回一个临时的实体列表，该列表会在帧末自动回收</returns>
-    public List<Entity> GetNearbyEnemies(float x, float y, int radius = 1)
-    {
-        // 从全局池中借用列表，不要 new
         List<Entity> nearby = ECSManager.Instance.GetListFromPool(); 
         Vector2Int center = GetKey(x, y);
-        
+    
         for (int i = -radius; i <= radius; i++) 
         {
             for (int j = -radius; j <= radius; j++) 
@@ -89,5 +69,13 @@ public class GridSystem : SystemBase
             }
         }
         return nearby;
+    }
+
+    /// <summary>
+    /// 坐标转网格 Key
+    /// </summary>
+    public Vector2Int GetKey(float x, float y) 
+    {
+        return new Vector2Int(Mathf.FloorToInt(x / CellSize), Mathf.FloorToInt(y / CellSize));
     }
 }

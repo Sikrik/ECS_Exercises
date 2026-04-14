@@ -22,7 +22,7 @@ public class SwarmSeparationSystem : SystemBase
             Vector2 avoidanceDirection = Vector2.zero;
 
             // 获取周围的实体
-            var nearby = ECSManager.Instance.Grid.GetNearbyEnemies(pos.X, pos.Y, 1);
+            var nearby = ECSManager.Instance.Grid.GetNearbyEntities(pos.X, pos.Y, 1);
             
             foreach (var other in nearby)
             {

@@ -20,7 +20,7 @@ public class ExplosionSystem : SystemBase
                 Position = new UnityEngine.Vector3(pos.X, pos.Y, 0) 
             });
 
-            var targets = ECSManager.Instance.Grid.GetNearbyEnemies(pos.X, pos.Y);
+            var targets = ECSManager.Instance.Grid.GetNearbyEntities(pos.X, pos.Y);
             float rSq = intent.Radius * intent.Radius;
 
             foreach (var t in targets)
