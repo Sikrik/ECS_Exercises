@@ -39,7 +39,9 @@ public class UIManager : MonoBehaviour
     
     [Tooltip("胜利时显示的最终得分")]
     public TextMeshProUGUI VictoryScoreText;
-
+    [Header("Floating Text (Damage)")]
+    // 记得在 Inspector 里把做好的 DamageTextPrefab 拖到这里
+    public GameObject DamageTextPrefab;
     void Awake()
     {
         InitializeSingleton();
@@ -190,23 +192,30 @@ public class UIManager : MonoBehaviour
         // 改为调用返回主菜单的逻辑
         BattleManager.Instance.ReturnToMainMenu();
     }
-    // 供 DamageTextSystem 调用的飘字接口
+    /// <summary>
+    /// 供 ECS 伤害系统 (DamageTextSystem) 调用，生成伤害飘字
+    /// </summary>
     public void ShowDamageText(Vector2 worldPosition, float damageAmount, bool isCritical)
     {
-        // 如果你还没有做飘字预制体，可以先用 Debug 打印代替，保证代码能跑：
-        // Debug.Log($"在 {worldPosition} 弹出伤害: {Mathf.CeilToInt(damageAmount)} (暴击: {isCritical})");
+        if (DamageTextPrefab == null) 
+        {
+            // 如果预制体没挂载，先用 Debug 保证不报错
+            Debug.Log($"Damage: {Mathf.CeilToInt(damageAmount)} (Crit: {isCritical}) at {worldPosition}");
+            return;
+        }
 
-        // ----- 如果你有飘字预制体，取消下面这段注释并根据你的代码调整 -----
-        /*
-        if (DamageTextPrefab == null) return;
-
-        // 实例化或从池中取出飘字 UI
+        // 实例化飘字物体
         GameObject textObj = Instantiate(DamageTextPrefab, worldPosition, Quaternion.identity);
-        var textUI = textObj.GetComponent<DamageTextUI>(); // 假设你有这个脚本
+        
+        // 获取飘字组件并初始化
+        var textUI = textObj.GetComponent<DamageTextUI>();
         if (textUI != null)
         {
             textUI.Initialize(damageAmount, isCritical);
         }
-        */
+        else
+        {
+            Debug.LogWarning("DamageTextPrefab 缺少 DamageTextUI 脚本！");
+        }
     }
 }
