@@ -4,7 +4,6 @@ Melee_IncreaseRadius,5,扩大近战挥砍的攻击范围,
 Melee_AddCombo,3,解锁并增加近战的连续挥砍次数,
 Melee_AddLifesteal,1,嗜血利刃：近战击杀敌人后恢复微量生命值,
 Melee_LifestealEnhance,5,鲜血渴望：提升吸血量与触发概率,Melee_AddLifesteal
-Melee_Knockback,5,势大力沉：增加近战攻击的击退距离,
 Melee_AttackSpeed,5,狂风剑法：提升近战武器的基础挥砍频率,
 Melee_Execute,5,无情斩杀：对生命值低于30%的敌人造成额外真实伤害,
 Melee_Wave,1,剑气纵横：挥砍时额外向前方发射一道具有穿透力的剑气,
