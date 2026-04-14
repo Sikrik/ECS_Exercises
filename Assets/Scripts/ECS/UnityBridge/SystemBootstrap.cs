@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/UnityBridge/SystemBootstrap.cs
+using System.Collections.Generic;
 using UnityEngine;
 
 public class SystemBootstrap
@@ -19,38 +20,53 @@ public class SystemBootstrap
         _systemGroups.Add(initGroup);
 
         // ==========================================
-        // 2. 模拟组 (逻辑结算)
+        // 2. 模拟组 (逻辑结算 - 顺序极其关键！)
         // ==========================================
         var simGroup = new SimulationSystemGroup(entities);
         simGroup.AddSystem(new PhysicsBakingSystem(entities));    
 
+        // --- 技能与冷却 ---
         simGroup.AddSystem(new WeaponCooldownSystem(entities));   
+        simGroup.AddSystem(new DashCooldownSystem(entities)); 
+
+        // --- 意图生成层 (Player & AI) ---
         simGroup.AddSystem(new PlayerAimingSystem(entities));     
-        simGroup.AddSystem(new WeaponFiringSystem(entities)); 
         simGroup.AddSystem(new EnemySpawnSystem(entities));       
-        simGroup.AddSystem(new EnemyTrackingSystem(entities));    
+        simGroup.AddSystem(new EnemyTrackingSystem(entities));  
+        simGroup.AddSystem(new SwarmSeparationSystem(entities)); // 👈【新增】：紧跟AI之后，修正拥挤意图
         simGroup.AddSystem(new ChargerAISystem(entities));        
-        simGroup.AddSystem(new RangedAISystem(entities));      
+        simGroup.AddSystem(new RangedAISystem(entities));   
+        simGroup.AddSystem(new MeleeTargetingSystem(entities));  // 近战决策
+
+        // --- 状态与前摇处理 ---
         simGroup.AddSystem(new DashPrepSystem(entities));         
         simGroup.AddSystem(new ShootPrepSystem(entities));     
-        simGroup.AddSystem(new DashCooldownSystem(entities)); 
+
+        // --- 核心技能触发与执行 ---
         simGroup.AddSystem(new DashActivationSystem(entities));             
+        simGroup.AddSystem(new MeleeDashReactionSystem(entities)); // 👈【新增】：监听冲刺事件触发旋风斩
+        simGroup.AddSystem(new MeleeExecutionSystem(entities));    // 执行挥砍意图，抛出伤害
+        simGroup.AddSystem(new WeaponFiringSystem(entities));      // 执行射击意图
+        
         simGroup.AddSystem(new DashStateSystem(entities));         
+
+        // --- 物理与运动管线 ---
         simGroup.AddSystem(Grid);                                 
         simGroup.AddSystem(new KnockbackSystem(entities));        
-        simGroup.AddSystem(new MovementSystem(entities));         
-        // 在 SystemBootstrap 构造函数中：
-        simGroup.AddSystem(new MeleeTargetingSystem(entities));
-        simGroup.AddSystem(new MeleeExecutionSystem(entities)); // 放在 MovementSystem 附近
+        simGroup.AddSystem(new MovementSystem(entities));         // 唯一仲裁者，执行最终位移
         simGroup.AddSystem(new ViewSyncSystem(entities));         
         
+        // --- 碰撞与伤害管线 ---
         simGroup.AddSystem(new PhysicsDetectionSystem(entities)); 
         simGroup.AddSystem(new ImpactResolutionSystem(entities)); 
         simGroup.AddSystem(new BulletDestroySystem(entities));
         simGroup.AddSystem(new SlowBulletReactionSystem(entities));
         simGroup.AddSystem(new AOEBulletReactionSystem(entities));
         simGroup.AddSystem(new ChainLightningReactionSystem(entities));
-        simGroup.AddSystem(new DamageSystem(entities));           
+        simGroup.AddSystem(new ExplosionSystem(entities));       // 爆炸抛出伤害事件
+        simGroup.AddSystem(new DamageSystem(entities));          // 唯一生命值修改者！
+        
+        // --- 受击反应与死亡结算 ---
         simGroup.AddSystem(new EnemyHitReactionSystem(entities)); 
         simGroup.AddSystem(new PlayerHitReactionSystem(entities)); 
         simGroup.AddSystem(new HitRecoverySystem(entities));      
@@ -60,9 +76,10 @@ public class SystemBootstrap
         simGroup.AddSystem(new DeathCleanupSystem(entities));     
         simGroup.AddSystem(new ScoreSystem(entities));            
         simGroup.AddSystem(new SlowEffectSystem(entities));       
-        simGroup.AddSystem(new ExplosionSystem(entities)); 
+        
+        // --- 生命周期与内存清理 ---
         simGroup.AddSystem(new LifetimeSystem(entities));         
-        simGroup.AddSystem(new EventCleanupSystem(entities));     
+        simGroup.AddSystem(new EventCleanupSystem(entities));     // 清理所有单帧事件 (含DashEvent)
         simGroup.AddSystem(new EntityCleanupSystem(entities));    
         _systemGroups.Add(simGroup);
 
@@ -88,11 +105,8 @@ public class SystemBootstrap
         presGroup.AddSystem(new VFXCleanupSystem(entities));
         presGroup.AddSystem(new LightningRenderSystem(entities)); 
         
-        // ==========================================
-        // 【新增】：音频播放系统 (处理逻辑层抛出的音效意图)
-        // ==========================================
+        // --- 音频与UI ---
         presGroup.AddSystem(new AudioSystem(entities));           
-        
         presGroup.AddSystem(new UISyncSystem(entities));          
         _systemGroups.Add(presGroup);
     }

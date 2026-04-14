@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/Systems/Events/EventCleanupSystem.cs
+using System.Collections.Generic;
 
 /// <summary>
 /// 事件清理系统：负责在帧末统一销毁所有的瞬时事件组件。
@@ -19,15 +20,9 @@ public class EventCleanupSystem : SystemBase
         {
             var entity = collisionEvents[i];
             var evt = entity.GetComponent<CollisionEventComponent>();
-            
-            // 从实体上移除组件（撕下标签）
             entity.RemoveComponent<CollisionEventComponent>(); 
-            
-            // 将组件对象还给对象池（洗干净放回池子待下次使用）
             EventPool.Return(evt); 
         }
-        
-
 
         // ==========================================
         // 2. 清理并回收【受伤瞬时事件】
@@ -38,13 +33,22 @@ public class EventCleanupSystem : SystemBase
         {
             var entity = damageEvents[i];
             var evt = entity.GetComponent<DamageTakenEventComponent>();
-            
-            // 从实体上移除组件（撕下标签）
             entity.RemoveComponent<DamageTakenEventComponent>(); 
-            
-            // 将组件对象还给对象池（洗干净放回池子待下次使用）
             EventPool.Return(evt); 
         }
         
+        // ==========================================
+        // 👇 3. 【新增】：清理并回收【冲刺开始事件】
+        // ==========================================
+        var dashEvents = GetEntitiesWith<DashStartedEventComponent>();
+        
+        for (int i = dashEvents.Count - 1; i >= 0; i--)
+        {
+            var entity = dashEvents[i];
+            var evt = entity.GetComponent<DashStartedEventComponent>();
+            
+            entity.RemoveComponent<DashStartedEventComponent>(); 
+            EventPool.Return(evt); 
+        }
     }
 }

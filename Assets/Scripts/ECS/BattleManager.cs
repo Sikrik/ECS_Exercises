@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿// 路径: Assets/Scripts/ECS/BattleManager.cs
+using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
@@ -22,7 +23,7 @@ public class BattleManager : MonoBehaviour
     {
         Instance = this;
         
-        // 1. 获取选人信息（独立判断 GameDataManager）
+        // 1. 获取选人信息（独立判断 GameDataManager，解耦场景依赖）
         if (GameDataManager.Instance != null)
         {
             SelectedCharacter = GameDataManager.Instance.SelectedCharacter;
@@ -32,7 +33,7 @@ public class BattleManager : MonoBehaviour
             Debug.LogWarning("未检测到 GameDataManager，将使用默认角色。");
         }
 
-        // 2. 获取配置信息（独立判断 ConfigManager）
+        // 2. 获取配置信息（独立判断 ConfigManager，支持战斗场景直接运行测试）
         if (ConfigManager.Instance != null)
         {
             Config = ConfigManager.Instance.Config;

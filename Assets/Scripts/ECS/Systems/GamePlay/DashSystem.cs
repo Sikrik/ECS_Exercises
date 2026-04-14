@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/Systems/GamePlay/DashSystem.cs
+using System.Collections.Generic;
 using UnityEngine;
 
 // ==========================================
@@ -19,15 +20,12 @@ public class DashCooldownSystem : SystemBase
                 ability.CurrentCD -= deltaTime;
             }
         }
-
     }
 }
 
 // ==========================================
-// 2. 冲刺触发系统 (只负责消费输入、校验条件并赋予状态)
+// 2. 冲刺触发系统 (只负责消费输入、校验条件、赋予状态并抛出事件)
 // ==========================================
-// 路径: Assets/Scripts/ECS/Systems/GamePlay/DashSystem.cs
-
 public class DashActivationSystem : SystemBase
 {
     public DashActivationSystem(List<Entity> entities) : base(entities) { }
@@ -65,7 +63,7 @@ public class DashActivationSystem : SystemBase
                 if (dashDir == Vector2.zero) dashDir = Vector2.right;
 
                 // ==========================================
-                // 2. 赋予物理状态与无敌 (对齐现有字段名 DirX/DirY)
+                // 2. 赋予物理状态与无敌
                 // ==========================================
                 e.AddComponent(new DashStateComponent { 
                     DirX = dashDir.x, 
@@ -82,16 +80,11 @@ public class DashActivationSystem : SystemBase
                 e.AddComponent(new GhostTrailComponent());
 
                 // ==========================================
-                // 4. 特殊职业逻辑：近战职业冲刺环形斩
+                // 4. 【高内聚解耦】：抛出冲刺事件 (0 GC)
+                // 不再硬编码判断 MeleeCombatComponent，
+                // 而是让其他关心的系统（如 MeleeDashReactionSystem）自己去监听这个事件。
                 // ==========================================
-                if (e.HasComponent<MeleeCombatComponent>())
-                {
-                    // 抛出 360 度，1.5 倍半径的挥砍意图
-                    e.AddComponent(new MeleeSwingIntentComponent { 
-                        RadiusMultiplier = 1.5f, 
-                        AngleOverride = 360f 
-                    });
-                }
+                e.AddComponent(EventPool.GetDashStartedEvent());
 
                 // 进入冷却
                 ability.CurrentCD = ability.Cooldown;
@@ -131,10 +124,7 @@ public class DashStateSystem : SystemBase
                 {
                     e.RemoveComponent<GhostTrailComponent>();
                 }
-                
-                Debug.Log($"<color=white>[DashStateSystem]</color> 冲刺状态结束");
             }
         }
-
     }
 }

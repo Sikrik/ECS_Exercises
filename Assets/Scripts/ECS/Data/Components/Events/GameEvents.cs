@@ -54,3 +54,12 @@ public class DamageEventComponent : Component
     public Entity Source; // 【关键】记录伤害来源实体，用于触发吸血
     public bool IsCritical;
 }
+/// <summary>
+/// 冲刺开始瞬时事件。用于解耦冲刺逻辑与其他管线（如战斗管线的冲刺斩、特效管线的残影等）
+/// </summary>
+public class DashStartedEventComponent : Component
+{
+    // 如果未来需要知道往哪个方向冲刺，可以加 public Vector2 DashDir; 
+    // 目前仅作为触发信号，留空即可。
+    public DashStartedEventComponent() { }
+}

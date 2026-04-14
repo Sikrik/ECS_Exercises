@@ -208,7 +208,6 @@ public class EnemyTrackingSystem : SystemBase
 
         // 计算期望移动方向并应用群体分离
         Vector2 desiredDirection = CalculateDesiredDirection(enemy, currentPosition, toTarget, distanceToTarget);
-        ApplySwarmSeparation(enemy, currentPosition, ref desiredDirection);
         WriteMoveIntent(enemy, desiredDirection);
     }
 
@@ -333,55 +332,7 @@ public class EnemyTrackingSystem : SystemBase
         }
     }
 
-    /// <summary>
-    /// 应用群体分离算法，避免敌人之间过度拥挤
-    /// 使用空间网格查询优化邻近敌人检索性能
-    /// </summary>
-    /// <param name="enemy">当前处理的敌人实体</param>
-    /// <param name="currentPosition">当前敌人的位置</param>
-    /// <param name="desiredDirection">当前的期望移动方向（引用传递，可能被修改）</param>
-    private void ApplySwarmSeparation(Entity enemy, Vector2 currentPosition, ref Vector2 desiredDirection)
-    {
-        // 没有群体分离组件则跳过
-        if (!enemy.HasComponent<SwarmSeparationComponent>()) return;
-
-        var swarmSeparation = enemy.GetComponent<SwarmSeparationComponent>();
-        Vector2 avoidanceDirection = Vector2.zero;
-        
-        // 通过空间网格快速获取附近的敌人（半径为 1 单位）
-        var nearbyEnemies = ECSManager.Instance.Grid.GetNearbyEnemies(currentPosition.x, currentPosition.y, 1);
-
-        foreach (var otherEnemy in nearbyEnemies)
-        {
-            // 跳过自身和非敌人实体
-            if (otherEnemy == enemy || !otherEnemy.HasComponent<EnemyTag>()) continue;
-
-            var otherPosition = otherEnemy.GetComponent<PositionComponent>();
-            Vector2 positionDifference = currentPosition - new Vector2(otherPosition.X, otherPosition.Y);
-            float squaredDistance = positionDifference.sqrMagnitude;
-
-            // 在分离半径内且距离不为零时累加排斥力（反比于距离平方）
-            if (squaredDistance < SeparationRadiusSqr && squaredDistance > MinDistanceThreshold)
-            {
-                avoidanceDirection += positionDifference.normalized / squaredDistance;
-            }
-        }
-
-        // 将排斥力整合到期望方向中
-        if (avoidanceDirection != Vector2.zero)
-        {
-            // 如果原本没有移动意图，直接使用排斥方向
-            if (desiredDirection == Vector2.zero)
-            {
-                desiredDirection = avoidanceDirection.normalized;
-            }
-            // 否则将排斥力加权后与原方向混合
-            else
-            {
-                desiredDirection = (desiredDirection + avoidanceDirection * swarmSeparation.SeparationWeight).normalized;
-            }
-        }
-    }
+    
 
     /// <summary>
     /// 写入移动意图到实体的 MoveInputComponent
