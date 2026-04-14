@@ -5,10 +5,12 @@ public static class EnemyFactory
     public static Entity Create(EnemyType type, int level, Vector3 spawnPos) 
     {
         var ecs = ECSManager.Instance;
-        // 组合 ID_Level 去字典里找配方
+        // 【关键修复】从专职管理业务状态的 BattleManager 中获取配置！
+        var config = BattleManager.Instance.Config; 
+        
         string recipeId = $"{type.ToString()}_{level}"; 
         
-        if (!ecs.Config.EnemyRecipes.TryGetValue(recipeId, out var recipe)) 
+        if (!config.EnemyRecipes.TryGetValue(recipeId, out var recipe)) 
         {
             Debug.LogError($"[EnemyFactory] 找不到 ID 为 {recipeId} 的敌人配置！请检查 CSV 中是否配置了该怪物等级！");
             return null;
@@ -20,7 +22,6 @@ public static class EnemyFactory
         if (go == null) return null;
 
         Entity enemy = ecs.CreateEntity();
-        var config = ecs.Config;
     
         // --- 核心基础组件 ---
         enemy.AddComponent(new EnemyTag());

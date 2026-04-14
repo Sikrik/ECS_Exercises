@@ -4,10 +4,14 @@ public static class BulletFactory
 {
     public static Entity Create(BulletType type, Vector3 position, Vector2 direction, FactionType sourceFaction = FactionType.Player, WeaponModifierComponent modifiers = null)
     {
+        // 1. 找业务大管家拿配置
+        var config = BattleManager.Instance.Config;
+        
+        // 2. 找底层 ECS 引擎大管家（用来创建实体）
         var ecs = ECSManager.Instance;
         
         // 【提取动态配置】
-        if (!ecs.Config.BulletRecipes.TryGetValue(type.ToString(), out var recipe))
+        if (!config.BulletRecipes.TryGetValue(type.ToString(), out var recipe))
         {
             Debug.LogError($"[BulletFactory] 找不到子弹配置：{type}，请检查 Bullet_Config.csv");
             return null;
@@ -16,6 +20,7 @@ public static class BulletFactory
         GameObject prefab = GameObject_PoolManager.Instance.GetBulletPrefab(type);
         GameObject bulletGo = GameObject_PoolManager.Instance.Spawn(prefab, position, Quaternion.identity);
 
+        // 👇 【关键修复】：找 ecs 申请创建空白实体，而不是找 config！
         Entity bullet = ecs.CreateEntity();
         
         // ==========================================

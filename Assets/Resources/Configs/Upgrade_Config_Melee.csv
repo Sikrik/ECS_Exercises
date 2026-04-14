@@ -1,20 +1,5 @@
-﻿Id,MaxLevel,Description,RequiredUpgrade
-Weapon_Damage,5,Increase global damage by 10% per level.,
-Weapon_FireRate,5,Increase fire rate by 5% per level.,
-Health_Max,5,Increase max health by 20.,
-Health_Regen,5,Regenerate 1 HP per second.,
-Speed_Move,3,Increase movement speed by 10%.,
-Dash_Cooldown,3,Reduce dash cooldown by 10%.,
-Dash_Invincible,1,Gain invincibility during dash.,
-Weapon_ProjectileCount,3,Fire an additional projectile.,Weapon_Damage:2
-Weapon_Pierce,2,Projectiles can pierce through one additional enemy.,Weapon_Damage:3
-Weapon_Bounce,2,Projectiles bounce off walls.,Weapon_Pierce:1
-Element_Fire,1,Attacks inflict burn.,
-Element_Ice,1,Attacks slow enemies.,
-Element_Lightning,1,Attacks chain to nearby enemies.,
-Melee_DoubleHit,1,二重连击：攻击时会额外挥出第二刀,
+﻿Melee_DoubleHit,1,二重连击：攻击时会额外挥出第二刀,
 Melee_Armor,5,钢铁之躯：增加固定防御力与受击反伤,
 Melee_LifeSteal,5,嗜血渴望：提升所有来源伤害的吸血比例,
 Melee_Regen,5,复苏之风：大幅提升每秒自然回血量,
 Melee_RangeEnhance,6,巨型兵刃：提升挥砍半径与角度（满级达到360度）,
-Class_Agile_Dodge,3,Increase dodge chance.,
