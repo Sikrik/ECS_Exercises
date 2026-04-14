@@ -21,11 +21,12 @@ public class SystemBootstrap
         _systemGroups.Add(initGroup);
 
         // ==========================================
-        // 2. 模拟组 (纯逻辑计算 - 不涉及任何 Transform 操作)
+        // 2. 模拟组 (纯逻辑计算 - 包含物理与位置同步)
         // ==========================================
         var simGroup = new SimulationSystemGroup(entities);
         
-        // --- 注意：去掉了 PhysicsBakingSystem，现在直接在工厂里分配碰撞半径 ---
+        // 【核心修复1】：加回物理烘焙系统，为所有需要的实体生成 PhysicsColliderComponent
+        simGroup.AddSystem(new PhysicsBakingSystem(entities));
 
         // --- 技能与冷却 ---
         simGroup.AddSystem(new WeaponCooldownSystem(entities));   
@@ -57,8 +58,11 @@ public class SystemBootstrap
         simGroup.AddSystem(new KnockbackSystem(entities));        
         simGroup.AddSystem(new MovementSystem(entities));         // 唯一仲裁者，算出实体这一帧最终的逻辑 X, Y
 
-        // --- 碰撞与结算管线 (基于 Movement 算出的最新位置) ---
-        simGroup.AddSystem(new PhysicsDetectionSystem(entities)); // 纯数学碰撞检测
+        // 【核心修复2】：将 ViewSyncSystem 提前到物理检测之前，确保碰撞盒位置与逻辑坐标严格同步！
+        simGroup.AddSystem(new ViewSyncSystem(entities)); 
+
+        // --- 碰撞与结算管线 (基于 Movement 算出的最新位置，且 Unity Transform 已同步) ---
+        simGroup.AddSystem(new PhysicsDetectionSystem(entities)); // 纯数学碰撞检测 + Unity 物理检测
         simGroup.AddSystem(new ImpactResolutionSystem(entities)); 
         simGroup.AddSystem(new BulletDestroySystem(entities));
         simGroup.AddSystem(new SlowBulletReactionSystem(entities));
@@ -87,17 +91,15 @@ public class SystemBootstrap
         _systemGroups.Add(simGroup);
 
         // ==========================================
-        // 3. 表现组 (渲染同步 - 解决抖动的关键点！)
+        // 3. 表现组 (渲染同步)
         // ==========================================
         var presGroup = new PresentationSystemGroup(entities);
         
         // --- A. 首先处理相机的逻辑位移 ---
-        // 确保它在 ViewSync 之前，这样相机追踪的是这一帧最新的逻辑坐标
         presGroup.AddSystem(new CameraFollowSystem(entities));    // 必须用 SmoothDamp + deltaTime
         
         // --- B. 同步视觉对象 ---
-        // 放在相机之后，保证物体和相机在同一帧内完成 Transform 更新，彻底消除 1 帧延迟
-        presGroup.AddSystem(new ViewSyncSystem(entities));        // 唯一同步 Transform 的地方
+        // (注：ViewSyncSystem 已经移动到上方的 PhysicsDetectionSystem 之前)
         
         // --- C. 其他表现层 ---
         presGroup.AddSystem(new VFXInstantiationSystem(entities)); 
