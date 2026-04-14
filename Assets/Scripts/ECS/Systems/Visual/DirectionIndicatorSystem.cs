@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/Systems/Visual/DirectionIndicatorSystem.cs
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -18,12 +19,14 @@ public class DirectionIndicatorSystem : SystemBase
             var indicator = entity.GetComponent<DirectionIndicatorComponent>();
             var vel = entity.GetComponent<VelocityComponent>();
 
-            if (vel.VX != 0 || vel.VY != 0)
+            // 【核心修复】：增加 0.1f 的死区阈值。
+            // 当速度极小（快要停下）时不再更新角度，防止浮点精度导致 UI 疯狂乱转
+            if (Mathf.Abs(vel.VX) > 0.1f || Mathf.Abs(vel.VY) > 0.1f)
             {
                 float targetAngle = Mathf.Atan2(vel.VY, vel.VX) * Mathf.Rad2Deg;
                 Quaternion targetRotation = Quaternion.Euler(0, 0, targetAngle);
                 
-                // 1. 主箭头：保持高响应速度 (RotationSpeed)
+                // 1. 主箭头：较高的响应速度
                 if (indicator.ArrowPivot != null)
                 {
                     indicator.ArrowPivot.localRotation = Quaternion.Slerp(
@@ -33,7 +36,7 @@ public class DirectionIndicatorSystem : SystemBase
                     );
                 }
 
-                // 2. 额外UI物体：使用较慢的速度 (SyncRotationSpeed)，制造浮游延迟感
+                // 2. 额外UI物体：使用较慢的速度，制造浮游延迟感
                 if (indicator.SyncPivots != null)
                 {
                     foreach (var pivot in indicator.SyncPivots)
