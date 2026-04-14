@@ -18,7 +18,7 @@ public class ColorTintComponent : Component
 public class UIHealthUpdateEvent : Component { }
 public class GameOverEventComponent : Component { }
 public class OffScreenTag : Component { }
-public class PendingVFXDestroyTag : Component { }
+
 
 public class ExplosionIntentComponent : Component
 {

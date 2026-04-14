@@ -13,14 +13,37 @@ public class VFXInstantiationSystem : SystemBase
 
     public VFXInstantiationSystem(List<Entity> entities) : base(entities) 
     {
-        // 注册各种特效的生成策略
         _vfxStrategies = new Dictionary<string, Action<VFXSpawnEventComponent>>()
         {
             { "SlowVFX", SetupSlowVFX },
             { "Explosion", SetupExplosionVFX },
             { "LightningChain", SetupLightningChainVFX },
-            { "MeleeSlash", SetupMeleeSlashVFX } // 近战挥砍特效策略
+            { "MeleeSlash", SetupMeleeSlashVFX },
+            // 新增五行 DOT 特效映射
+            { "BurnVFX", SetupAttachVFX },
+            { "PoisonVFX", SetupAttachVFX }
         };
+    }
+
+// 增加一个通用的吸附特效生成策略
+    private void SetupAttachVFX(VFXSpawnEventComponent evt)
+    {
+        // 根据传入的名称，从对象池或 Resources 加载对应的预制体
+        // (需确保 GameObject_PoolManager 中配好了 BurnVFX 和 PoisonVFX)
+        GameObject prefab = evt.VFXType == "BurnVFX" ? GameObject_PoolManager.Instance.BurnVFXPrefab : GameObject_PoolManager.Instance.PoisonVFXPrefab;
+    
+        if (prefab == null || evt.AttachTarget == null) return;
+
+        var view = evt.AttachTarget.GetComponent<ViewComponent>();
+        if (view != null && view.GameObject != null)
+        {
+            GameObject go = GameObject_PoolManager.Instance.Spawn(prefab, view.GameObject.transform.position, Quaternion.identity);
+            go.transform.SetParent(view.GameObject.transform);
+            go.transform.localPosition = Vector3.zero;
+
+            // 挂载 AttachedVFXComponent，当 DOT 结束时 VFXCleanupSystem 会自动销毁它
+            evt.AttachTarget.AddComponent(new AttachedVFXComponent(go));
+        }
     }
 
     public override void Update(float deltaTime)

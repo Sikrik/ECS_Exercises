@@ -2,24 +2,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// ==========================================
-// 状态数据组件
-// ==========================================
-public class DOTEffectComponent : Component 
-{
-    public float DamagePerSecond;
-    public float Duration;
-    public float TickTimer;
-    public string VfxName;
-
-    public DOTEffectComponent(float dps, float duration, string vfxName)
-    {
-        DamagePerSecond = dps;
-        Duration = duration;
-        TickTimer = 0.5f; // 初始半秒后跳第一次伤害
-        VfxName = vfxName;
-    }
-}
 
 // ==========================================
 // 持续伤害处理系统
