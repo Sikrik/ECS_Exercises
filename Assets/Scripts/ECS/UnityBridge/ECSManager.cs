@@ -16,17 +16,11 @@ public class ECSManager : MonoBehaviour
 
     public GameConfig Config;
     public GameObject PlayerPrefab;
-    
-    [Header("实时状态")]
-    public int Score = 0; 
-    public int CurrentWave = 1;
-    public int MaxWave = 1;
 
     private List<Entity> _entities = new List<Entity>();
     private SystemBootstrap _bootstrap;
-    
-    // 维护 Unity GameObject 实例 ID 到 ECS Entity 的映射，用于物理反馈寻址
     private Dictionary<int, Entity> _gameObjectToEntity = new Dictionary<int, Entity>();
+    
 
     public Entity PlayerEntity { get; private set; }
     public GridSystem Grid { get; private set; }
@@ -34,28 +28,13 @@ public class ECSManager : MonoBehaviour
     // 全局查询缓存，实现同帧内多个系统共享查询结果，达成 0 GC
     public Dictionary<System.Type, List<Entity>> QueryCache = new Dictionary<System.Type, List<Entity>>();
     private List<List<Entity>> _leasedLists = new List<List<Entity>>();
+    
+    
 
     void Awake()
     {
-        if (Instance != null && Instance != this)
-        {
-            Debug.LogWarning("[ECSManager] 检测到跨场景残留或重复的实例，已强制覆盖并销毁旧实例！请确保 ECSManager 预制体只放在战斗场景中。");
-            Destroy(Instance.gameObject);
-        }
-        
+        if (Instance != null && Instance != this) Destroy(Instance.gameObject);
         Instance = this;
-        
-        // 👇 【核心修改】：如果 GameDataManager 存在，直接拿它的配置。
-        // 如果是直接从战斗场景启动测试（GameDataManager不存在），则回退到临时加载配置。
-        if (GameDataManager.Instance != null)
-        {
-            Config = GameDataManager.Instance.Config;
-        }
-        else
-        {
-            Debug.LogWarning("未检测到 GameDataManager，使用 ConfigLoader 临时加载配置（建议从 MainMenu 启动游戏）。");
-            Config = ConfigLoader.Load(); 
-        }
     }
 
     void Start()
@@ -86,25 +65,19 @@ public class ECSManager : MonoBehaviour
 
     void Update()
     {
-        // ==========================================
-        // 1. 查询缓存清理 (每帧开始前)
-        // ==========================================
-        // 帧末统一回收从 ListPool 借出的列表，确保内存复用
-        foreach (var list in _leasedLists)
-        {
-            ListPool.Return(list); 
-        }
+        foreach (var list in _leasedLists) ListPool.Return(list); 
         _leasedLists.Clear();
         QueryCache.Clear();
 
-        // ==========================================
-        // 2. 驱动逻辑更新
-        // ==========================================
-        if (_bootstrap != null)
-        {
-            // 按照初始化时定义的 SystemGroup 顺序执行逻辑更新
-            _bootstrap.Update(Time.deltaTime);
-        }
+        if (_bootstrap != null) _bootstrap.Update(Time.deltaTime);
+    }
+    public void SetPlayerEntity(Entity player)
+    {
+        PlayerEntity = player;
+        
+        // 玩家生成后，再启动所有 ECS 系统
+        _bootstrap = new SystemBootstrap(_entities);
+        Grid = _bootstrap.Grid; 
     }
 
     // ==========================================

@@ -21,7 +21,7 @@ public class EnemySpawnSystem : SystemBase
 
     public override void Update(float deltaTime)
     {
-        var config = ECSManager.Instance.Config;
+        var config = BattleManager.Instance.Config;
         
         if (config.Waves == null || config.Waves.Count == 0 || _state == SpawnState.Finished) 
             return;
@@ -108,8 +108,8 @@ public class EnemySpawnSystem : SystemBase
                 break;
         }
 
-        ECSManager.Instance.CurrentWave = Mathf.Min(_currentWaveListIndex + 1, config.Waves.Count);
-        ECSManager.Instance.MaxWave = config.Waves.Count;
+        BattleManager.Instance.CurrentWave = Mathf.Min(_currentWaveListIndex + 1, config.Waves.Count);
+        BattleManager.Instance.MaxWave = config.Waves.Count;
     }
 
     // 【修改】传入 Level 级别参数

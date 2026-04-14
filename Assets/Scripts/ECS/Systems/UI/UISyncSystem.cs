@@ -35,8 +35,8 @@ public class UISyncSystem : SystemBase
         var gameOverEvents = GetEntitiesWith<GameOverEventComponent>();
         foreach (var entity in gameOverEvents)
         {
-            int finalScore = ECSManager.Instance.Score;
-            int currentWave = ECSManager.Instance.CurrentWave;
+            int finalScore = BattleManager.Instance.Score;
+            int currentWave = BattleManager.Instance.CurrentWave;
             
             // 【修改】在弹出结算UI前，先进行数据结算与保存
             if (GameDataManager.Instance != null)
@@ -44,7 +44,7 @@ public class UISyncSystem : SystemBase
                 int goldEarned = finalScore / 10;
                 GameDataManager.Instance.AddGold(goldEarned);
                 GameDataManager.Instance.AddMatchRecord(new MatchRecord {
-                    CharacterUsed = ECSManager.Instance.SelectedCharacter.ToString(),
+                    CharacterUsed = BattleManager.Instance.SelectedCharacter.ToString(),
                     FinalScore = finalScore,
                     WaveReached = currentWave,
                     IsVictory = false,
@@ -64,8 +64,8 @@ public class UISyncSystem : SystemBase
         var victoryEvents = GetEntitiesWith<GameVictoryEventComponent>();
         foreach (var entity in victoryEvents)
         {
-            int finalScore = ECSManager.Instance.Score;
-            int currentWave = ECSManager.Instance.CurrentWave;
+            int finalScore = BattleManager.Instance.Score;
+            int currentWave = BattleManager.Instance.CurrentWave;
             
             // 【修改】在弹出结算UI前，先进行数据结算与保存
             if (GameDataManager.Instance != null)
@@ -73,7 +73,7 @@ public class UISyncSystem : SystemBase
                 int goldEarned = (finalScore / 10) + 500; 
                 GameDataManager.Instance.AddGold(goldEarned);
                 GameDataManager.Instance.AddMatchRecord(new MatchRecord {
-                    CharacterUsed = ECSManager.Instance.SelectedCharacter.ToString(),
+                    CharacterUsed = BattleManager.Instance.SelectedCharacter.ToString(),
                     FinalScore = finalScore,
                     WaveReached = currentWave,
                     IsVictory = true,
@@ -91,10 +91,10 @@ public class UISyncSystem : SystemBase
         // ==========================================
         // 4. 同步得分变化 (脏标记)
         // ==========================================
-        if (ECSManager.Instance.Score != _lastScore)
+        if (BattleManager.Instance.Score != _lastScore)
         {
-            UIManager.Instance.UpdateScore(ECSManager.Instance.Score);
-            _lastScore = ECSManager.Instance.Score;
+            UIManager.Instance.UpdateScore(BattleManager.Instance.Score);
+            _lastScore = BattleManager.Instance.Score;
         }
 
         // ==========================================
@@ -112,10 +112,10 @@ public class UISyncSystem : SystemBase
         // ==========================================
         // 6. 同步波次显示 (脏标记)
         // ==========================================
-        if (ECSManager.Instance.CurrentWave != _lastWave)
+        if (BattleManager.Instance.CurrentWave != _lastWave)
         {
-            UIManager.Instance.UpdateWave(ECSManager.Instance.CurrentWave, ECSManager.Instance.MaxWave);
-            _lastWave = ECSManager.Instance.CurrentWave;
+            UIManager.Instance.UpdateWave(BattleManager.Instance.CurrentWave, BattleManager.Instance.MaxWave);
+            _lastWave = BattleManager.Instance.CurrentWave;
         }
 
         // ==========================================

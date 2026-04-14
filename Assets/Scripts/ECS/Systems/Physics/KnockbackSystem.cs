@@ -9,7 +9,7 @@ public class KnockbackSystem : SystemBase
     {
         var slidingOnes = GetEntitiesWith<KnockbackComponent>();
         // 【动态配置】：读取全局滑行摩擦力
-        float friction = ECSManager.Instance.Config.KnockbackFriction;
+        float friction = BattleManager.Instance.Config.KnockbackFriction;
 
         for (int i = slidingOnes.Count - 1; i >= 0; i--)
         {

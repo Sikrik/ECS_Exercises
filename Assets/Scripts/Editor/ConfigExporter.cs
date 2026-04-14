@@ -10,7 +10,7 @@ public class ConfigExporter
     public static void ExportToCSV()
     {
         // 1. 获取当前的配置数据（假设已经加载到 ECSManager 中）
-        GameConfig config = ECSManager.Instance.Config; 
+        GameConfig config = BattleManager.Instance.Config; 
         if (config == null) return;
 
         StringBuilder sb = new StringBuilder();

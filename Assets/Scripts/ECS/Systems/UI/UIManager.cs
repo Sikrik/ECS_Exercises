@@ -188,6 +188,6 @@ public class UIManager : MonoBehaviour
     {
         HideAllPanels();
         // 改为调用返回主菜单的逻辑
-        ECSManager.Instance.ReturnToMainMenu();
+        BattleManager.Instance.ReturnToMainMenu();
     }
 }

@@ -44,7 +44,7 @@ public class GhostTrailSystem : SystemBase
         }
 
         // 【动态配置】：读取全局残影消散速度
-        float fadeSpeed = ECSManager.Instance.Config.GhostFadeSpeed;
+        float fadeSpeed = BattleManager.Instance.Config.GhostFadeSpeed;
 
         // 2. 更新已生成的残影淡出逻辑
         for (int i = _activeGhosts.Count - 1; i >= 0; i--) 
@@ -98,7 +98,7 @@ public class GhostTrailSystem : SystemBase
         ghostSr.flipY = sourceSr.flipY;
         
         // 【动态配置】：读取全局残影初始透明度
-        float initialAlpha = ECSManager.Instance.Config.GhostInitialAlpha;
+        float initialAlpha = BattleManager.Instance.Config.GhostInitialAlpha;
         ghostSr.color = new Color(sourceSr.color.r, sourceSr.color.g, sourceSr.color.b, initialAlpha);
         
         ghostSr.sortingLayerID = sourceSr.sortingLayerID;

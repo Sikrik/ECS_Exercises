@@ -19,8 +19,8 @@ public class ScoreSystem : SystemBase
 
         if (totalAddedScore > 0)
         {
-            ECSManager.Instance.Score += totalAddedScore;
-            var config = ECSManager.Instance.Config;
+            BattleManager.Instance.Score += totalAddedScore;
+            var config = BattleManager.Instance.Config;
             
             // 经验与升级判定
             var players = GetEntitiesWith<PlayerTag, ExperienceComponent>();

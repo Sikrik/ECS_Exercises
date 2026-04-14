@@ -106,10 +106,18 @@ public static class ConfigLoader
     private static void ParseEnemyRecipes(GameConfig config, TextAsset csv)
     {
         string[] lines = csv.text.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+        int successCount = 0;
+    
         for (int i = 1; i < lines.Length; i++)
         {
             string[] cols = lines[i].Split(',');
-            if (cols.Length < 8) continue; 
+        
+            // 增加严格的列数校验警告
+            if (cols.Length < 8) 
+            {
+                Debug.LogWarning($"<color=orange>[ConfigLoader] 敌人配置第 {i + 1} 行解析被跳过，列数不足（当前列数: {cols.Length}）。请检查是否使用了逗号分隔！内容：{lines[i]}</color>");
+                continue; 
+            }
 
             EnemyData data = new EnemyData
             {
@@ -131,10 +139,13 @@ public static class ConfigLoader
                 SkillDuration = cols.Length > 15 ? ParseFloat(cols[15]) : 0f,
                 SkillCD       = cols.Length > 16 ? ParseFloat(cols[16]) : 0f
             };
-            
+        
             string key = $"{data.Id}_{data.Level}";
             config.EnemyRecipes[key] = data;
+            successCount++;
         }
+    
+        Debug.Log($"<color=green>[ConfigLoader] 敌人配置加载完成，成功加载了 {successCount} 条数据。</color>");
     }
 
     private static void ParseWaveSettings(GameConfig config, TextAsset csv)

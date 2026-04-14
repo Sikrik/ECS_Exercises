@@ -42,7 +42,7 @@ public class ImpactResolutionSystem : SystemBase
                 if (sourcePos != null && targetPos != null)
                 {
                     // 读取配置表中的挤压距离 (game_config.csv 中配置)
-                    float pushDist = ECSManager.Instance.Config.CollisionPushDistance; 
+                    float pushDist = BattleManager.Instance.Config.CollisionPushDistance; 
                     
                     // 将主动碰撞方(Source)沿着法线的反方向稍微推开，防止完全黏在一起
                     sourcePos.X -= evt.Normal.x * pushDist;

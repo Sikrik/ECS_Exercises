@@ -19,7 +19,7 @@ public class UpgradeUIManager : MonoBehaviour
     {
         _targetPlayer = playerEntity;
         var modifiers = _targetPlayer.GetComponent<WeaponModifierComponent>();
-        var config = ECSManager.Instance.Config;
+        var config = BattleManager.Instance.Config;
 
         // 👇【核心修改】：判定玩家是近战还是远程，选择对应的升级配方表
         bool isMelee = _targetPlayer.HasComponent<MeleeCombatComponent>();
