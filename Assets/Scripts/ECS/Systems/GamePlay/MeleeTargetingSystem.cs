@@ -56,7 +56,6 @@ public class MeleeTargetingSystem : SystemBase
                 pending.Timer -= deltaTime;
                 if (pending.Timer <= 0)
                 {
-                    // 计时结束，抛出第二击意图
                     p.AddComponent(new MeleeSwingIntentComponent());
                     p.RemoveComponent<MeleeDoubleHitPendingComponent>();
                 }
@@ -64,12 +63,27 @@ public class MeleeTargetingSystem : SystemBase
             else if (weapon.CurrentCooldown <= 0)
             {
                 // 普通索敌
-                var nearby = ECSManager.Instance.Grid.GetNearbyEntities(pos.X, pos.Y, (int)melee.AttackRadius);
-                if (nearby.Count > 0)
+                var nearby = ECSManager.Instance.Grid.GetNearbyEntities(pos.X, pos.Y, Mathf.CeilToInt(melee.AttackRadius));
+                bool foundEnemy = false;
+
+                // 【核心修复 2】：确保网格内的实体是敌人，并且在真实攻击距离内
+                foreach (var target in nearby)
                 {
-                    // 发现敌人，抛出挥砍意图
+                    if (target.IsAlive && target.HasComponent<EnemyTag>())
+                    {
+                        var tPos = target.GetComponent<PositionComponent>();
+                        float distSq = (tPos.X - pos.X) * (tPos.X - pos.X) + (tPos.Y - pos.Y) * (tPos.Y - pos.Y);
+                        if (distSq <= melee.AttackRadius * melee.AttackRadius)
+                        {
+                            foundEnemy = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (foundEnemy)
+                {
                     p.AddComponent(new MeleeSwingIntentComponent());
-                    // 进入冷却
                     weapon.CurrentCooldown = weapon.FireRate;
                 }
             }

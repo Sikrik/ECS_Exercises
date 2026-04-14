@@ -89,8 +89,15 @@ public class PhysicsDetectionSystem : SystemBase
         Entity target = ECSManager.Instance.GetEntityFromGameObject(targetGo);
         if (target != null && target.IsAlive && !target.HasComponent<PendingDestroyComponent>())
         {
-            // 【修复3】：防止敌人主动把“子弹”当成受害者，反向给子弹施加硬直和击退！
+            // 防止敌人把子弹当成受害者
             if (source.HasComponent<EnemyTag>() && target.HasComponent<BulletTag>()) return;
+
+            // ==========================================
+            // 【核心修复 1】：同阵营物理碰撞免疫（解决子弹打自己、剑气打自己）
+            // ==========================================
+            var sFac = source.GetComponent<FactionComponent>();
+            var tFac = target.GetComponent<FactionComponent>();
+            if (sFac != null && tFac != null && sFac.Value == tFac.Value) return;
 
             var pierce = source.GetComponent<PierceComponent>();
             if (pierce != null)
