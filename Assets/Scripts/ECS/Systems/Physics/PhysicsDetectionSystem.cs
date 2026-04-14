@@ -60,7 +60,16 @@ public class PhysicsDetectionSystem : SystemBase
                         ColliderDistance2D distInfo = pPhys.Collider.Distance(_overlapResults[j]);
                         if (distInfo.isOverlapped)
                         {
-                            CreateEvent(entity, _overlapResults[j].gameObject, distInfo.normal);
+                            Vector2 pushNormal = distInfo.normal;
+                            
+                            // 【核心修复】：如果两个怪物在同一坐标出生，法线会是 0，导致永远挤不开。
+                            // 这里强制给一个随机方向，让它们炸开
+                            if (pushNormal == Vector2.zero)
+                            {
+                                pushNormal = new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f)).normalized;
+                            }
+                            
+                            CreateEvent(entity, _overlapResults[j].gameObject, pushNormal);
                         }
                     }
                 }

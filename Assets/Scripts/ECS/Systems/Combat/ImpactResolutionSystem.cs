@@ -19,8 +19,8 @@ public class ImpactResolutionSystem : SystemBase
             if (target == null || !target.IsAlive) continue;
 
             // ==========================================
-            // 1. 物理防重叠 (挤压分离)
-            // 必须放在阵营判断之前！这样同阵营的怪物互相挤压也会生效，防止穿模
+            // 1. 【必须放在第一位】物理防重叠 (挤压分离)
+            // 确保在执行任何 continue 之前，实体就已经被推开了
             // ==========================================
             if (!source.HasComponent<BulletTag>())
             {
@@ -30,19 +30,21 @@ public class ImpactResolutionSystem : SystemBase
                 if (sourcePos != null && targetPos != null)
                 {
                     float pushDist = BattleManager.Instance.Config.CollisionPushDistance; 
+                    // 这里利用法线将发起方推开，从而解决重叠
                     sourcePos.X -= evt.Normal.x * pushDist;
                     sourcePos.Y -= evt.Normal.y * pushDist;
                 }
             }
 
             // ==========================================
-            // 2. 阵营过滤 (决定是否造成伤害和击退)
+            // 2. 阵营过滤 (拦截同阵营的伤害和击退)
+            // 放在挤压逻辑之后。如果是同阵营（如怪物和怪物），走到这里就结束了
             // ==========================================
             if (source.HasComponent<FactionComponent>() && target.HasComponent<FactionComponent>())
             {
                 if (source.GetComponent<FactionComponent>().Value == target.GetComponent<FactionComponent>().Value)
                 {
-                    continue; // 同阵营不互相造成伤害和击退
+                    continue; // 拦截同阵营伤害，直接处理下一对碰撞
                 }
             }
 
@@ -89,6 +91,7 @@ public class ImpactResolutionSystem : SystemBase
                 }
                 else
                 {
+                    // 如果同一帧受多次伤害，进行累加
                     var dmgEvt = target.GetComponent<DamageEventComponent>();
                     dmgEvt.DamageAmount += actualDmg;
                 }
