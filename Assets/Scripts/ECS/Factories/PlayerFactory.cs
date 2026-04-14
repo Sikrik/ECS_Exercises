@@ -29,6 +29,8 @@ public static class PlayerFactory
         player.AddComponent(new SpeedComponent(finalMoveSpeed)); 
         player.AddComponent(new VelocityComponent(0, 0)); 
         player.AddComponent(new MassComponent(recipe.Mass)); 
+        // 【新增】给玩家添加碰撞过滤层，使其能够主动检测与敌人的碰撞
+        player.AddComponent(new CollisionFilterComponent(LayerMask.GetMask("Enemy", "Player")));
         player.AddComponent(new DashAbilityComponent(recipe.DashSpeed, recipe.DashDuration, recipe.DashCD));
         player.AddComponent(new WeaponComponent(BulletType.Normal, finalFireRate));
         player.AddComponent(new FactionComponent(FactionType.Player));
@@ -43,7 +45,7 @@ public static class PlayerFactory
         if (indicatorView != null && indicatorView.ArrowPivot != null)
         {
             // 参数: 主箭头, 主箭头旋转速度, 额外跟随物数组(血环/闪电等), 额外跟随物旋转速度
-            player.AddComponent(new DirectionIndicatorComponent(indicatorView.ArrowPivot, 6f, indicatorView.SyncPivots, 3f));
+            player.AddComponent(new DirectionIndicatorComponent(indicatorView.ArrowPivot, 3f, indicatorView.SyncPivots, 2f));
         }
 
         var hudView = go.GetComponent<PlayerHUDView>();

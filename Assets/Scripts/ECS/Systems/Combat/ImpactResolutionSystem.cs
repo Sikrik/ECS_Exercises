@@ -20,11 +20,10 @@ public class ImpactResolutionSystem : SystemBase
             if (target == null || !target.IsAlive) continue;
 
             // ==========================================
-            // 【核心修复】：阵营过滤 (防止子弹出生时秒杀自己)
+            // 1. 阵营过滤 (防止子弹出生时秒杀自己或友军)
             // ==========================================
             if (source.HasComponent<FactionComponent>() && target.HasComponent<FactionComponent>())
             {
-                // 如果是同阵营（比如 玩家子弹 碰到了 玩家），直接忽略此次碰撞！
                 if (source.GetComponent<FactionComponent>().Value == target.GetComponent<FactionComponent>().Value)
                 {
                     continue; 
@@ -32,7 +31,54 @@ public class ImpactResolutionSystem : SystemBase
             }
 
             // ==========================================
-            // 产生伤害事件 (兼容近战、远程、敌人触碰)
+            // 2. 物理防重叠 (挤压分离)
+            // 排除子弹，防止子弹把肉体推走；主要用于肉体之间的碰撞分离
+            // ==========================================
+            if (!source.HasComponent<BulletTag>())
+            {
+                var sourcePos = source.GetComponent<PositionComponent>();
+                var targetPos = target.GetComponent<PositionComponent>();
+
+                if (sourcePos != null && targetPos != null)
+                {
+                    // 读取配置表中的挤压距离 (game_config.csv 中配置)
+                    float pushDist = ECSManager.Instance.Config.CollisionPushDistance; 
+                    
+                    // 将主动碰撞方(Source)沿着法线的反方向稍微推开，防止完全黏在一起
+                    sourcePos.X -= evt.Normal.x * pushDist;
+                    sourcePos.Y -= evt.Normal.y * pushDist;
+                }
+            }
+
+            // ==========================================
+            // 3. 弹性击退反馈 (Knockback)
+            // 处理肉搏怪物撞击玩家产生的弹力效果
+            // ==========================================
+            if (source.HasComponent<ImpactFeedbackComponent>())
+            {
+                var feedback = source.GetComponent<ImpactFeedbackComponent>();
+                
+                // 如果碰撞源允许造成弹力，且配置了弹力数值
+                if (feedback.CauseBounce && source.HasComponent<BounceForceComponent>())
+                {
+                    float bounceForce = source.GetComponent<BounceForceComponent>().Value;
+                    
+                    // 确保目标没有在免控/无敌状态，给目标挂载击退组件
+                    if (!target.HasComponent<KnockbackComponent>() && !target.HasComponent<InvincibleComponent>())
+                    {
+                        target.AddComponent(new KnockbackComponent {
+                            DirX = evt.Normal.x,
+                            DirY = evt.Normal.y,
+                            Speed = bounceForce,
+                            Timer = 0.15f, // 击退的滑行持续时间
+                            HitRecoveryAfterwards = feedback.HitRecoveryDurationOverride
+                        });
+                    }
+                }
+            }
+
+            // ==========================================
+            // 4. 产生伤害事件 (兼容近战、远程、敌人触碰)
             // ==========================================
             if (source.HasComponent<DamageComponent>() && target.HasComponent<HealthComponent>())
             {

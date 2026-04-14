@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// 路径: Assets/Scripts/ECS/Systems/Visual/InvincibleVisualSystem.cs
+using System.Collections.Generic;
 using UnityEngine;
 
 public class InvincibleVisualSystem : SystemBase
@@ -7,7 +8,7 @@ public class InvincibleVisualSystem : SystemBase
 
     public override void Update(float deltaTime)
     {
-        var entities = GetEntitiesWith<InvincibleComponent, ViewComponent>(); // 不再需要 BaseColorComponent
+        var entities = GetEntitiesWith<InvincibleComponent, ViewComponent>(); 
 
         for (int i = entities.Count - 1; i >= 0; i--)
         {
@@ -21,9 +22,9 @@ public class InvincibleVisualSystem : SystemBase
             {
                 if (view.SpriteRenderer != null)
                 {
-                    float alpha = Mathf.PingPong(Time.time * 15f, 1f) * 0.5f + 0.5f; 
+                    // 【核心修改】：改成布尔值频闪切换，0.2f 和 1f 形成高落差硬闪烁
+                    float alpha = Mathf.PingPong(Time.time * 20f, 1f) > 0.5f ? 1f : 0.15f; 
                     
-                    // 【核心修改】：读取当前的 RGB（可能是减速的蓝或受击的红），只修改它的透明度 Alpha
                     Color currentColor = view.SpriteRenderer.color;
                     currentColor.a = alpha;
                     view.SpriteRenderer.color = currentColor;
@@ -31,7 +32,7 @@ public class InvincibleVisualSystem : SystemBase
             }
             else
             {
-                // 无敌结束，恢复不透明状态 (RGB 依然保留当前状态应有的颜色)
+                // 无敌结束，恢复不透明状态
                 if (view.SpriteRenderer != null)
                 {
                     Color currentColor = view.SpriteRenderer.color;

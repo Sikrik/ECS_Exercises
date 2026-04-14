@@ -41,16 +41,48 @@ public class DashActivationSystem : SystemBase
             var e = inputs[i];
             var ability = e.GetComponent<DashAbilityComponent>();
 
+            // 检查冷却完毕 且 当前不在冲刺状态中
             if (ability.CurrentCD <= 0 && !e.HasComponent<DashStateComponent>())
             {
-                // ... 现有方向计算逻辑 ...
+                // ==========================================
+                // 1. 计算冲刺方向
+                // ==========================================
+                Vector2 dashDir = Vector2.zero;
 
-                // --- 赋予物理状态与无敌 ---
-                e.AddComponent(new DashStateComponent { /* ... */ });
+                // 优先判断是否是怪物AI预先算好的方向（比如 Charger 蓄力锁定）
+                if (e.HasComponent<DashPrepStateComponent>())
+                {
+                    dashDir = e.GetComponent<DashPrepStateComponent>().TargetDir;
+                }
+                // 否则读取玩家的移动输入意图（WASD）
+                else if (e.HasComponent<MoveInputComponent>())
+                {
+                    var move = e.GetComponent<MoveInputComponent>();
+                    dashDir = new Vector2(move.X, move.Y).normalized;
+                }
+
+                // 兜底保护：如果没有按下方向键，默认朝右冲刺
+                if (dashDir == Vector2.zero) dashDir = Vector2.right;
+
+                // ==========================================
+                // 2. 赋予物理状态与无敌 (对齐现有字段名 DirX/DirY)
+                // ==========================================
+                e.AddComponent(new DashStateComponent { 
+                    DirX = dashDir.x, 
+                    DirY = dashDir.y, 
+                    Timer = ability.Duration 
+                });
+                
+                // 赋予无敌状态
                 e.AddComponent(new InvincibleComponent { Duration = ability.Duration });
 
                 // ==========================================
-                // 【新增】近战职业冲刺环形斩
+                // 3. 赋予残影标记，触发 GhostTrailSystem 视觉生成
+                // ==========================================
+                e.AddComponent(new GhostTrailComponent());
+
+                // ==========================================
+                // 4. 特殊职业逻辑：近战职业冲刺环形斩
                 // ==========================================
                 if (e.HasComponent<MeleeCombatComponent>())
                 {
@@ -61,8 +93,11 @@ public class DashActivationSystem : SystemBase
                     });
                 }
 
+                // 进入冷却
                 ability.CurrentCD = ability.Cooldown;
             }
+            
+            // 无论本帧是否成功触发冲刺，都必须消费掉（移除）输入意图组件
             e.RemoveComponent<DashInputComponent>();
         }
     }
